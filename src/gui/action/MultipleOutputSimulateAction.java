@@ -95,17 +95,12 @@ public class MultipleOutputSimulateAction extends MultipleSimulateAction {
             ArrayList<String> strings = this.getEnvironment().myTestStrings;
             ArrayList<String> outs = this.getEnvironment().myTransducerStrings;
             int offset = strings.size();
-            int tapeNum = 1;
-            if(autos.get(0) instanceof TuringMachine){
-            	tapeNum = ((TuringMachine)autos.get(0)).tapes;
-            	offset = offset/tapeNum;
-            }     
             int row = 0;
             for(int m = 0; m < autos.size(); m++){      
                 for(int k = 0; k < strings.size(); k++){
-                    row = k/tapeNum+offset*m;
+                    row = k+offset*m;
                     model.setValueAt(((Automaton)autos.get(m)).getFileName(), row, 0);  
-                    model.setValueAt((String)strings.get(k), row, k%tapeNum+1);
+                    model.setValueAt((String)strings.get(k), row, 1);
                 }
                 
             }

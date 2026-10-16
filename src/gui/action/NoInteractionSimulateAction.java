@@ -28,8 +28,7 @@ import automata.Configuration;
 
 /**
  * This is the action used for the simulation of input on an automaton with no
- * interaction. This method can operate on any automaton. It uses a special
- * exception for the case of the multiple tape Turing machine.
+ * interaction. This method can operate on any supported automaton.
  *
  * @author Thomas Finley
  */
@@ -96,9 +95,7 @@ public class NoInteractionSimulateAction extends SimulateAction {
      * @param configs
      *            the initial configurations generated
      * @param initialInput
-     *            the object that represents the initial input; this is a String
-     *            object in most cases, but may differ for multiple tape turing
-     *            machines
+     *            the input string
      */
     public void handleInteraction(Automaton automaton, AutomatonSimulator simulator, Configuration[] configs, Object initialInput) {
         JFrame frame = Universe.frameForEnvironment(environment);

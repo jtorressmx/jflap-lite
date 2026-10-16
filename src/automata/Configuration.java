@@ -124,53 +124,6 @@ public abstract class Configuration implements Cloneable {
     private int primitiveHashCode() {
         return super.hashCode();
     }
-
-    /**
-     * Returns whether we are focussed on a block or at the top automaton
-     * @return <CODE>true</CODE> if focused on a block
-     */
-    public boolean getFocused() {
-        return focused;
-    }
-
-    /**
-     * Sets whether we are focused or not.
-     * @param focus <CODE>true</CODE> if focused, false if not
-     */
-    public void setFocused(boolean focus) {
-        focused = focus;
-    }
-
-    //	/**
-    //	 * Gets the stack of parent automatons (arranged in a hierarchy, top level of the stack
-    //	 * is the immediate parent automaton)
-    //	 * @return the stack of automatons
-    //	 */
-    //	/**
-    //	 * Sets the stack of parent automatons
-    //	 * @param parentAutos the stack of parents
-    //	 */
-    //	/**
-    //	 * Get the stack of blocks
-    //	 * TODO: What is this?
-    //	 * @return
-    //	 */
-    //	/**
-    //	 * @param parentAutos
-    //	 */
-    /**
-     * Resets to be unfocused.
-     */
-    public void reset() {
-        this.setFocused(false);
-    }
-
-    //	/** The stack of parent automatons - top of the stack is closest parent*/
-    /**
-     * True if focused in on a block, false otherwise.
-     */
-    private boolean focused = false;
-
     /**
      * The state the automaton is currently in.
      */

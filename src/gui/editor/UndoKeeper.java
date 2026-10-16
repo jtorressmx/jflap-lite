@@ -19,7 +19,6 @@ import gui.environment.Universe;
 import java.util.Deque;
 import java.util.LinkedList;
 import automata.Automaton;
-import automata.turing.TuringMachine;
 
 /**
  * This class will store the states between actions, that we may undo them.
@@ -91,11 +90,7 @@ public class UndoKeeper {
             return;
         sensitive = true;
         myBackDeck.push((Automaton) myMaster.clone());
-        if (myMaster instanceof TuringMachine)
-            TuringMachine.become((TuringMachine) myMaster, (TuringMachine) p);
-        else
-            //pop off head
-            Automaton.become(myMaster, p);
+        Automaton.become(myMaster, p);
         sensitive = false;
         myMaster.getEnvironmentFrame().repaint();
     }
@@ -105,11 +100,7 @@ public class UndoKeeper {
             return;
         //push on head
         myDeck.push((Automaton) myMaster.clone());
-        if (myMaster instanceof TuringMachine)
-            //casting to the high heavens
-            TuringMachine.become((TuringMachine) myMaster, (TuringMachine) myBackDeck.pop());
-        else
-            Automaton.become(myMaster, myBackDeck.pop());
+        Automaton.become(myMaster, myBackDeck.pop());
         myMaster.getEnvironmentFrame().repaint();
     }
 }

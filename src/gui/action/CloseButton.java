@@ -21,11 +21,6 @@ import java.awt.event.ActionListener;
 import javax.swing.ImageIcon;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import automata.Automaton;
-import automata.State;
-import automata.turing.TuringMachine;
-import gui.editor.EditBlockPane;
-import gui.editor.EditorPane;
 import gui.environment.Environment;
 import gui.environment.tag.PermanentTag;
 import gui.environment.tag.Tag;
@@ -69,22 +64,7 @@ public class CloseButton extends javax.swing.JButton {
         addActionListener(new ActionListener() {
 
             public void actionPerformed(ActionEvent e) {
-                boolean editor = false;
-                Automaton inside = null;
-                State block = null;
-                if (env.getActive() instanceof EditBlockPane) {
-                    editor = true;
-                    EditBlockPane blockEditor = (EditBlockPane) env.getActive();
-                    inside = blockEditor.getAutomaton();
-                    block = blockEditor.getBlock();
-                }
                 env.remove(env.getActive());
-                if (editor) {
-                    EditorPane higherEditor = (EditorPane) env.getActive();
-                    assert (higherEditor.getAutomaton() instanceof TuringMachine);
-                    TuringMachine higher = (TuringMachine) higherEditor.getAutomaton();
-                    //MERLIN MERLIN MERLIN MERLIN MERLIN//
-                }
             }
         });
         checkEnabled();

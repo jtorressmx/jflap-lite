@@ -33,7 +33,6 @@ import javax.swing.JFileChooser;
 import javax.swing.JOptionPane;
 import javax.swing.KeyStroke;
 import javax.swing.filechooser.FileFilter;
-import automata.turing.TuringMachineBuildingBlocks;
 
 /**
  * The <CODE>OpenAction</CODE> is an action to load a structure from a file,
@@ -65,7 +64,6 @@ public class OpenAction extends RestrictedAction {
      */
     public void actionPerformed(ActionEvent event) {
         Component source = null;
-        lastFileOpened = false;
         try {
             source = (Component) event.getSource();
         } catch (Throwable e) {
@@ -87,7 +85,7 @@ public class OpenAction extends RestrictedAction {
         File[] files = fileChooser.getSelectedFiles();
         for (int k = 0; k < files.length; k++) {
             File file = files[k];
-            if (!openOrRead) {
+            {
                 // Is this file already open?
                 if (Universe.frameForFile(file) != null) {
                     Universe.frameForFile(file).toFront();
@@ -103,16 +101,6 @@ public class OpenAction extends RestrictedAction {
             }
         }
         Universe.CHOOSER.resetChoosableFileFilters();
-        lastFileOpened = true;
-    }
-
-    public static java.io.Serializable readFileAndCodecs(File file) {
-        OpenAction.setOpenOrRead(true);
-        Codec[] codecs = null;
-        codecs = makeFilters();
-        openFile(file, codecs);
-        OpenAction.setOpenOrRead(false);
-        return OpenAction.getLastObjectOpened();
     }
 
     public static Codec[] makeFilters() {
@@ -145,21 +133,11 @@ public class OpenAction extends RestrictedAction {
      *             if there was an error with all or one of the codecs
      */
     public static void openFile(File file, Codec[] codecs) {
-        dontOpen = false;
         ParseException p = null;
         for (int i = 0; i < codecs.length; i++) {
             try {
                 Serializable object = codecs[i].decode(file, null);
-                System.out.println(openOrRead);
-                if (openOrRead && !(object instanceof TuringMachineBuildingBlocks)) {
-                    dontOpen = true;
-                    JOptionPane.showMessageDialog(null, "Only single-tape Turing machines can be used as building blocks!", "Wrong File Type", JOptionPane.ERROR_MESSAGE);
-                    return;
-                }
-                lastObject = object;
-                lastFile = file;
-                // Set the file on the thing.
-                if (!openOrRead) {
+                {
                     EnvironmentFrame ef = FrameFactory.createFrame(object);
                     if (ef == null)
                         return;
@@ -188,52 +166,7 @@ public class OpenAction extends RestrictedAction {
     }
 
     /**
-     * Returns the last object opened by the filebrowswer.
-     *
-     * @return
-     */
-    public static Serializable getLastObjectOpened() {
-        return lastObject;
-    }
-
-    /**
-     * Returns the last file opened by the filebrowswer.
-     *
-     * @return
-     */
-    public static File getLastFileOpened() {
-        return lastFile;
-    }
-
-    public static boolean isOpened() {
-        return lastFileOpened;
-    }
-
-    /**
-     * @param b
-     */
-    public static void setOpenOrRead(boolean b) {
-        openOrRead = b;
-    }
-
-    // ** False causes file to be opened, True causes file to be read but not
-    // opened"
-    public static boolean openOrRead = false;
-
-    /**
-     * Set to true when user attempts to open incorrect file type as a building block
-     */
-    public static boolean dontOpen = false;
-
-    /**
      * The file chooser.
      */
     private JFileChooser fileChooser;
-
-    private static Serializable lastObject = null;
-
-    private static File lastFile = null;
-
-    private static boolean lastFileOpened = false;
-
 }

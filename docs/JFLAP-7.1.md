@@ -6,11 +6,11 @@ La base es JFLAP 7.1, publicado el 27 de julio de 2018 y actualizado oficialment
 
 | Elemento | Antes | Lite |
 | --- | ---: | ---: |
-| Fuentes Java de producción | 480 | 222 |
-| Recursos y metadatos dentro de `src/` | 138 | 16 |
+| Fuentes Java de producción | 480 | 215 |
+| Recursos y metadatos dentro de `src/` | 138 | 14 |
 | Modelos disponibles | Catálogo completo de JFLAP | Autómatas finitos y Turing |
 
-Se eliminaron 258 archivos Java, 122 recursos/metadatos originales y el archivo `Flap-SourceCode.jar` del árbol de trabajo. También se retiraron clases internas sin uso. La importación original y el archivo recibido siguen preservados en Git, en `main`.
+Se eliminaron 265 archivos Java, 124 recursos/metadatos originales y el archivo `Flap-SourceCode.jar` del árbol de trabajo. También se retiraron clases internas sin uso. La importación original y el archivo recibido siguen preservados en Git, en `main`.
 
 Se retiraron físicamente los paquetes de PDA, Mealy/Moore, gramáticas, expresiones regulares, lemas de bombeo, sistemas L y grafos de dependencias de variables. También se eliminaron sus acciones, entornos, editores, dibujadores, creadores de transiciones, simuladores, transductores XML, conversiones y ayuda. No hay implementaciones comentadas ni clases vacías que sustituyan esos módulos.
 
@@ -22,8 +22,6 @@ Las clases compartidas se adaptaron: fábricas de simuladores, comprobadores de 
 | --- | --- |
 | Autómatas finitos | AFD/AFN, transiciones vacías, edición, simulación, equivalencia, conversión AFN → AFD, minimización, combinación y estado trampa. |
 | Turing estándar | Una cinta y simulación determinista/no determinista. |
-| Turing multicinta | Dos a cinco cintas y sus simuladores. |
-| Turing con bloques | Máquinas internas reutilizables, transiciones de bloque, edición y persistencia. |
 | Infraestructura compartida | Archivos `.jff`, exportación de imágenes/SVG, impresión, preferencias, disposición de estados, trazas, notas y ejecución múltiple/por lotes. |
 
 Se eliminaron las conversiones hacia modelos descartados, aunque partieran de un autómata finito o una máquina de Turing.
@@ -32,7 +30,7 @@ Se eliminaron las conversiones hacia modelos descartados, aunque partieran de un
 
 ```text
 gui.Main
-  -> gui.action.NewAction: cuatro opciones de máquina
+  -> gui.action.NewAction: dos opciones de máquina
   -> FrameFactory / EnvironmentFactory
   -> AutomatonEnvironment / EnvironmentFrame
   -> EditorPane / DefaultToolBox / creadores FSA y TM
@@ -40,15 +38,15 @@ gui.Main
 
 automata.Automaton / State / Transition / eventos
   -> automata.fsa: simuladores, comprobadores y transformaciones de AF
-  -> automata.turing: cintas, estados, bloques y simuladores de Turing
+  -> automata.turing: cinta y simuladores de Turing
   -> automata.graph: disposición y representación de los grafos anteriores
 
 file.XMLCodec
   -> TransducerFactory
-  -> FSATransducer / TMTransducer / TMBBTransducer
+  -> FSATransducer / TMTransducer
 ```
 
-`TransducerFactory` acepta únicamente los tipos XML `fa`, `turing` y `turingbb`; valida el tipo antes de interpretar marcas de bloques o cintas. `XMLCodec` devuelve un error de lectura manejable al abrir otros modelos y no permite codificarlos.
+`TransducerFactory` acepta únicamente los tipos XML `fa` y `turing`; rechaza documentos multicinta y con bloques, incluyendo los que se identifican como `turing` pero contienen marcas de esas modalidades. `XMLCodec` devuelve un error de lectura manejable al abrir otros modelos y no permite codificarlos.
 
 La UI sigue siendo Swing/AWT. Se reutilizan los componentes compartidos del editor, menús, acciones y preferencias; no se introdujo un sistema visual nuevo. La ayuda se comparte entre el selector y los editores y describe solo las máquinas conservadas. Se retiraron el navegador de ayuda y sus páginas/imágenes sin uso.
 
@@ -69,13 +67,13 @@ El informe de alcance se escribe en `target/scope-audit.json`. La auditoría no 
 
 ## Validación
 
-Las pruebas verifican aceptación/rechazo de autómatas finitos, persistencia `.jff`, recursos y generación SVG; conversión de AFN con transición vacía y minimización; pasos y persistencia de Turing de una y varias cintas; ramificación no determinista; persistencia de bloques anidados; y rechazo de formatos/clases eliminados.
+Las pruebas verifican aceptación/rechazo de autómatas finitos, persistencia `.jff`, recursos y generación SVG; conversión de AFN con transición vacía y minimización; pasos y persistencia de Turing de una cinta, clonación/restauración, aceptación y rechazo; ramificación no determinista; rechazo de documentos multicinta y con bloques; y rechazo de formatos/clases eliminados.
 
-La prueba de escritorio abre el selector, comprueba sus cuatro opciones, crea los editores conservados, revisa sus menús y crea paneles de simulación múltiple y paso a paso. Sus capturas se guardan en `target/ui-smoke/`. Requiere pantalla y se omite automáticamente en entornos sin ella.
+La prueba de escritorio abre el selector, comprueba sus dos opciones, crea los editores conservados, revisa sus menús y crea paneles de simulación múltiple y paso a paso, avanza y reinicia las simulaciones. Sus capturas se guardan en `target/ui-smoke/`. Requiere pantalla y se omite automáticamente en entornos sin ella.
 
-Resultado local con Oracle JDK 21.0.11 en Windows: **13 pruebas aprobadas**, cero fallos, cero errores y ninguna omitida. La compilación limpia y el empaquetado finalizaron correctamente. La auditoría registró 222 fuentes alcanzables, 16 recursos referenciados, cero fuentes/recursos huérfanos y cero entradas de paquetes retirados en el JAR.
+Resultado local con Oracle JDK 21.0.11 en Windows: **16 pruebas aprobadas**, cero fallos, cero errores y ninguna omitida. La compilación limpia y el empaquetado finalizaron correctamente. La auditoría registró 215 fuentes alcanzables, 14 recursos referenciados, cero fuentes/recursos huérfanos y cero entradas de paquetes retirados en el JAR.
 
-No se reescribieron los algoritmos originales de Turing. Persisten sus convenciones de lectura/escritura y sus limitaciones históricas: por ejemplo, la salida de cinta comienza en la posición del cabezal, y los identificadores internos de bloques deben distinguir las máquinas anidadas. La prueba de bloques usa nombres distintos, como los de los bloques cargados desde archivos. La reducción no constituye una auditoría exhaustiva de todos los algoritmos heredados.
+Se retiraron las siete clases exclusivas de bloques, sus dos iconos, la navegación de simulación Focus/Defocus, la edición anidada y el códec `turingbb`. El modelo y las transiciones exigen una única cinta. Se conserva la API de arrays de un elemento que comparten los simuladores y las tablas. La salida de cinta mantiene la convención histórica de comenzar en la posición del cabezal.
 
 ## Procedencia
 

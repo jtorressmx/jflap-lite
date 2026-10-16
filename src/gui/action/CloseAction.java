@@ -15,7 +15,6 @@
  */
 package gui.action;
 
-import gui.editor.EditBlockPane;
 import gui.environment.Environment;
 import gui.environment.tag.PermanentTag;
 import gui.environment.tag.Tag;
@@ -24,8 +23,6 @@ import java.awt.event.KeyEvent;
 import javax.swing.KeyStroke;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
-import automata.Automaton;
-import automata.State;
 
 /**
  * The <CODE>CloseAction</CODE> is an action for removing tabs in an
@@ -67,15 +64,6 @@ public class CloseAction extends RestrictedAction {
      *            the action event
      */
     public void actionPerformed(ActionEvent e) {
-        boolean editor = false;
-        Automaton inside = null;
-        State block = null;
-        if (environment.getActive() instanceof EditBlockPane) {
-            editor = true;
-            EditBlockPane blockEditor = (EditBlockPane) environment.getActive();
-            inside = blockEditor.getAutomaton();
-            block = blockEditor.getBlock();
-        }
         environment.remove(environment.getActive());
     }
 

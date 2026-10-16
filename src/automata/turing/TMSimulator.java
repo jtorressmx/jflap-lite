@@ -20,22 +20,14 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.Map;
-import java.util.Comparator;
 import java.util.Arrays;
 import automata.Automaton;
 import automata.AutomatonSimulator;
 import automata.Configuration;
 import automata.Transition;
 import gui.environment.Universe;
-import debug.EDebug;
 import javax.swing.JOptionPane;
 
-/**
- * The TM simulator progresses TM configurations on a possibly multitape Turing
- * machine.
- *
- * @author Thomas Finley
- */
 public class TMSimulator extends AutomatonSimulator {
 
     /**
@@ -73,10 +65,9 @@ public class TMSimulator extends AutomatonSimulator {
      *            the input string
      */
     public Configuration[] getInitialConfigurations(String input) {
-        int tapes = ((TuringMachine) myAutomaton).tapes();
-        String[] inputs = new String[tapes];
-        for (int i = 0; i < tapes; i++) inputs[i] = input;
-        return getInitialConfigurations(inputs);
+        if (input == null)
+            throw new IllegalArgumentException("Input is required.");
+        return getInitialConfigurations(new String[] { input });
     }
 
     /**
@@ -88,14 +79,11 @@ public class TMSimulator extends AutomatonSimulator {
      *            the input strings
      */
     public Configuration[] getInitialConfigurations(String[] inputs) {
-        inputStrings = (String[]) inputs.clone();
-        Tape[] tapes = new Tape[inputs.length];
-        for (int i = 0; i < tapes.length; i++) tapes[i] = new Tape(inputs[i]);
-        Configuration[] configs = new Configuration[1];
-        TMState initialState = (TMState) myAutomaton.getInitialState();
-        TuringMachine tm = initialState.getInnerTM();
-        configs[0] = new TMConfiguration(initialState, null, tapes, myFilters);
-        return configs;
+        if (inputs.length != 1)
+            throw new IllegalArgumentException("Only one input tape is supported.");
+        inputStrings = inputs.clone();
+        varToChar.clear();
+        return new Configuration[] { new TMConfiguration(myAutomaton.getInitialState(), null, new Tape[] { new Tape(inputs[0]) }, myFilters) };
     }
 
     /**
@@ -106,20 +94,7 @@ public class TMSimulator extends AutomatonSimulator {
     private boolean matches(Tape[] tapes, TMTransition tmt) {
         //make sure they address the same number of tapes
         assert tapes.length == tmt.tapes();
-        //for MULTITAPE turing Machine
-        if (tapes.length > 1) {
-            for (int i = 0; i < tapes.length; i++) {
-                char underHead = tapes[i].readChar();
-                char toMatch = tmt.getRead(i).charAt(0);
-                //                    if (underHead == toMatch)
-                if (underHead != toMatch && toMatch != '~')
-                    return false;
-                //would like to get priorities right for each tape, because the ! parameter shoudl not introduce arbitrary nondeterminism unless we want it to
-            }
-            return true;
-        }
         assert tapes.length == 1;
-        //fancy features only work on single-tape machines
         char underHead = tapes[0].readChar();
         String strtoMatch = tmt.getRead(0);
         int assignIndex = strtoMatch.indexOf('}');
@@ -147,28 +122,11 @@ public class TMSimulator extends AutomatonSimulator {
                 if (characters[i].charAt(0) == underHead)
                     flag = true;
             }
-            if (flag)
-                return flag;
+            return flag;
         } else {
             assert bangIndex == 0;
             return underHead != strtoMatch.charAt(1);
         }
-        //should never get down here
-        assert false;
-        return true;
-    }
-
-    /**
-     * Simulates stepping by building blocks (top-level building blocks). Again, note that this is deterministic.
-     * @param config
-     *            the configuration to simulate the one step on
-     *
-     * @return List containing the single configuration, or null if there are no valid transitions.
-     */
-    public List<Configuration> stepBlock(TMConfiguration config) {
-        EDebug.print("Inside StepBlock");
-        while (((TuringMachine) (config = (TMConfiguration) stepConfiguration(config).get(0)).getCurrentState().getAutomaton()).getParent() != null) ;
-        return Arrays.asList(config);
     }
 
     /**
@@ -181,108 +139,44 @@ public class TMSimulator extends AutomatonSimulator {
      * @return ArrayList containing the single configuration, or null if there are no valid transitions.
      */
     public ArrayList<Configuration> stepConfiguration(Configuration config) {
-        //one step, and will dig into building blocks if necessary
-        //MERLIN MERLIN MERLIN MERLIN MERLIN//
-        ArrayList<Configuration> list = new ArrayList<>();
         TMConfiguration configuration = (TMConfiguration) config;
-        TMState currentState = (TMState) configuration.getCurrentState();
-        //just a literally tmp, like /tmp
-        TuringMachine tmp = null;
-        int times = 0;
-        while ((tmp = currentState.getInnerTM()).getStates().length != 0) {
-            EDebug.print(times++);
-            currentState = (TMState) tmp.getInitialState();
-            //check that the initial state exists
-            if (currentState == null) {
-                JOptionPane.showMessageDialog(null, "It appears that one of your building blocks, possibly nested, lacks an initial state.\n " + "Please resolve this problem and restart the simulation.", "Missing Initial State", JOptionPane.ERROR_MESSAGE);
-                return list;
+        ArrayList<Configuration> next = new ArrayList<>();
+        Transition[] transitions = myAutomaton.getTransitionsFromState(configuration.getCurrentState());
+        Arrays.sort(transitions, (first, second) -> Boolean.compare(((TMTransition) first).getRead(0).startsWith("!"), ((TMTransition) second).getRead(0).startsWith("!")));
+        for (Transition transition : transitions) {
+            TMTransition match = (TMTransition) transition;
+            if (!matches(configuration.getTapes(), match))
+                continue;
+            Tape tape = new Tape(configuration.getTapes()[0]);
+            String read = match.getRead(0);
+            int assignment = read.indexOf('}');
+            if (assignment != -1) {
+                varToChar.put(read.substring(assignment + 1), String.valueOf(tape.readChar()));
             }
+            String write = match.getWrite(0);
+            if (!"~".equals(write))
+                tape.writeChar(varToChar.getOrDefault(write, write).charAt(0));
+            tape.moveHead(match.getDirection(0));
+            next.add(new TMConfiguration(match.getToState(), configuration, new Tape[] { tape }, myFilters));
+            return next;
         }
-        assert (tmp == currentState.getInnerTM());
-        assert (tmp.getParent() == currentState);
-        Transition[] trans = currentState.getAutomaton().getTransitionsFromState(currentState);
-        TMTransition tmt = null;
-        boolean success = false;
-        outer: while (true) {
-            //sort the ones with the ! symbol to be the later ones. If there are multiple !, then the choice is arbitrary.
-            Arrays.sort(trans, new Comparator<Transition>() {
-
-                public int compare(Transition a, Transition b) {
-                    //variables are only allowed with SINGLE TAPE, and same with NOT
-                    TMTransition tma = (TMTransition) a;
-                    TMTransition tmb = (TMTransition) b;
-                    char fa = tma.getRead(0).charAt(0);
-                    char fb = tmb.getRead(0).charAt(0);
-                    return (fa == '!') ? (fb == '!' ? 0 : 1) : (fb == '!' ? 1 : 0);
-                }
-            });
-            //go through transitions at current level
-            for (int i = 0; i < trans.length; i++) {
-                tmt = (TMTransition) trans[i];
-                if (matches(configuration.getTapes(), tmt)) {
-                    success = true;
-                    break outer;
-                }
-                //tilda means to read nothing or write nothing, and it seems to be explicitly written for turing machines, rather differently from other automata
-            }
-            //rise a level above.
-            if (//if this fails, that means that you forgot to set the parent in the XML encoder
-            tmp.getParent() != null) {
-                currentState = tmp.getParent();
-                tmp = (TuringMachine) currentState.getAutomaton();
-                //this line does not matter right now
-                trans = tmp.getTransitionsFromState(currentState);
-            } else {
-                //halting condition
-                break;
-            }
+        if (!configuration.isHalted()) {
+            TMConfiguration halted = (TMConfiguration) configuration.clone();
+            halted.setHalted(true);
+            next.add(halted);
         }
-        if (success) {
-            //if variables are used then they will be common to all tapes...
-            if (configuration.getTapes().length > 1) {
-                for (int k = 0; k < configuration.getTapes().length; k++) {
-                    configuration.getTapes()[k].writeChar(tmt.getWrite(k).charAt(0) == '~' ? configuration.getTapes()[k].readChar() : tmt.getWrite(k).charAt(0));
-                    configuration.getTapes()[k].moveHead(tmt.getDirection(k));
-                    list.add(new TMConfiguration(tmt.getToState(), null, configuration.getTapes(), myFilters));
-                }
-            } else {
-                //only do variable assignments for the one-tape Turing machine...
-                //do necessary variable assignments
-                String st = tmt.getRead(0);
-                int assignIndex = st.indexOf('}');
-                if (assignIndex != -1) {
-                    String s = "" + st.charAt(assignIndex + 1);
-                    varToChar.put(s, configuration.getTapes()[0].readChar() + "");
-                }
-                //perform the operations on the tape, and return a new TMConfiguration that represents the new position
-                configuration.getTapes()[0].writeChar(tmt.getWrite(0).charAt(0) == '~' ? configuration.getTapes()[0].readChar() : (varToChar.containsKey(tmt.getWrite(0).charAt(0) + "") ? varToChar.get(tmt.getWrite(0).charAt(0) + "").charAt(0) : tmt.getWrite(0).charAt(0)));
-                configuration.getTapes()[0].moveHead(tmt.getDirection(0));
-                //no going back - we are in a deterministic world. If you freeze, then you will not go forward either.
-                list.add(new TMConfiguration(tmt.getToState(), null, configuration.getTapes(), myFilters));
-            }
-        } else {
-            //halt - set a flag in a place so that the filter can pick it up later - why not just return a list with a configuration that has a flag which the halt will recognize? But then, when should we return an empty list?
-            //well, if we get here again, and the halt flag is set already, then we know that we should return an empty list to know that we rejected.
-            //MERLIN MERLIN MERLIN MERLIN MERLIN//
-            if (!configuration.isHalted()) {
-                //set the halt flag and then add to the list
-                configuration.setHalted(true);
-                // MIGHT need to use clone instead, but if this works, we'll just go with this.
-                list.add(configuration);
-            }
-        }
-        return list;
+        return next;
     }
 
     /**
      * Returns true if the simulation of the input string on the automaton left
-     * the machine in a final state. This method does not appear to be used. It is only left here because the class from which it inherited requires it.
+     * the machine in a final state.
      *
      * @return true if the simulation of the input string on the automaton left
      *         the machine in a final state
      */
     public boolean isAccepted() {
-        return false;
+        return myConfigurations.stream().anyMatch(Configuration::isAccept);
     }
 
     /**

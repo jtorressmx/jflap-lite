@@ -19,9 +19,9 @@ import automata.NondeterminismDetector;
 import automata.Transition;
 
 /**
- * The TTM nondeterminism detector object can be used to find all the
+ * The TM nondeterminism detector object can be used to find all the
  * nondeterministic states in a Turing machine (i.e. all states with transitions
- * that read the same symbols on each tape).
+ * that can read the same tape symbol).
  *
  * @author Thomas Finley
  */
@@ -34,9 +34,7 @@ public class TMNondeterminismDetector extends NondeterminismDetector {
     }
 
     /**
-     * Returns true if the transitions introduce nondeterminism (e.g. the input
-     * to read from tapes one and two portions of the transition labels are
-     * identical).
+     * Returns true if the transitions can read the same tape symbol.
      *
      * @param t1
      *            a transition

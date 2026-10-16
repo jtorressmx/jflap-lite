@@ -5,7 +5,7 @@ Edición de JFLAP 7.1 dedicada exclusivamente a **autómatas finitos** y **máqu
 ## Funciones conservadas
 
 - Autómatas finitos deterministas y no deterministas, transiciones vacías, simulación, equivalencia, conversión AFN → AFD, minimización y estado trampa.
-- Turing estándar, multicinta de dos a cinco cintas y máquinas con bloques reutilizables; simulación determinista y no determinista según la modalidad original.
+- Turing estándar de una cinta, con simulación determinista y no determinista.
 - Edición gráfica, notas, deshacer/rehacer, organización de estados, ejecución múltiple y pruebas por lotes de las máquinas conservadas.
 - Apertura y guardado `.jff`, exportación de imágenes/SVG, impresión y preferencias correspondientes.
 
@@ -47,15 +47,17 @@ El empaquetado usa `jpackage` del JDK activo y ejecuta las pruebas y la auditor�
 
 ## Estructura
 
-- `src/`: 222 fuentes Java y 16 recursos utilizados por las funciones conservadas, incluida la licencia.
-- `tests/`: pruebas de modelos, persistencia, SVG, rechazo de tipos eliminados y creación de los cuatro editores.
+- `src/`: 215 fuentes Java y 14 recursos utilizados por las funciones conservadas, incluida la licencia.
+- `tests/`: pruebas de modelos, persistencia, SVG, rechazo de tipos eliminados y creación de los dos editores.
 - `scripts/audit-scope.ps1`: analiza dependencias con `jdeps`, clases alcanzables, recursos y contenido del JAR; escribe `target/scope-audit.json`.
 - `.vscode/`: configuración de compilación y depuración de `gui.Main`.
 - [`docs/JFLAP-7.1.md`](docs/JFLAP-7.1.md): alcance de la poda, arquitectura y validación.
 
 Importa la raíz como proyecto Maven en el IDE. Las pruebas de escritorio producen imágenes en `target/ui-smoke/` y se omiten si el entorno no dispone de pantalla. Las demás pruebas se ejecutan en ambos casos.
 
-La exportación usa `batik-svggen` y `batik-svg-dom` 1.7 para mantener la API histórica. Se eliminó `batik-swing` al reemplazar su único uso por el filtro de archivos de Swing. Xalan 2.6 se excluye para utilizar el transformador XML del JDK. Se mantiene el modo normal de ejecución sin aserciones Java por las aserciones heredadas del códec; las comprobaciones JUnit están activas.
+La exportación usa `batik-svggen` y `batik-svg-dom` 1.7 para mantener la API histórica. Se eliminó `batik-swing` al reemplazar su único uso por el filtro de archivos de Swing. Xalan 2.6 se excluye para utilizar el transformador XML del JDK. Las pruebas se ejecutan con aserciones Java y JUnit activas.
+
+Se eliminaron las máquinas multicinta y con bloques, sus clases, herramientas, controles e iconos. Los archivos de esas modalidades se rechazan al abrirlos; los documentos de Turing de una cinta siguen usando el formato `.jff` estándar.
 
 ## Historial y licencia
 

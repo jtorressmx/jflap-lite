@@ -19,7 +19,6 @@ import file.Codec;
 import file.EncodeException;
 import file.Encoder;
 import file.ParseException;
-import gui.editor.EditBlockPane;
 import gui.editor.EditorPane;
 import java.awt.BorderLayout;
 import java.awt.event.ComponentEvent;
@@ -132,12 +131,6 @@ public class EnvironmentFrame extends JFrame {
             file = saveAs ? null : expected;
             object = ep.getAutomaton();
         }
-        boolean blockEdit = false;
-        if (environment.getActive() instanceof EditBlockPane) {
-            EditBlockPane newPane = (EditBlockPane) environment.getActive();
-            object = newPane.getAutomaton();
-            blockEdit = true;
-        }
         boolean badname = false;
         // Is this encoder valid?
         if (file != null && codec == null || !codec.canEncode(object)) {
@@ -214,7 +207,7 @@ public class EnvironmentFrame extends JFrame {
         // Use the codec to save the file.
         try {
             codec.encode(object, file, null);
-            if (!blockEdit) {
+            {
                 environment.setFile(file);
             }
             environment.setEncoder(codec);

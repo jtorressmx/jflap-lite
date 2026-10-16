@@ -43,7 +43,6 @@ public abstract class AutomatonSimulator {
      *
      * @param config
      *            the configuration to simulate the one step on
-     * @param blockStep
      */
     public abstract ArrayList<Configuration> stepConfiguration(Configuration config);
 

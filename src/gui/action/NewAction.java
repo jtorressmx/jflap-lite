@@ -168,32 +168,7 @@ public class NewAction extends RestrictedAction {
             button.addActionListener(new ActionListener() {
 
                 public void actionPerformed(ActionEvent e) {
-                    createWindow(new automata.turing.TuringMachine(1));
-                }
-            });
-            getContentPane().add(button);
-            button = new JButton("Multi-Tape Turing Machine");
-            button.addActionListener(new ActionListener() {
-
-                public void actionPerformed(ActionEvent e) {
-                    if (INTS == null) {
-                        INTS = new Integer[4];
-                        for (int i = 0; i < INTS.length; i++) INTS[i] = new Integer(i + 2);
-                    }
-                    Number n = (Number) JOptionPane.showInputDialog(NewDialog.this.getContentPane(), "How many tapes?", "Multi-tape Machine", JOptionPane.QUESTION_MESSAGE, null, INTS, INTS[0]);
-                    if (n == null)
-                        return;
-                    createWindow(new automata.turing.TuringMachine(n.intValue()));
-                }
-
-                private Integer[] INTS = null;
-            });
-            getContentPane().add(button);
-            button = new JButton("Turing Machine With Building Blocks");
-            button.addActionListener(new ActionListener() {
-
-                public void actionPerformed(ActionEvent e) {
-                    createWindow(new automata.turing.TuringMachineBuildingBlocks(1));
+                    createWindow(new automata.turing.TuringMachine());
                 }
             });
             getContentPane().add(button);

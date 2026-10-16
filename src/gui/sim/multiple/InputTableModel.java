@@ -80,14 +80,7 @@ public class InputTableModel extends GrowableTableModel {
     }
 
     /**
-     * This returns the name of the columns. In the input table model, each of
-     * the first {@link #getColumnCount} columns is an input column and is
-     * titled "Input #", where # is replaced with the number of the column (e.g.
-     * "Input 1", then "Input 2" for a two tape machine), unless there is only
-     * one input column, in which case the single input column is just called
-     * "Input". There are as many output columns as input columns, and are
-     * numbered in a similar fashion except with the prefix "Output" instead of
-     * "Input". The last column is always reserved for the result.
+     * Returns Input, Output or Result, with an optional File column for batch runs.
      *
      * @param column
      *            the number of the column to get the name for
@@ -116,11 +109,7 @@ public class InputTableModel extends GrowableTableModel {
     }
 
     /**
-     * This returns an array of the inputs for the table. The input is organized
-     * by arrays of arrays of strings. The first index of the array is the row
-     * of the input. The second index of the array is the particular input,
-     * which will be a single element array for most machines but an <i>n</i>
-     * element array for an <i>n</i>-tape Turing machine.
+     * Returns one input string per table row.
      *
      * @return an array of inputs, the first index corresponds directly to the
      *         row, the second to the column
@@ -159,11 +148,10 @@ public class InputTableModel extends GrowableTableModel {
      *
      * @param automaton
      *            the automaton to pass in
-     * @return the number of input strings needed for this automaton; e.g., n
-     *         for an n-tape turing machine, 1 for most anything else
+     * @return one input string for every supported automaton
      */
     public static int inputsForMachine(Automaton automaton) {
-        return automaton instanceof TuringMachine ? ((TuringMachine) automaton).tapes() : 1;
+        return 1;
     }
 
     /**

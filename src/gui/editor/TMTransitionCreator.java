@@ -32,7 +32,6 @@ import javax.swing.table.TableModel;
 import automata.State;
 import automata.Transition;
 import automata.turing.TMTransition;
-import automata.turing.TuringMachine;
 
 /**
  * This is the creator of transitions in turing machines.
@@ -50,7 +49,6 @@ public class TMTransitionCreator extends TableTransitionCreator {
      */
     public TMTransitionCreator(AutomatonPane parent) {
         super(parent);
-        machine = (TuringMachine) parent.getDrawer().getAutomaton();
     }
 
     /**
@@ -62,35 +60,7 @@ public class TMTransitionCreator extends TableTransitionCreator {
      *            to too state
      */
     protected Transition initTransition(State from, State to) {
-        if (!blockTransition)
-            return initTransition(from, to, "R");
-        else
-            return initTransition(from, to, "S");
-    }
-
-    /**
-     * Initializes a new empty transition.
-     *
-     * @param from
-     *            the from state
-     * @param to
-     *            to too state
-     */
-    protected Transition initTransition(State from, State to, String directionString) {
-        String[] read = new String[machine.tapes()];
-        for (int i = 0; i < read.length; i++) read[i] = "";
-        String[] write = read;
-        if (blockTransition) {
-            write = new String[machine.tapes()];
-            for (int i = 0; i < write.length; i++) {
-                write[i] = "~";
-            }
-        }
-        String[] direction = new String[machine.tapes()];
-        for (int i = 0; i < direction.length; i++) direction[i] = directionString;
-        TMTransition t = new TMTransition(from, to, read, write, direction);
-        t.setBlockTransition(blockTransition);
-        return t;
+        return new TMTransition(from, to, "", "", "R");
     }
 
     /**
@@ -101,17 +71,9 @@ public class TMTransitionCreator extends TableTransitionCreator {
      * @return the arrays for the editing table model
      */
     private String[][] arraysForTransition(TMTransition transition) {
-        String[][] s = new String[machine.tapes()][3];
-        for (int i = machine.tapes() - 1; i >= 0; i--) {
-            s[i][0] = transition.getRead(i);
-            s[i][1] = transition.getWrite(i);
-            if (s[i][0].equals(TMTransition.BLANK))
-                s[i][0] = "";
-            if (s[i][1].equals(TMTransition.BLANK))
-                s[i][1] = "";
-            s[i][2] = transition.getDirection(i);
-        }
-        return s;
+        String read = transition.getRead(0);
+        String write = transition.getWrite(0);
+        return new String[][] { { TMTransition.BLANK.equals(read) ? "" : read, TMTransition.BLANK.equals(write) ? "" : write, transition.getDirection(0) } };
     }
 
     /**
@@ -138,23 +100,15 @@ public class TMTransitionCreator extends TableTransitionCreator {
             }
 
             public boolean isCellEditable(int r, int c) {
-                if (!blockTransition)
-                    return true;
-                else if (c == 0)
-                    return true;
-                else
-                    return false;
+                return true;
             }
 
             public int getRowCount() {
-                return machine.tapes();
+                return 1;
             }
 
             public int getColumnCount() {
-                if (!blockTransition)
-                    return 3;
-                else
-                    return 1;
+                return 3;
             }
 
             public String getColumnName(int c) {
@@ -172,7 +126,7 @@ public class TMTransitionCreator extends TableTransitionCreator {
      */
     protected JTable createTable(Transition transition) {
         JTable table = super.createTable(transition);
-        if (!blockTransition) {
+        {
             TableColumn directionColumn = table.getColumnModel().getColumn(2);
             directionColumn.setCellEditor(new DefaultCellEditor(BOX) {
 
@@ -198,34 +152,13 @@ public class TMTransitionCreator extends TableTransitionCreator {
      * Modifies a transition according to what's in the table.
      */
     public Transition modifyTransition(Transition transition, TableModel model) {
-        TMTransition t = (TMTransition) transition;
+        TMTransition old = (TMTransition) transition;
         try {
-            String[] reads = new String[machine.tapes()];
-            String[] writes = new String[machine.tapes()];
-            String[] dirs = new String[machine.tapes()];
-            for (int i = 0; i < machine.tapes(); i++) {
-                reads[i] = (String) model.getValueAt(i, 0);
-                writes[i] = (String) model.getValueAt(i, 1);
-                dirs[i] = (String) model.getValueAt(i, 2);
-            }
-            TMTransition newTrans = new TMTransition(t.getFromState(), t.getToState(), reads, writes, dirs);
-            if (transition instanceof TMTransition) {
-                TMTransition oldTrans = (TMTransition) transition;
-                newTrans.setBlockTransition(oldTrans.isBlockTransition());
-            }
-            return newTrans;
-        } catch (IllegalArgumentException e) {
-            reportException(e);
+            return new TMTransition(old.getFromState(), old.getToState(), (String) model.getValueAt(0, 0), (String) model.getValueAt(0, 1), (String) model.getValueAt(0, 2));
+        } catch (IllegalArgumentException error) {
+            reportException(error);
             return null;
         }
-    }
-
-    public boolean isBlockTransition() {
-        return blockTransition;
-    }
-
-    public void setBlockTransition(boolean block) {
-        blockTransition = block;
     }
 
     public static void setDirs(boolean allowStay) {
@@ -242,13 +175,6 @@ public class TMTransitionCreator extends TableTransitionCreator {
         BOX.removeAllItems();
         for (int i = 0; i < DIRS.length; i++) BOX.addItem(DIRS[i]);
     }
-
-    private boolean blockTransition = false;
-
-    /**
-     * The Turing machine.
-     */
-    private TuringMachine machine;
 
     /**
      * The directions.

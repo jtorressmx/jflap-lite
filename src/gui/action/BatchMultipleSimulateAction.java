@@ -276,12 +276,8 @@ public class BatchMultipleSimulateAction extends MultipleSimulateAction {
                     AutomatonSimulator simulator = SimulatorFactory.getSimulator(currentAuto);
                     String[][] inputs = model.getInputs();
                     int uniqueInputs = inputs.length;
-                    int tapes = 1;
                     if (model.isMultiple) {
-                        if (currentAuto instanceof TuringMachine) {
-                            tapes = ((TuringMachine) currentAuto).tapes;
-                        }
-                        uniqueInputs = getEnvironment().myTestStrings.size() / tapes;
+                        uniqueInputs = getEnvironment().myTestStrings.size();
                     }
                     for (int r = 0; r < inputs.length; r++) {
                         if (r > 0) {
@@ -306,7 +302,7 @@ public class BatchMultipleSimulateAction extends MultipleSimulateAction {
                         Configuration c = null;
                         if (associated.size() != 0)
                             c = (Configuration) associated.get(0);
-                        model.setResult(r, RESULT[result], c, getEnvironment().myTransducerStrings, (r % (uniqueInputs)) * (tapes + 1));
+                        model.setResult(r, RESULT[result], c, getEnvironment().myTransducerStrings, (r % (uniqueInputs)) * 2);
                     }
                 }
             }

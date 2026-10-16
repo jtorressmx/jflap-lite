@@ -24,7 +24,7 @@ public class HelpAction extends RestrictedAction {
                 "Create or open a Finite Automaton or a Turing Machine.\n"
                 + "Use the editor toolbar to add states and transitions,\n"
                 + "then choose an Input action to simulate your machine.\n\n"
-                + "Turing Machines support one tape, multiple tapes, and building blocks.\n"
+                + "Turing Machines use one tape.\n"
                 + "Save and open machines as .jff files.",
                 "JFLAP Lite Help", JOptionPane.INFORMATION_MESSAGE);
     }

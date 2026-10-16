@@ -175,12 +175,7 @@ public class TestAction extends RestrictedAction {
                 BufferedReader in = new BufferedReader(new FileReader(textFile));
                 String str;
                 String[] strings;
-                Object first = myEnvFrame.getEnvironment().myObjects.get(0);
                 int numberInputs = 1;
-                if (first instanceof TuringMachine) {
-                    TuringMachine firstTM = (TuringMachine) first;
-                    numberInputs = firstTM.tapes;
-                }
                 boolean reject = false;
                 while ((str = in.readLine()) != null) {
                     reject = false;

@@ -133,42 +133,17 @@ public class ConfigurationPane extends JPanel implements ActionListener {
         button.doClick();
     }
 
-    public void setFocused(Configuration configuration) {
-        ConfigurationButton button = (ConfigurationButton) configurationToButtonMap.get(configuration);
-        if (button == null)
-            return;
-        if (button.state == ConfigurationButton.NORMAL) {
-            button.setState(ConfigurationButton.FOCUSED);
-            button.doClick();
-        }
-    }
-
-    /**
-     * @param configuration
-     */
-    public void defocus(Configuration configuration) {
-        setNormal(configuration);
-        Configuration parent = configuration;
-        parent.setFocused(false);
-        while (parent.getParent() != null) {
-            parent = parent.getParent();
-            parent.setFocused(false);
-        }
-    }
-
     /**
      * Sets a configuration to be normal.
      *
      * @param configuration
-     *            the configuration to thaw or unfocus
+     *            the configuration to thaw
      */
     public void setNormal(Configuration configuration) {
         ConfigurationButton button = (ConfigurationButton) configurationToButtonMap.get(configuration);
         if (button == null)
             return;
         if (button.state == ConfigurationButton.FREEZE)
-            button.setState(ConfigurationButton.NORMAL);
-        else if (button.state == ConfigurationButton.FOCUSED)
             button.setState(ConfigurationButton.NORMAL);
         button.doClick();
     }
@@ -233,7 +208,7 @@ public class ConfigurationPane extends JPanel implements ActionListener {
         Iterator<ConfigurationButton> it = configurationToButtonMap.values().iterator();
         while (it.hasNext()) {
             ConfigurationButton button = (ConfigurationButton) it.next();
-            if (button.state == ConfigurationButton.NORMAL || button.state == ConfigurationButton.FOCUSED)
+            if (button.state == ConfigurationButton.NORMAL)
                 list.add(button.getConfiguration());
         }
         return (Configuration[]) list.toArray(new Configuration[0]);

@@ -32,8 +32,6 @@ public class TMTransition extends Transition {
      */
     private static final long serialVersionUID = 1L;
 
-    private int tapes;
-
     /**
      * Produces a one tape Turing transition.
      *
@@ -54,8 +52,7 @@ public class TMTransition extends Transition {
     }
 
     /**
-     * Produces a Turing transition. The number of tapes for this Turing machine
-     * transition is inferred from the number of elements in the arrays
+     * Produces a single-tape transition from one-element arrays.
      *
      * @param from
      *            the state this transition comes from
@@ -69,35 +66,18 @@ public class TMTransition extends Transition {
      * @param directionArray
      *            the direction to move the read/write tape head on each tape
      * @throws IllegalArgumentException
-     *             if the number of elements in each array is not the same, or
-     *             the arrays are empty
+     *             if any array does not contain exactly one element
      */
     public TMTransition(State from, State to, String[] toReadArray, String[] toWriteArray, String[] directionArray) {
         super(from, to);
-        if (toReadArray.length != toWriteArray.length || directionArray.length != toReadArray.length)
-            throw new IllegalArgumentException("Read symbols, write symbols, and directions " + "must have equal numbers of elements!");
-        tapes = toReadArray.length;
-        if (tapes == 0)
-            throw new IllegalArgumentException("Attempted to create a transition with 0 tapes!");
-        toRead = new ArrayList<String>();
-        toWrite = new ArrayList<String>();
-        direction = new ArrayList<String>();
-        for (int i = 0; i < tapes; i++) {
-            toRead.add("");
-            toWrite.add("");
-            direction.add("");
-            setRead(toReadArray[i], i);
-            setWrite(toWriteArray[i], i);
-            setDirection(directionArray[i], i);
-        }
-    }
-
-    /**
-     * Gets the number of tapes in the Turing Machine.
-     * @return tapes number of tapes in machine.
-     */
-    public int getTapeLength() {
-        return tapes;
+        if (toReadArray.length != 1 || toWriteArray.length != 1 || directionArray.length != 1)
+            throw new IllegalArgumentException("A Turing transition must use exactly one tape.");
+        toRead = new ArrayList<String>(Collections.singletonList(""));
+        toWrite = new ArrayList<String>(Collections.singletonList(""));
+        direction = new ArrayList<String>(Collections.singletonList(""));
+        setRead(toReadArray[0], 0);
+        setWrite(toWriteArray[0], 0);
+        setDirection(directionArray[0], 0);
     }
 
     /**
@@ -212,7 +192,7 @@ public class TMTransition extends Transition {
      * @return the number of tapes
      */
     public int tapes() {
-        return toRead.size();
+        return 1;
     }
 
     /**
@@ -223,20 +203,7 @@ public class TMTransition extends Transition {
      *         read/write tape head for each tape
      */
     public String getDescription() {
-        StringBuffer sb = new StringBuffer();
-        int t = this.tapes();
-        for (int i = 0; i < t; i++) {
-            if (i != 0)
-                sb.append(" | ");
-            sb.append((String) toRead.get(i));
-            if (!blockTransition) {
-                sb.append(" ; ");
-                sb.append((String) toWrite.get(i));
-                sb.append(" , ");
-                sb.append((String) direction.get(i));
-            }
-        }
-        return sb.toString();
+        return getRead(0) + " ; " + getWrite(0) + " , " + getDirection(0);
     }
 
     /**
@@ -277,20 +244,6 @@ public class TMTransition extends Transition {
             return false;
         }
     }
-
-    /**
-     * Is the transition a block transition?
-     * @return boolean whether the Transition is a Block Transition.
-     */
-    public boolean isBlockTransition() {
-        return blockTransition;
-    }
-
-    public void setBlockTransition(boolean block) {
-        blockTransition = block;
-    }
-
-    private boolean blockTransition = false;
 
     /**
      * The read symbols.

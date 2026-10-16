@@ -21,7 +21,7 @@
 
 package automata.turing;
 
-public class AcceptByHaltingFilter implements AcceptanceFilter{ //note that building blocks should be STRIPPED of FINAL states //or we could simply ignore final states in nonTopLevel.
+public class AcceptByHaltingFilter implements AcceptanceFilter{
     public boolean accept(TMConfiguration tmc){
         return tmc.isHalted();
     }

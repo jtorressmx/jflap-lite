@@ -53,7 +53,7 @@ Java ya esta incluido: no necesitas instalarlo.
 Conserva toda esta carpeta; el ejecutable utiliza app/ y runtime/.
 Si recibiste el ZIP, extraelo completamente antes de abrir el ejecutable.
 
-Incluye automatas finitos y Turing estandar, multicinta y con bloques.
+Incluye automatas finitos y Turing estandar de una cinta.
 Proyecto original: JFLAP, Duke University. Consulta LICENSE.txt.
 '@ | Set-Content -LiteralPath (Join-Path $imageRoot 'LEEME.txt') -Encoding UTF8
 

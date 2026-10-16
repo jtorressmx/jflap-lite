@@ -18,31 +18,23 @@ package gui.action;
 import automata.Automaton;
 import automata.AutomatonSimulator;
 import automata.Configuration;
-import automata.NondeterminismDetector;
-import automata.NondeterminismDetectorFactory;
 import automata.SimulatorFactory;
-import automata.State;
-import gui.editor.EditBlockPane;
 import gui.environment.Environment;
 import gui.environment.Universe;
 import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import gui.sim.SimulatorPane;
 import gui.environment.tag.CriticalTag;
 import javax.swing.*;
 import java.awt.GridLayout;
 import java.awt.Component;
-import java.util.*;
 import java.io.*;
 import automata.graph.AutomatonDirectedGraph;
 import automata.turing.TuringMachine;
-import automata.turing.TMSimulator;
-import automata.turing.NDTMSimulator;
 
 /**
  * This is the action used for the stepwise simulation of data. This method can
- * operate on any automaton. It uses a special exception for the two tape case.
+ * operate on any supported automaton.
  *
  * @author Thomas Finley
  */
@@ -90,12 +82,10 @@ public class SimulateAction extends AutomatonAction {
      * @param configurations
      *            the initial configurations generated
      * @param initialInput
-     *            the object that represents the initial input; this is a String
-     *            object in most cases, but may differ for multiple tape turing
-     *            machines
+     *            the input string
      */
     public void handleInteraction(Automaton automaton, AutomatonSimulator simulator, Configuration[] configurations, Object initialInput) {
-        SimulatorPane simpane = new SimulatorPane(automaton, simulator, configurations, environment, false);
+        SimulatorPane simpane = new SimulatorPane(automaton, simulator, configurations, environment);
         if (initialInput instanceof String[])
             initialInput = java.util.Arrays.asList((String[]) initialInput);
         environment.add(simpane, "Simulate: " + initialInput, new CriticalTag() {
@@ -104,11 +94,7 @@ public class SimulateAction extends AutomatonAction {
     }
 
     /**
-     * This returns an object that encapsulates the user input for the starting
-     * configuration. In most cases this will be a string, except in the case of
-     * a multiple tape Turing machine. This method will probably involve some
-     * prompt to the user. By default this method prompts the user using a
-     * dialog box and returns the result from that dialog.
+     * Prompts for the input string, optionally loaded from a text file.
      *
      * @param component
      *            a parent for whatever dialogs are brought up
@@ -116,27 +102,9 @@ public class SimulateAction extends AutomatonAction {
      *         <CODE>null</CODE> if the user elected to cancel
      */
     protected Object initialInput(Component component, String title) {
-        if (title.equals(""))
+        if (title.isEmpty())
             title = "Input";
-        if (getObject() instanceof TuringMachine) {
-            // Do the multitape stuff.
-            TuringMachine tm = (TuringMachine) getObject();
-            int tapes = tm.tapes();
-            if (title.equals("Expected Result? (Accept or Reject)")) {
-                title = "Result";
-                tapes = 1;
-            }
-            if (title.equals("Expected Output?")) {
-                title = "Output";
-            }
-            return openInputGUI(component, title, tapes);
-        } else {
-            if (title.equals("")) {
-                return openInputGUI(component, "Input?", 0);
-            } else {
-                return openInputGUI(component, title, 0);
-            }
-        }
+        return openInputGUI(component, title);
     }
 
     /**
@@ -145,125 +113,39 @@ public class SimulateAction extends AutomatonAction {
      * @param title
      * @return
      */
-    private Object openInputGUI(final Component component, String title, final int tapes) {
-        // TODO Auto-generated method stub
-        JPanel panel;
-        JTextField[] fields;
-        if (tapes == 0) {
-            panel = new JPanel(new GridLayout(3, 1));
-            fields = new JTextField[1];
-            for (int i = 0; i < 1; i++) {
-                panel.add(new JLabel(title + " "));
-                panel.add(fields[i] = new JTextField());
-            }
-        } else {
-            panel = new JPanel(new GridLayout(tapes * 2 + 1, 2));
-            fields = new JTextField[tapes];
-            for (int i = 0; i < tapes; i++) {
-                panel.add(new JLabel(title + " " + (i + 1)));
-                panel.add(fields[i] = new JTextField());
-            }
-        }
-        JButton jb = new JButton("Click to Open Input File");
-        jb.addActionListener(new ActionListener() {
-
-            public void actionPerformed(ActionEvent e) {
-                // TODO Auto-generated method stub
-                JFileChooser ourChooser = new JFileChooser(System.getProperties().getProperty("user.dir"));
-                int retval = ourChooser.showOpenDialog(null);
-                File f = null;
-                if (retval == JFileChooser.APPROVE_OPTION) {
-                    f = ourChooser.getSelectedFile();
-                    try {
-                        Scanner sc = new Scanner(f);
-                        if (tapes != 0) {
-                            String[] input = new String[tapes];
-                            for (int i = 0; i < tapes; i++) {
-                                if (sc.hasNext())
-                                    input[i] = sc.next();
-                                else {
-                                    JOptionPane.showMessageDialog(component, "Input file does not have enough input for all tapes", "File read error", JOptionPane.ERROR_MESSAGE);
-                                    sc.close();
-                                    return;
-                                }
-                            }
-                            JOptionPane.getFrameForComponent(component).dispose();
-                            handleInputFile(input);
-                        } else {
-                            String tt = sc.next();
-                            JOptionPane.getFrameForComponent(component).dispose();
-                            handleInputFile(tt);
-                        }
-                        sc.close();
-                    } catch (FileNotFoundException e1) {
-                        // TODO Auto-generate catch block
-                        e1.printStackTrace();
-                    }
-                }
+    private Object openInputGUI(final Component component, String title) {
+        JPanel panel = new JPanel(new GridLayout(3, 1));
+        JTextField field = new JTextField();
+        panel.add(new JLabel(title));
+        panel.add(field);
+        JButton open = new JButton("Open Input File...");
+        open.addActionListener(event -> {
+            JFileChooser chooser = new JFileChooser(System.getProperty("user.dir"));
+            if (chooser.showOpenDialog(component) != JFileChooser.APPROVE_OPTION)
+                return;
+            try (BufferedReader reader = new BufferedReader(new FileReader(chooser.getSelectedFile()))) {
+                String line = reader.readLine();
+                field.setText(line == null ? "" : line);
+            } catch (IOException error) {
+                JOptionPane.showMessageDialog(component, error.getMessage(), "File read error", JOptionPane.ERROR_MESSAGE);
             }
         });
-        panel.add(jb);
-        int result = JOptionPane.showOptionDialog(component, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE, null, null, null);
-        if (result != JOptionPane.YES_OPTION && result != JOptionPane.OK_OPTION)
-            return null;
-        if (tapes == 0) {
-            String input = fields[0].getText();
-            return input;
-        } else {
-            String[] input = new String[tapes];
-            for (int i = 0; i < tapes; i++) input[i] = fields[i].getText();
-            return input;
-        }
-    }
-
-    private void handleInputFile(Object input) {
-        Configuration[] configs = null;
-        AutomatonSimulator simulator = getSimulator(automaton);
-        if (input == null)
-            return;
-        // Get the initial configurations.
-        if (getObject() instanceof TuringMachine) {
-            String[] s = (String[]) input;
-            configs = ((TMSimulator) simulator).getInitialConfigurations(s);
-        } else {
-            String s = (String) input;
-            configs = simulator.getInitialConfigurations(s);
-        }
-        handleInteraction(automaton, simulator, configs, input);
+        panel.add(open);
+        int result = JOptionPane.showConfirmDialog(component, panel, title, JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
+        return result == JOptionPane.OK_OPTION ? field.getText() : null;
     }
 
     /**
      * Performs the action.
      */
     public void actionPerformed(ActionEvent e) {
-        boolean blockEdit = false;
-        if (environment.getActive() instanceof EditBlockPane) {
-            EditBlockPane newPane = (EditBlockPane) environment.getActive();
-            automaton = newPane.getAutomaton();
-            blockEdit = true;
-        }
         if (!automatonActionPermissible((Component) e.getSource()))
             return;
         Object input = initialInput((Component) e.getSource(), "");
-        Configuration[] configs = null;
-        AutomatonSimulator simulator = getSimulator(automaton);
         if (input == null)
             return;
-        // Get the initial configurations.
-        if (getObject() instanceof TuringMachine) {
-            String[] s = (String[]) input;
-            //check for nondeterminism
-            NondeterminismDetector d = NondeterminismDetectorFactory.getDetector(automaton);
-            State[] nd = d.getNondeterministicStates(automaton);
-            if (nd.length > 0) {
-                configs = ((NDTMSimulator) simulator).getInitialConfigurations(s);
-            } else {
-                configs = ((TMSimulator) simulator).getInitialConfigurations(s);
-            }
-        } else {
-            String s = (String) input;
-            configs = simulator.getInitialConfigurations(s);
-        }
+        AutomatonSimulator simulator = getSimulator(automaton);
+        Configuration[] configs = simulator.getInitialConfigurations((String) input);
         handleInteraction(automaton, simulator, configs, input);
     }
 
@@ -299,9 +181,7 @@ public class SimulateAction extends AutomatonAction {
     }
 
     /**
-     * Simulate actions are applicable to every automaton which accepts a single
-     * string of input, i.e., every automaton except for dual tape turing
-     * machines.
+     * Simulate actions are applicable to all supported automata.
      *
      * @param object
      *            to object to test for applicability

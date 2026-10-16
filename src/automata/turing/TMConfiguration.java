@@ -39,6 +39,8 @@ public class TMConfiguration extends Configuration implements Cloneable {
      */
     public TMConfiguration(State state, TMConfiguration parent, Tape[] tapes, AcceptanceFilter[] filters) {
         super(state, parent);
+        if (tapes.length != 1)
+            throw new IllegalArgumentException("Only one tape is supported.");
         this.myTapes = tapes;
         myFilters = filters;
     }
@@ -150,7 +152,6 @@ public class TMConfiguration extends Configuration implements Cloneable {
 
     public Object clone() {
         TMConfiguration newConfig = new TMConfiguration(this.getCurrentState(), (TMConfiguration) this.getParent(), myTapes, myFilters);
-        newConfig.setFocused(this.getFocused());
         newConfig.setHalted(this.isHalted());
         return newConfig;
     }

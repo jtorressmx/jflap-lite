@@ -77,7 +77,7 @@ public class LayoutAlgorithmAction extends AutomatonAction {
     public void actionPerformed(ActionEvent e) {
         double vertexBuffer;
         if (automaton instanceof TuringMachine)
-            vertexBuffer = 80 * ((TuringMachine) automaton).tapes();
+            vertexBuffer = 80;
         else
             vertexBuffer = 50;
         AutomatonGraph graph = LayoutAlgorithmFactory.getAutomatonGraph(algorithm, automaton);

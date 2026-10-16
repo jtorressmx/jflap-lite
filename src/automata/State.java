@@ -197,33 +197,6 @@ public class State implements Serializable {
     public String[] getLabels() {
         return labels;
     }
-
-    //	/**
-    //	 * Returns the block that is the parent of this one.
-    //	 * @return the parent block
-    //	 */
-    //	/**
-    //	 * Set the parent block.
-    //	 * @param block the parent block.
-    //	 */
-    //	/**
-    //	 * Get whether this block is the final state in a block or not.
-    //	 * @return <CODE>true</CODE> if this state the final state in the building block
-    //	 */
-    //	/**
-    //	 * Sets whether this state is the final state in a block or not.
-    //	 * @param type <CODE>true</CODE> if this state is the final state in a block.
-    //	 */
-    //	/**
-    //	 * Returns the Automaton that the block represents.
-    //	 *
-    //	 * @return the name of the block
-    //	 */
-    //	/**
-    //	 * Sets the Automaton the block represents.
-    //	 *
-    //	 * @param auto the name of the block
-    //	 */
     public int specialHash() {
         return point.hashCode() + (myNote == null ? -1 : myNote.specialHash()) + (getLabel() == null ? -1 : getLabel().hashCode());
     }
@@ -270,9 +243,6 @@ public class State implements Serializable {
      * If there are multiple labels, return those.
      */
     private String[] labels = new String[0];
-
-    //	/** If the state has a parent block, this is it.  It is null if there is no parent block. */
-    //	/** If it is the final state in the block, this is <CODE>true</CODE>*/
     private boolean selected = false;
 
     public void setSelect(boolean select) {

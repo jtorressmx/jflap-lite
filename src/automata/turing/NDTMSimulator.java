@@ -30,12 +30,6 @@ import java.util.*;
 import automata.*;
 import gui.environment.Universe;
 
-/**
- * The NDTM simulator progresses TM configurations on a possibly
- * multitape Turing machine. It works for nondeterminism.
- *
- * @author Thomas Finley
- */
 public class NDTMSimulator extends AutomatonSimulator {
 
     /**
@@ -69,10 +63,9 @@ public class NDTMSimulator extends AutomatonSimulator {
      * @param input the input string
      */
     public Configuration[] getInitialConfigurations(String input) {
-        int tapes = ((TuringMachine) myAutomaton).tapes();
-        String[] inputs = new String[tapes];
-        for (int i = 0; i < tapes; i++) inputs[i] = input;
-        return getInitialConfigurations(inputs);
+        if (input == null)
+            throw new IllegalArgumentException("Input is required.");
+        return getInitialConfigurations(new String[] { input });
     }
 
     /**
@@ -82,14 +75,10 @@ public class NDTMSimulator extends AutomatonSimulator {
      * @param inputs the input strings
      */
     public Configuration[] getInitialConfigurations(String[] inputs) {
-        inputStrings = (String[]) inputs.clone();
-        Tape[] tapes = new Tape[inputs.length];
-        for (int i = 0; i < tapes.length; i++) tapes[i] = new Tape(inputs[i]);
-        Configuration[] configs = new Configuration[1];
-        TMState initialState = (TMState) myAutomaton.getInitialState();
-        TuringMachine tm = initialState.getInnerTM();
-        configs[0] = new TMConfiguration(initialState, null, tapes, myFilters);
-        return configs;
+        if (inputs.length != 1)
+            throw new IllegalArgumentException("Only one input tape is supported.");
+        inputStrings = inputs.clone();
+        return new Configuration[] { new TMConfiguration(myAutomaton.getInitialState(), null, new Tape[] { new Tape(inputs[0]) }, myFilters) };
     }
 
     /**
@@ -189,11 +178,6 @@ public class NDTMSimulator extends AutomatonSimulator {
     }
 
     private AcceptanceFilter[] myFilters;
-
-    public List<TMConfiguration> stepBlock(TMConfiguration config) {
-        while (((TuringMachine) (config = (TMConfiguration) stepConfiguration(config).get(0)).getCurrentState().getAutomaton()).getParent() != null) ;
-        return Arrays.asList(config);
-    }
 
     public String[] getInputStrings() {
         return inputStrings;

@@ -144,8 +144,6 @@ public class MenuBarCreator {
         Serializable object = environment.getObject();
         if (SimulateAction.isApplicable(object))
             addItem(menu, new SimulateAction((Automaton) object, environment));
-        if (BuildingBlockSimulateAction.isApplicable(object))
-            addItem(menu, new BuildingBlockSimulateAction((Automaton) object, environment));
         if (SimulateNoClosureAction.isApplicable(object))
             addItem(menu, new SimulateNoClosureAction((Automaton) object, environment));
         if (NoInteractionSimulateAction.isApplicable(object))

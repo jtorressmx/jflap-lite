@@ -63,8 +63,6 @@ public class Automaton implements Serializable, Cloneable {
         // Try to create a new object.
         try {
             // I am a bad person for writing this hack.
-            //			if (this instanceof TuringMachine)
-            //			else
             a = (Automaton) getClass().getDeclaredConstructor().newInstance();
         } catch (Throwable e) {
             // Well golly, we're sure screwed now!
@@ -726,12 +724,6 @@ public class Automaton implements Serializable, Cloneable {
      */
     private void writeObject(java.io.ObjectOutputStream out) throws java.io.IOException {
     }
-
-    //	/**
-    //	 * Gets the map of blocks for this automaton.
-    //	 *
-    //	 * @return the map of blocks
-    //	 */
     /**
      * Gets the Environment Frame the automaton is in.
      * @return the environment frame.
@@ -842,11 +834,6 @@ public class Automaton implements Serializable, Cloneable {
      * is a sort of cashing.
      */
     private HashMap<State, Transition[]> transitionArrayToStateMap = new HashMap<State, Transition[]>();
-
-    //	/**
-    //	 * A mapping from the name of an automaton to the automaton. Used for
-    //	 * referencing the same automaton from multiple buliding blocks
-    //	 */
     private ArrayList<Note> myNotes = new ArrayList<Note>();
 
     public Color myColor = new Color(255, 255, 150);

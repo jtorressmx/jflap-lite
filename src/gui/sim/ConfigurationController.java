@@ -22,15 +22,11 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
-import java.util.List;
 import javax.swing.JOptionPane;
 import javax.swing.JSplitPane;
 import automata.AutomatonSimulator;
 import automata.Configuration;
 import automata.turing.TMSimulator;
-import automata.turing.TMConfiguration;
-import automata.turing.TMState;
-import automata.turing.TuringMachine;
 
 /**
  * This is an intermediary object between the simulator GUI and the automaton
@@ -76,7 +72,6 @@ public class ConfigurationController implements ConfigurationSelectionListener {
             }
         } else {
             for (int i = 0; i < originalConfigurations.length; i++) {
-                originalConfigurations[i].reset();
                 configurations.add(originalConfigurations[i]);
             }
         }
@@ -99,19 +94,13 @@ public class ConfigurationController implements ConfigurationSelectionListener {
         configurationToTraceWindow.clear();
     }
 
-    /**
-     * The step method takes all configurations from the configuration pane, and
-     * replaces them with "successor" transitions.
-     *
-     * @param blockStep
-     */
-    public void step(boolean blockStep) {
+    public void step() {
         Configuration[] configs = configurations.getValidConfigurations();
         ArrayList<Configuration> list = new ArrayList<>();
         HashSet<Configuration> reject = new HashSet<>();
         // Clear out old states.
         configurations.clearThawed();
-        if (!blockStep) {
+        {
             //for ordinary automaton
             for (int i = 0; i < configs.length; i++) {
                 ArrayList<Configuration> next = simulator.stepConfiguration(configs[i]);
@@ -123,23 +112,6 @@ public class ConfigurationController implements ConfigurationSelectionListener {
                 } else
                     list.addAll(next);
             }
-        } else {
-            do {
-                assert configs.length == 1;
-                assert configs[0] instanceof TMConfiguration;
-                assert simulator instanceof TMSimulator;
-                //bit of a hack, but not much time to debug right now.
-                if (configs.length == 0)
-                    break;
-                List<Configuration> next = ((TMSimulator) simulator).stepBlock((TMConfiguration) configs[0]);
-                //MERLIN MERLIN MERLIN MERLIN MERLIN//
-                if (next.size() == 0) {
-                    //crucial check for rejection
-                    reject.add(configs[0]);
-                    list.add(configs[0]);
-                } else
-                    list.addAll(next);
-            } while (false);
         }
         // Replace them with the successors.
         Iterator<Configuration> it = list.iterator();
@@ -167,7 +139,6 @@ public class ConfigurationController implements ConfigurationSelectionListener {
             // displays correctly -- now the size is wiggled in code!
         } catch (Throwable e) {
         }
-        //MERLIN MERLIN MERLIN MERLIN MERLIN// //forgetting BlockStep for now
         ////                              case JOptionPane.CANCEL_OPTION:
         ////                              case JOptionPane.NO_OPTION:
         ////                              default:
@@ -206,25 +177,6 @@ public class ConfigurationController implements ConfigurationSelectionListener {
     }
 
     /**
-     * Zooms in on selected configuration
-     */
-    public void focus() {
-        Configuration[] configs = configurations.getSelected();
-        if (configs.length == 0) {
-            JOptionPane.showMessageDialog(configurations, NO_CONFIGURATION_ERROR, NO_CONFIGURATION_ERROR_TITLE, JOptionPane.ERROR_MESSAGE);
-            return;
-        } else if (configs.length > 1) {
-            JOptionPane.showMessageDialog(configurations, FOCUS_CONFIGURATION_ERROR, FOCUS_CONFIGURATION_ERROR_TITLE, JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-        Configuration toFocus = configs[0];
-        configurations.setFocused(toFocus);
-        toFocus.setFocused(true);
-        //			if (checkTop != null)
-        component.repaint();
-    }
-
-    /**
      * Sets the drawer to draw the selected configurations' states as selected,
      * or to draw all configurations' states as selected in the event that there
      * are no selected configurations. In this case, the selection refers to the
@@ -232,49 +184,7 @@ public class ConfigurationController implements ConfigurationSelectionListener {
      */
     public void changeSelection() {
         drawer.clearSelected();
-        Configuration[] configs;
-        configs = configurations.getConfigurations();
-        boolean foundFocused = false;
-        for (int i = 0; i < configs.length; i++) {
-            Configuration current = configs[i];
-            foundFocused = setFocusIfNeeded(current, foundFocused);
-            if (current instanceof TMConfiguration) {
-                //then blocks become relevant
-                TMState cur = (TMState) current.getCurrentState();
-                while (((TuringMachine) cur.getAutomaton()).getParent() != null) cur = (TMState) ((TuringMachine) cur.getAutomaton()).getParent();
-                drawer.addSelected(cur);
-            }
-            drawer.addSelected(configs[i].getCurrentState());
-        }
-        component.repaint();
-    }
-
-    private boolean setFocusIfNeeded(Configuration current, boolean foundFocused) {
-        Configuration parentConfig = current.getParent();
-        if (parentConfig == null)
-            return foundFocused;
-        if (parentConfig.getFocused()) {
-            current.setFocused(true);
-            if (!foundFocused) {
-                configurations.setFocused(current);
-                current.setFocused(true);
-                //MERLIN MERLIN MERLIN MERLIN MERLIN// //not sure what might have been broken here
-                //System.out.println("Stack size "
-                foundFocused = true;
-            }
-        }
-        return foundFocused;
-    }
-
-    public void defocus() {
-        Configuration[] configs = configurations.getConfigurations();
-        for (int i = 0; i < configs.length; i++) {
-            if (configs[i].getFocused()) {
-                configurations.defocus(configs[i]);
-            }
-        }
-        drawer.setAutomaton(simulator.getAutomaton());
-        drawer.invalidate();
+        for (Configuration configuration : configurations.getConfigurations()) drawer.addSelected(configuration.getCurrentState());
         component.repaint();
     }
 
@@ -312,21 +222,6 @@ public class ConfigurationController implements ConfigurationSelectionListener {
                 window.toFront();
             }
         }
-    }
-
-    /**
-     * This method is used to find out if we need the <b>Focus</b> and
-     * <b>Defocus</b> buttons in the simulator.
-     *
-     * @return <code>true</code> if the automaton is a turing machine,
-     * <code>false</code> otherwise
-     * @author Jinghui Lim
-     */
-    public boolean isTuringMachine() {
-        /*
-         * Sorry about this pretty cheap method.
-         */
-        return simulator instanceof TMSimulator;
     }
 
     /**
@@ -380,14 +275,4 @@ public class ConfigurationController implements ConfigurationSelectionListener {
      * The error message displayed when there is no config selected.
      */
     private static final String NO_CONFIGURATION_ERROR_TITLE = "No Configuration Selected";
-
-    /**
-     * The error message displayed when there is no config selected.
-     */
-    private static final String FOCUS_CONFIGURATION_ERROR = "JFLAP can only focus on one configuration at a time!";
-
-    /**
-     * The error message displayed when there is no config selected.
-     */
-    private static final String FOCUS_CONFIGURATION_ERROR_TITLE = "Too many configurations selected";
 }

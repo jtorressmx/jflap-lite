@@ -4,7 +4,6 @@ import automata.fsa.FSATransition;
 import automata.fsa.FiniteStateAutomaton;
 import automata.turing.TMTransition;
 import automata.turing.TuringMachine;
-import automata.turing.TuringMachineBuildingBlocks;
 import gui.action.MultipleSimulateAction;
 import gui.action.NewAction;
 import gui.action.SimulateAction;
@@ -57,8 +56,7 @@ public class EditorScopeTest {
                         if ("Finite Automaton".equals(button.getText())) finite = button;
                     }
                 }
-                assertEquals(new HashSet<>(Arrays.asList("Finite Automaton", "Turing Machine",
-                        "Multi-Tape Turing Machine", "Turing Machine With Building Blocks")), choices);
+                assertEquals(new HashSet<>(Arrays.asList("Finite Automaton", "Turing Machine")), choices);
                 capture(selector, "selector");
                 assertNotNull(finite);
                 finite.doClick();
@@ -69,20 +67,15 @@ public class EditorScopeTest {
                 }
                 assertEquals(1, frames.size());
                 verifyEditor(frames.get(0), "finite");
-                for (TuringMachine machine : new TuringMachine[]{new TuringMachine(1), new TuringMachine(2),
-                        new TuringMachineBuildingBlocks(1)}) {
+                for (TuringMachine machine : new TuringMachine[]{new TuringMachine()}) {
                     State start = machine.createState(new Point(80, 100));
                     State end = machine.createState(new Point(240, 100));
                     machine.setInitialState(start);
                     machine.addFinalState(end);
-                    String[] symbols = new String[machine.tapes()];
-                    String[] moves = new String[machine.tapes()];
-                    Arrays.fill(symbols, "a");
-                    Arrays.fill(moves, "R");
-                    machine.addTransition(new TMTransition(start, end, symbols, symbols, moves));
+                    machine.addTransition(new TMTransition(start, end, "a", "a", "R"));
                     EnvironmentFrame frame = FrameFactory.createFrame(machine);
                     frames.add(frame);
-                    verifyEditor(frame, machine instanceof TuringMachineBuildingBlocks ? "blocks" : "turing-" + machine.tapes());
+                    verifyEditor(frame, "turing");
                 }
             } finally {
                 for (EnvironmentFrame frame : frames) Universe.unregisterFrame(frame);
@@ -101,7 +94,7 @@ public class EditorScopeTest {
         assertTrue(actions.contains("Export to SVG"));
         assertTrue(actions.contains("Fast Run..."));
         for (String action : actions) {
-            assertFalse(action, action.matches("(?i).*(grammar|pda|mealy|moore|parse|regular expression|l-system|pumping).*"));
+            assertFalse(action, action.matches("(?i).*(grammar|pda|mealy|moore|parse|regular expression|l-system|pumping|block|multi-tape).*"));
         }
         Automaton machine = (Automaton) frame.getEnvironment().getObject();
         if (machine instanceof FiniteStateAutomaton) {
@@ -115,10 +108,32 @@ public class EditorScopeTest {
         capture(frame, image);
         new MultipleSimulateAction(machine, frame.getEnvironment()).performAction(frame);
         assertEquals("Multiple Run", frame.getEnvironment().tabbed.getTitleAt(frame.getEnvironment().tabbed.getSelectedIndex()));
+        automata.AutomatonSimulator simulator = automata.SimulatorFactory.getSimulator(machine);
         new SimulateAction(machine, frame.getEnvironment()).handleInteraction(machine,
-                automata.SimulatorFactory.getSimulator(machine),
-                automata.SimulatorFactory.getSimulator(machine).getInitialConfigurations("a"), "a");
+                simulator, simulator.getInitialConfigurations("a"), "a");
         assertTrue(frame.getEnvironment().getActive() instanceof gui.sim.SimulatorPane);
+        java.awt.Container simulation = (java.awt.Container) frame.getEnvironment().getActive();
+        JButton step = findButton(simulation, "Step");
+        assertNotNull(step);
+        assertNull(findButton(simulation, "Focus"));
+        assertNull(findButton(simulation, "Defocus"));
+        step.doClick();
+        capture(frame, image + "-step");
+        JButton reset = findButton(simulation, "Reset");
+        assertNotNull(reset);
+        reset.doClick();
+        step.doClick();
+    }
+
+    private JButton findButton(java.awt.Container parent, String text) {
+        for (Component child : parent.getComponents()) {
+            if (child instanceof JButton && text.equals(((JButton) child).getText())) return (JButton) child;
+            if (child instanceof java.awt.Container) {
+                JButton found = findButton((java.awt.Container) child, text);
+                if (found != null) return found;
+            }
+        }
+        return null;
     }
 
     private void collect(JMenu menu, Set<String> actions) {

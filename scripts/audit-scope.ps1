@@ -50,6 +50,9 @@ foreach ($sourceFile in $sourceFiles) {
     if ($contents -match '(?m)^\s*(?:package|import)\s+(?:grammar|regular|pumping|automata\.(?:pda|mealy|vdg)|gui\.(?:grammar|regular|pumping|lsystem))\b') {
         throw "Removed package referenced by $name"
     }
+    if ($contents -match '\b(?:TMState|TuringMachineBuildingBlocks|TMBBTransducer|BuildingBlockSimulateAction|BuildingBlockTool|BlockTransitionTool|EditBlockPane)\b') {
+        throw "Removed Turing class referenced by $name"
+    }
     foreach ($match in [regex]::Matches($contents, '"/((?:ICON|MEDIA|DOCS)/[^"\r\n]+)"')) {
         [void]$resourcePaths.Add($match.Groups[1].Value)
     }
@@ -62,7 +65,9 @@ Add-Type -AssemblyName System.IO.Compression.FileSystem
 $archive = [IO.Compression.ZipFile]::OpenRead($jarPath)
 try {
     $forbidden = @($archive.Entries | Where-Object {
-        $_.FullName -match '^(grammar|regular|pumping|automata/(pda|mealy|vdg)|gui/(grammar|regular|pumping|lsystem))/'
+        $_.FullName -match '^(grammar|regular|pumping|automata/(pda|mealy|vdg)|gui/(grammar|regular|pumping|lsystem))/' -or
+        $_.FullName -match '/(?:TMState|TuringMachineBuildingBlocks|TMBBTransducer|BuildingBlockSimulateAction|BuildingBlockTool|BlockTransitionTool|EditBlockPane)(?:\$[^/]*)?\.class$' -or
+        $_.FullName -match '^ICON/(?:blocks|blockTransition)\.gif$'
     })
     if ($forbidden.Count) { throw "Removed packages in JAR: $($forbidden.FullName -join ', ')" }
     foreach ($resource in $resourcePaths) {

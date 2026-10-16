@@ -76,10 +76,6 @@
         <groupId>org.apache.maven.plugins</groupId>
         <artifactId>maven-surefire-plugin</artifactId>
         <version>3.5.4</version>
-        <configuration>
-          <!-- Match normal java launch: upstream addBlocks asserts Turing even for FSA XML. -->
-          <enableAssertions>false</enableAssertions>
-        </configuration>
       </plugin>
       <plugin>
         <groupId>org.apache.maven.plugins</groupId>

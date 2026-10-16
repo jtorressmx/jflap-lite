@@ -66,7 +66,7 @@ public class FSATransducer extends AutomatonTransducer {
 	 * @return the new transition
 	 */
 	protected Transition createTransition(State from, State to, Node node,
-			Map<String, String> e2t, boolean bool) {
+			Map<String, String> e2t) {
 		String s = (String) e2t.get(TRANSITION_READ_NAME);
 		if (s == null)
 			s = ""; // Allow lambda transition.

@@ -16,8 +16,6 @@
 package gui.action;
 
 import automata.*;
-import automata.turing.TuringMachine;
-import automata.turing.TuringMachineBuildingBlocks;
 import gui.environment.*;
 import gui.viewer.AutomatonDrawer;
 import java.awt.Point;
@@ -60,21 +58,10 @@ public class CombineAutomaton extends AutomatonAction {
         EnvironmentFrame[] frames = Universe.frames();
         for (int i = 0; i < frames.length; i++) {
             Environment env = frames[i].getEnvironment();
-            if (environment.getObject() instanceof TuringMachineBuildingBlocks && env != environment && env instanceof AutomatonEnvironment) {
-                TuringMachine t1 = (TuringMachine) environment.getObject();
-                TuringMachine t2 = (TuringMachine) env.getObject();
-                if (t1.tapes() != t2.tapes())
-                    continue;
-            } else {
+            {
                 if (env == environment || !(env instanceof AutomatonEnvironment) || environment.getObject().getClass() != env.getObject().getClass()) {
                     continue;
                 }
-            }
-            if (environment.getObject() instanceof TuringMachine) {
-                TuringMachine t1 = (TuringMachine) environment.getObject();
-                TuringMachine t2 = (TuringMachine) env.getObject();
-                if (t1.tapes() != t2.tapes())
-                    continue;
             }
             combo.addItem(frames[i]);
         }
