@@ -1,0 +1,12 @@
+/target/
+/build/
+*.class
+*.log
+/jflapPreferences.xml
+/.idea/
+/*.iml
+/.settings/
+/.classpath
+/.project
+.DS_Store
+Thumbs.db
