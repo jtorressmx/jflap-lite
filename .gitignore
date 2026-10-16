@@ -1,5 +1,6 @@
 /target/
 /build/
+/dist/
 *.class
 *.log
 /jflapPreferences.xml

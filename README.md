@@ -35,6 +35,16 @@ La distribución está en `target/JFLAP.jar` y `target/lib/`; conserva ambos jun
 
 En Linux/macOS: `sh mvnw clean verify` y `(cd target && java -jar JFLAP.jar)`.
 
+## Ejecutable de Windows
+
+```powershell
+.\scripts\package-windows.ps1
+```
+
+Genera `dist/JFLAP-Lite/JFLAP-Lite.exe` y `dist/JFLAP-Lite-Windows-x64.zip`, con Java incluido. Abre el `.exe` directamente o extrae todo el ZIP antes de abrirlo. Mantén las carpetas `app/` y `runtime/` junto al ejecutable. Es una aplicación portable y no requiere instalación.
+
+El empaquetado usa `jpackage` del JDK activo y ejecuta las pruebas y la auditoría antes de construir. Si ya existen los archivos de salida, usa `-OutputDirectory` para elegir otra carpeta. Para empaquetar una compilación ya verificada, usa `-SkipBuild`.
+
 ## Estructura
 
 - `src/`: 222 fuentes Java y 16 recursos utilizados por las funciones conservadas, incluida la licencia.
