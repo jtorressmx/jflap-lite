@@ -13,40 +13,33 @@
  *  JFLAP is open source software. Please see the LICENSE for terms.
  *
  */
-
-
-
-
 package gui;
 
 import gui.action.BatchMultipleSimulateAction;
 import gui.action.MultipleSimulateAction;
-import gui.sim.multiple.InputTableModel;
-
 import javax.swing.JTable;
 import javax.swing.table.TableModel;
 
-public class JTableExtender extends JTable{
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
+public class JTableExtender extends JTable {
 
-	public JTableExtender(TableModel model, MultipleSimulateAction mult){
-		super(model);
-		myMultSimAct = mult;
-	}
-	
-	public JTableExtender(TableModel model, BatchMultipleSimulateAction mult){
-		super(model);
-		myMultSimAct = mult;
-	}
-	
-	
-	public void changeSelection (int row, int column, boolean toggle, boolean extend) {
-		 super.changeSelection (row, column, toggle, extend);
-		 myMultSimAct.viewAutomaton(this);
-		 }
-	
-	private MultipleSimulateAction myMultSimAct;
+    /**
+     */
+    private static final long serialVersionUID = 1L;
+
+    public JTableExtender(TableModel model, MultipleSimulateAction mult) {
+        super(model);
+        myMultSimAct = mult;
+    }
+
+    public JTableExtender(TableModel model, BatchMultipleSimulateAction mult) {
+        super(model);
+        myMultSimAct = mult;
+    }
+
+    public void changeSelection(int row, int column, boolean toggle, boolean extend) {
+        super.changeSelection(row, column, toggle, extend);
+        myMultSimAct.viewAutomaton(this);
+    }
+
+    private MultipleSimulateAction myMultSimAct;
 }

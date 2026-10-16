@@ -13,52 +13,43 @@
  *  JFLAP is open source software. Please see the LICENSE for terms.
  *
  */
-
-
-
-
-
 package gui.editor;
 
 import gui.viewer.AutomatonDrawer;
 import gui.viewer.AutomatonPane;
-
 import java.awt.event.MouseEvent;
 
 /**
  * This extension of the arrow tool does not allow the editing of an automaton
  * aside from the moving about of states.
- * 
+ *
  * @author Thomas Finley
  */
-
 public class ArrowNontransitionTool extends ArrowTool {
-	/**
-	 * Instantiates a new <CODE>ArrowNontransitionTool</CODE>.
-	 * 
-	 * @param view
-	 *            the view the automaton is drawn in
-	 * @param drawer
-	 *            the automaton drawer
-	 */
-	public ArrowNontransitionTool(AutomatonPane view, AutomatonDrawer drawer) {
-		super(view, drawer);
-	}
 
-	/**
-	 * On a mouse click, this simply returns,
-	 * 
-	 * @param event
-	 *            the mouse event
-	 */
-	public void mouseClicked(MouseEvent event) {
-		return;
-		/*
-		 * if (event.getClickCount() == 2) return; super.mouseClicked(event);
-		 */
-	}
+    /**
+     * Instantiates a new <CODE>ArrowNontransitionTool</CODE>.
+     *
+     * @param view
+     *            the view the automaton is drawn in
+     * @param drawer
+     *            the automaton drawer
+     */
+    public ArrowNontransitionTool(AutomatonPane view, AutomatonDrawer drawer) {
+        super(view, drawer);
+    }
 
-	protected boolean shouldShowStatePopup() {
-		return false;
-	}
+    /**
+     * On a mouse click, this simply returns,
+     *
+     * @param event
+     *            the mouse event
+     */
+    public void mouseClicked(MouseEvent event) {
+        return;
+    }
+
+    protected boolean shouldShowStatePopup() {
+        return false;
+    }
 }

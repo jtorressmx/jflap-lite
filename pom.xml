@@ -7,7 +7,7 @@
   <artifactId>jflap-lite</artifactId>
   <version>7.1-SNAPSHOT</version>
   <name>JFLAP Lite</name>
-  <description>Development workspace for the original JFLAP 7.1 sources.</description>
+  <description>Finite automata and Turing machines from JFLAP 7.1.</description>
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <maven.compiler.release>8</maven.compiler.release>
@@ -28,7 +28,7 @@
     </dependency>
     <dependency>
       <groupId>org.apache.xmlgraphics</groupId>
-      <artifactId>batik-swing</artifactId>
+      <artifactId>batik-svg-dom</artifactId>
       <version>${batik.version}</version>
       <exclusions>
         <!-- Xalan 2.6 overrides the JDK transformer and breaks .jff saving on JDK 21. -->
@@ -107,23 +107,6 @@
             <configuration>
               <includeScope>runtime</includeScope>
               <outputDirectory>${project.build.directory}/lib</outputDirectory>
-            </configuration>
-          </execution>
-          <execution>
-            <id>legacy-svg-detection</id>
-            <phase>package</phase>
-            <goals><goal>copy</goal></goals>
-            <configuration>
-              <!-- MenuBarCreator checks for svg.jar in the working directory. -->
-              <artifactItems>
-                <artifactItem>
-                  <groupId>org.apache.xmlgraphics</groupId>
-                  <artifactId>batik-svggen</artifactId>
-                  <version>${batik.version}</version>
-                  <outputDirectory>${project.build.directory}</outputDirectory>
-                  <destFileName>svg.jar</destFileName>
-                </artifactItem>
-              </artifactItems>
             </configuration>
           </execution>
         </executions>

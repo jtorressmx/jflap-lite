@@ -13,40 +13,27 @@
  *  JFLAP is open source software. Please see the LICENSE for terms.
  *
  */
-
-
-
-
 package gui.action;
 
-
 import gui.environment.Universe;
-
 import java.awt.event.ActionEvent;
-import java.beans.PropertyChangeListener;
-import java.net.URL;
-
-
-import javax.swing.Action;
 
 public class OpenURLAction extends RestrictedAction {
-	
-	/**
-	 * 
-	 */
-	private static final long serialVersionUID = 1L;
 
-	public OpenURLAction(){
-		super("Open URL", null);
-	}
+    /**
+     */
+    private static final long serialVersionUID = 1L;
 
-	public boolean isEnabled() {
-		if(Universe.CHOOSER == null) return true; 
-		return false;
-	}
+    public OpenURLAction() {
+        super("Open URL", null);
+    }
 
-	public void actionPerformed(ActionEvent e) {
-		
-	}
+    public boolean isEnabled() {
+        if (Universe.CHOOSER == null)
+            return true;
+        return false;
+    }
 
+    public void actionPerformed(ActionEvent e) {
+    }
 }

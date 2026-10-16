@@ -18,7 +18,7 @@ try {
     if (-not (Test-Path -LiteralPath 'target/JFLAP.jar')) {
         throw 'Build the project first with .\mvnw.cmd package.'
     }
-    # Upstream checks for JFLAP.jar and svg.jar relative to the working directory.
+    # Keep local preferences with the generated application.
     Set-Location (Join-Path $projectRoot 'target')
     & $javaCommand.Source -jar JFLAP.jar @inputFiles
     if ($LASTEXITCODE -ne 0) { throw "JFLAP exited with code $LASTEXITCODE" }

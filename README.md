@@ -1,62 +1,54 @@
 # JFLAP Lite
 
-Entorno de desarrollo basado en las fuentes de JFLAP 7.1 incluidas en `Flap-SourceCode.jar`.
+Edición de JFLAP 7.1 dedicada exclusivamente a **autómatas finitos** y **máquinas de Turing**. El resto de los modelos, sus conversiones, clases y recursos se eliminaron del código y de la distribución.
 
-## Comenzar
+## Funciones conservadas
 
-Requiere un **JDK 17 o superior** para las herramientas de construcción. Se comprobó con Oracle JDK 21.0.11 en Windows. El código se compila con `--release 8`; el requisito oficial de ejecución de JFLAP 7.1 es Java 8 o superior, aunque esta preparación solo se ha probado con Java 21. Maven Wrapper descarga Maven 3.9.12 y las dependencias en la primera ejecución; no hace falta instalar Maven globalmente.
+- Autómatas finitos deterministas y no deterministas, transiciones vacías, simulación, equivalencia, conversión AFN → AFD, minimización y estado trampa.
+- Turing estándar, multicinta de dos a cinco cintas y máquinas con bloques reutilizables; simulación determinista y no determinista según la modalidad original.
+- Edición gráfica, notas, deshacer/rehacer, organización de estados, ejecución múltiple y pruebas por lotes de las máquinas conservadas.
+- Apertura y guardado `.jff`, exportación de imágenes/SVG, impresión y preferencias correspondientes.
 
-Desde PowerShell, en la raíz del proyecto:
+## Compilar y ejecutar
+
+Usa un **JDK 17 o superior**. Se verificó con Oracle JDK 21.0.11 en Windows y se genera bytecode compatible con Java 8. Maven Wrapper descarga Maven 3.9.12 y las dependencias en la primera ejecución.
 
 ```powershell
 .\mvnw.cmd clean verify
+.\scripts\audit-scope.ps1
 .\scripts\run.ps1 -SkipBuild
 ```
 
-Para compilar y abrir la aplicación en un solo paso:
+Para compilar y abrir en un solo paso:
 
 ```powershell
 .\scripts\run.ps1
 ```
 
-También se pueden pasar archivos `.jff` al script. Las rutas se resuelven antes de cambiar el directorio de trabajo:
+Puedes pasar archivos como argumentos:
 
 ```powershell
 .\scripts\run.ps1 -SkipBuild 'C:\ejemplos\automata.jff'
 ```
 
-Alternativa manual, una vez compilado:
+La distribución está en `target/JFLAP.jar` y `target/lib/`; conserva ambos juntos. El script ejecuta desde `target` para mantener allí las preferencias locales. SVG se carga directamente, sin `svg.jar` auxiliar ni detección por nombre de archivo.
 
-```powershell
-Push-Location target
-java -jar JFLAP.jar
-Pop-Location
-```
+En Linux/macOS: `sh mvnw clean verify` y `(cd target && java -jar JFLAP.jar)`.
 
-Se ejecuta desde `target` porque el código original detecta `svg.jar` y guarda preferencias en el directorio de trabajo. Para mover la compilación, hay que conservar juntos `JFLAP.jar`, `svg.jar` y `lib/`. `svg.jar` es una copia de `batik-svggen` que satisface la detección original; las bibliotecas de ejecución se cargan desde `lib/` mediante el manifiesto.
+## Estructura
 
-En Linux/macOS se puede compilar con `sh mvnw clean verify` y ejecutar con `(cd target && java -jar JFLAP.jar)`.
+- `src/`: 222 fuentes Java y 16 recursos utilizados por las funciones conservadas, incluida la licencia.
+- `tests/`: pruebas de modelos, persistencia, SVG, rechazo de tipos eliminados y creación de los cuatro editores.
+- `scripts/audit-scope.ps1`: analiza dependencias con `jdeps`, clases alcanzables, recursos y contenido del JAR; escribe `target/scope-audit.json`.
+- `.vscode/`: configuración de compilación y depuración de `gui.Main`.
+- [`docs/JFLAP-7.1.md`](docs/JFLAP-7.1.md): alcance de la poda, arquitectura y validación.
 
-## Código y herramientas
+Importa la raíz como proyecto Maven en el IDE. Las pruebas de escritorio producen imágenes en `target/ui-smoke/` y se omiten si el entorno no dispone de pantalla. Las demás pruebas se ejecutan en ambos casos.
 
-- `src/`: 480 fuentes Java y 138 archivos originales adicionales, extraídos sin editar su contenido. Los `.class` precompilados se conservan únicamente dentro del JAR original.
-- `Flap-SourceCode.jar`: archivo recibido, intacto y versionado.
-- `pom.xml`, `.mvn/`, `mvnw*`: construcción reproducible con versiones explícitas de herramientas y dependencias.
-- `tests/`: cuatro pruebas de integración de simulación, persistencia `.jff`, recursos y generación SVG.
-- `scripts/run.ps1`: compilación y ejecución con el directorio de trabajo adecuado.
-- `.vscode/`: tarea de compilación y configuración de depuración de `gui.Main`; requiere las extensiones Java de VS Code.
-- `docs/JFLAP-7.1.md`: investigación, procedencia, arquitectura y límites del análisis.
+La exportación usa `batik-svggen` y `batik-svg-dom` 1.7 para mantener la API histórica. Se eliminó `batik-swing` al reemplazar su único uso por el filtro de archivos de Swing. Xalan 2.6 se excluye para utilizar el transformador XML del JDK. Se mantiene el modo normal de ejecución sin aserciones Java por las aserciones heredadas del códec; las comprobaciones JUnit están activas.
 
-El proyecto se importa como **proyecto Maven** en IntelliJ IDEA, Eclipse o VS Code. Los archivos Eclipse que trae el archivo original están preservados en `src/.project` y `src/.classpath`; describen la estructura anterior y no son la configuración activa.
+## Historial y licencia
 
-Las pruebas usan el mismo modo de ejecución que `java -jar`, con aserciones Java desactivadas; las comprobaciones JUnit sí se ejecutan. El código original contiene una aserción de Turing que falla en la lectura de autómatas finitos al usar `-ea`; el informe técnico detalla el hallazgo.
+`main` conserva la importación original. El desarrollo reducido está en `lite`. El JAR fuente original se retiró del árbol de `lite` porque incluye todos los módulos descartados; sigue disponible en el historial de Git. Los archivos generados no se versionan.
 
-La compilación usa Apache Batik **1.7** porque las fuentes originales importan `org.apache.batik.dom.svg.SVGDOMImplementation`, que cambió de paquete en Batik 1.8. Se excluye su dependencia transitiva Xalan 2.6 para utilizar el transformador XML del JDK: Xalan impedía guardar `.jff` con Java 21. Esta elección conserva el código original; actualizar Batik requiere una modificación posterior y sus verificaciones. Las advertencias por tipos sin parametrizar y por el objetivo Java 8 proceden del código y la compatibilidad originales.
-
-## Git
-
-`main` contiene la importación original. `lite` nace de `main` y añade únicamente la preparación del entorno, documentación y pruebas. El directorio de trabajo queda en `lite` para comenzar los cambios funcionales. Los resultados de compilación y preferencias locales están excluidos de Git.
-
-## Licencia
-
-Se conserva la licencia recibida en [`src/LICENSE`](src/LICENSE) y se incluye en el JAR generado. Es una licencia propia de JFLAP; sus condiciones también se aplican a derivados. La investigación enlaza el texto oficial y documenta la diferencia de fechas entre el archivo recibido y el sitio oficial.
+JFLAP fue desarrollado en Duke University. Se conserva su licencia propia en [`src/LICENSE`](src/LICENSE), también incluida en el JAR generado. La base utilizada se identifica como JFLAP 7.1; véanse [las notas oficiales](https://www.jflap.org/jflaptmp/july27-18/changes.html) y [la licencia oficial](https://www.jflap.org/jflaptmp/july27-18/license.html). El texto recibido conserva copyright de 2009 y se mantiene sin sustituirlo por el texto publicado posteriormente.

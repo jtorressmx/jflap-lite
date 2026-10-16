@@ -53,7 +53,7 @@ public class BuildSmokeTest {
     @Test
     public void resourcesRemainOnClasspath() {
         for (String path : new String[]{"/ICON/state.gif", "/MEDIA/about.png",
-                "/DOCS/index.html", "/LICENSE"}) {
+                "/DOCS/error.html", "/LICENSE"}) {
             assertNotNull("Missing resource: " + path, gui.Main.class.getResource(path));
         }
     }
