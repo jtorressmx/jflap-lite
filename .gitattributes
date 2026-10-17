@@ -1,9 +1,24 @@
 # Preserve the archive as binary and normalize extracted text consistently.
+.gitattributes text eol=lf
+.gitignore text eol=lf
 *.jar binary
 *.md text eol=lf
 *.xml text eol=lf
 *.json text eol=lf
 *.java text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.cjs text eol=lf
+*.mjs text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.svg text eol=lf
+*.png binary
+*.ico binary
+# Keep upstream license text and regression fixtures byte-for-byte.
+desktop/public/JFLAP-LICENSE.txt -text -whitespace
+desktop/src/license.txt -text -whitespace
+desktop/tests/fixtures/*.jff -text whitespace=cr-at-eol
 *.ps1 text eol=crlf
 mvnw text eol=lf
 mvnw.cmd text eol=crlf

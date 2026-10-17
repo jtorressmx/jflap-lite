@@ -1,0 +1,73 @@
+{
+  "name": "jflap-lite-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node scripts/dev.mjs",
+    "start": "node scripts/start.mjs",
+    "build": "tsc -b && vite build",
+    "test": "vitest run && node --test electron/policy.test.cjs electron/main.test.cjs",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && node scripts/package.mjs",
+    "test:native": "node scripts/test-native.mjs"
+  },
+  "dependencies": {
+    "gifenc": "^1.0.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.5.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "electron": "^44.8.0",
+    "electron-builder": "^26.15.3",
+    "jsdom": "^26.1.0",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vitest": "^5.0.5"
+  },
+  "description": "Máquinas de Turing de JFLAP Lite para Windows con Electron y Fluent.",
+  "main": "electron/main.cjs",
+  "build": {
+    "appId": "org.jflap.lite",
+    "productName": "JFLAP Lite",
+    "asar": true,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "!electron/*.test.cjs",
+      "package.json",
+      "public/JFLAP-LICENSE.txt",
+      "build/icon*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "JFLAP-Lite-${version}-${arch}.${ext}",
+      "icon": "build/icon.ico",
+      "signExecutable": false
+    },
+    "fileAssociations": [
+      {
+        "ext": "jff",
+        "name": "Máquina JFLAP",
+        "role": "Editor"
+      }
+    ],
+    "electronDist": "node_modules/electron/dist"
+  },
+  "license": "SEE LICENSE IN public/JFLAP-LICENSE.txt"
+}
