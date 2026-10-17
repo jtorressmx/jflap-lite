@@ -1,4 +1,4 @@
-import { BLANK, defaultPreferences } from './model';
+import { BLANK, defaultPreferences, machineKind } from './model';
 import type { Machine, Note, State, Transition } from './model';
 import { normalizeRead, normalizeWrite, validateTransition } from './turing';
 
@@ -89,8 +89,18 @@ export function parseJff(xml: string): Machine {
   const root = document.documentElement;
   if (!root || root.tagName !== 'structure')
     throw new Error('El archivo debe contener una estructura JFLAP.');
-  if (text(root, 'type').trim() !== 'turing')
-    throw new Error('Selecciona una máquina de Turing de una cinta (.jff).');
+  const kind = text(root, 'type').trim();
+  if (kind !== 'turing' && kind !== 'fa')
+    throw new Error(
+      'Selecciona un autómata finito o una máquina de Turing de una cinta (.jff).',
+    );
+  if (
+    kind === 'fa' &&
+    (root.getElementsByTagName('block').length ||
+      root.getElementsByTagName('tag').length ||
+      root.getElementsByTagName('tapes').length)
+  )
+    throw new Error('El autómata finito contiene datos de otro modelo.');
   const tapes = Array.from(root.getElementsByTagName('tapes'));
   if (
     tapes.length > 1 ||
@@ -99,7 +109,11 @@ export function parseJff(xml: string): Machine {
     throw new Error('Solo se admiten máquinas de Turing de una cinta.');
   const automaton = children(root, 'automaton')[0] ?? root;
   const ids = new Set<string>();
-  const states: State[] = stateElements(root, automaton)
+  const states: State[] = (
+    kind === 'fa'
+      ? children(automaton, 'state')
+      : stateElements(root, automaton)
+  )
     .map((element, index) => {
       const id = numericId(element.getAttribute('id') ?? '');
       if (ids.has(id))
@@ -136,6 +150,15 @@ export function parseJff(xml: string): Machine {
         )
           throw new Error('Solo se admite la cinta 1.');
       }
+      if (
+        kind === 'fa' &&
+        (children(element, 'write').length ||
+          children(element, 'move').length ||
+          children(element, 'read').some((e) => e.hasAttribute('tape')))
+      )
+        throw new Error(
+          'Una transición de autómata finito solo debe contener la lectura.',
+        );
       const from = numericId(text(element, 'from')),
         to = numericId(text(element, 'to'));
       if (!ids.has(from) || !ids.has(to))
@@ -146,14 +169,20 @@ export function parseJff(xml: string): Machine {
         id: `t${index}`,
         from,
         to,
-        read: normalizeRead(text(element, 'read')),
-        write: normalizeWrite(text(element, 'write')),
+        read:
+          kind === 'fa'
+            ? text(element, 'read')
+            : normalizeRead(text(element, 'read')),
+        write: kind === 'fa' ? '' : normalizeWrite(text(element, 'write')),
         move: text(element, 'move', 'R') as Transition['move'],
       };
-      const error = validateTransition(transition, {
-        ...defaultPreferences,
-        allowStay: true,
-      });
+      const error =
+        kind === 'fa'
+          ? null
+          : validateTransition(transition, {
+              ...defaultPreferences,
+              allowStay: true,
+            });
       if (error) throw new Error(`Transición ${index + 1}: ${error}`);
       if (
         children(element, 'controlx').length &&
@@ -188,7 +217,10 @@ export function parseJff(xml: string): Machine {
       y: numberField(element, 'y', 0),
     }));
   return {
-    name: root.getAttribute('name') || 'Máquina importada',
+    ...(kind === 'fa' ? { kind: 'fa' as const } : {}),
+    name:
+      root.getAttribute('name') ||
+      (kind === 'fa' ? 'Autómata importado' : 'Máquina importada'),
     states,
     transitions,
     notes,
@@ -206,6 +238,7 @@ const tag = (name: string, value: string): string =>
   value ? `<${name}>${escapeXml(value)}</${name}>` : `<${name}/>`;
 
 export function serializeJff(machine: Machine): string {
+  const kind = machineKind(machine);
   const ids = new Map<string, string>();
   const occupied = new Set(
     machine.states
@@ -227,7 +260,7 @@ export function serializeJff(machine: Machine): string {
   const lines = [
     '<?xml version="1.0" encoding="UTF-8" standalone="no"?>',
     `<structure name="${escapeXml(machine.name)}">`,
-    '  <type>turing</type>',
+    `  <type>${kind}</type>`,
     '  <automaton>',
   ];
   machine.states.forEach((state) => {
@@ -248,18 +281,25 @@ export function serializeJff(machine: Machine): string {
       throw new Error(
         'Una transición hace referencia a un estado inexistente.',
       );
-    const error = validateTransition(transition, {
-      ...defaultPreferences,
-      allowStay: true,
-    });
+    const error =
+      kind === 'fa'
+        ? null
+        : validateTransition(transition, {
+            ...defaultPreferences,
+            allowStay: true,
+          });
     if (error) throw new Error(error);
     lines.push(
       '    <transition>',
       `      ${tag('from', from)}`,
       `      ${tag('to', to)}`,
-      `      ${tag('read', !transition.read || transition.read === BLANK ? '' : transition.read)}`,
-      `      ${tag('write', !transition.write || transition.write === BLANK ? '' : transition.write)}`,
-      `      ${tag('move', transition.move)}`,
+      `      ${tag('read', kind === 'fa' ? transition.read : !transition.read || transition.read === BLANK ? '' : transition.read)}`,
+      ...(kind === 'fa'
+        ? []
+        : [
+            `      ${tag('write', !transition.write || transition.write === BLANK ? '' : transition.write)}`,
+            `      ${tag('move', transition.move)}`,
+          ]),
     );
     if (transition.control)
       lines.push(

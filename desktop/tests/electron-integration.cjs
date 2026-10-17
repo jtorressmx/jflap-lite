@@ -1019,6 +1019,231 @@ async function run() {
     'cinta fluida: desplazamientos R/L, permanencia S, inversión sin salto, velocidad automática y movimiento reducido',
   );
 
+  // Finite automata share the same native file, editing and persistence flows.
+  await click('button', 'Inicio');
+  assert.equal(
+    await evaluate('document.querySelectorAll(".home-option").length'),
+    2,
+  );
+  await evaluate('document.querySelectorAll(".home-option")[1].click()');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".workspace-model")?.textContent.includes("Autómata finito")',
+      ),
+    'nuevo autómata',
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".graph-state").length'),
+    0,
+  );
+  await click('button', 'Inicio');
+  await evaluate('document.querySelectorAll(".home-option")[0].click()');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".workspace-model")?.textContent.includes("Turing")',
+      ),
+    'nueva Turing',
+  );
+  mark('inicio abre ambos editores sin mezclar sus modelos');
+
+  const finiteFile = path.join(output, 'Autómata finito ε.jff');
+  await fs.copyFile(
+    path.resolve(__dirname, 'fixtures/finite-ends-ab.jff'),
+    finiteFile,
+  );
+  nextOpen = { canceled: false, filePaths: [finiteFile] };
+  await menu('Archivo', 'Abrir archivo…');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelectorAll(".graph-state").length===4 && document.querySelector(".workspace-model")?.textContent.includes("AFN")',
+      ),
+    'abrir AFN',
+  );
+  await evaluate(
+    `document.querySelector('.edge-label').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`,
+  );
+  await wait(
+    () => evaluate('!!document.querySelector(".transition-popover input")'),
+    'propiedades finitas',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".transition-popover input").length',
+    ),
+    1,
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".transition-popover select").length',
+    ),
+    0,
+  );
+  await evaluate(
+    `(()=>{const i=document.querySelector('.transition-popover input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'ab');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  await click('button', 'Guardar transición');
+  assert.ok(
+    (
+      await evaluate('document.querySelector(".edge-label").textContent')
+    ).includes('ab'),
+  );
+  await menu('Editar', 'Deshacer');
+  assert.ok(
+    (
+      await evaluate('document.querySelector(".edge-label").textContent')
+    ).includes('ε'),
+  );
+  mark('transición FA de cadena completa sin escritura/movimiento y deshacer');
+  await click('button', 'Simulación');
+  const activeFinite = '.simulation-host:not([hidden]) .finite-simulation';
+  await wait(
+    () => evaluate(`!!document.querySelector(${JSON.stringify(activeFinite)})`),
+    'simulador AFN',
+  );
+  const finiteFill = (selector, value) =>
+    evaluate(
+      `(()=>{const input=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(input.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+    );
+  await finiteFill(activeFinite + ' input[placeholder="Ej. aabb"]', 'aab');
+  await click(activeFinite + ' button', 'Paso');
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-configuration')}).length`,
+    ),
+    2,
+  );
+  await click(activeFinite + ' button', 'Congelar configuración');
+  assert.ok(
+    (
+      await evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite)}).textContent`,
+      )
+    ).includes('Congelada'),
+  );
+  await click(activeFinite + ' button', 'Descongelar configuración');
+  await click(activeFinite + ' button', 'Ejecutar sin interacción');
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite)}).textContent.includes('Aceptada')`,
+      ),
+    'aceptación AFN',
+  );
+  await click(activeFinite + ' [role="tab"]', 'Traza');
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')}).length`,
+    ),
+    5,
+  );
+  mark('AFN real: cierre ε, ramas, congelar/descongelar, aceptación y traza');
+
+  await click(activeFinite + ' [role="tab"]', 'Entradas múltiples');
+  await finiteFill(activeFinite + ' textarea', 'ab\taccept\na\treject\n');
+  await click(activeFinite + ' button', 'Probar entradas');
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')}).length`,
+    ),
+    3,
+  );
+  const finiteRows = await evaluate(
+    `[...document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')})].map(n=>n.textContent)`,
+  );
+  assert.ok(finiteRows[0].includes('Aceptada'));
+  assert.ok(finiteRows[1].includes('Rechazada'));
+  assert.ok(finiteRows[2].includes('Rechazada'));
+  const finiteResults = path.join(output, 'finite-results.txt');
+  nextSave = { canceled: false, filePath: finiteResults };
+  await click(activeFinite + ' button', 'Exportar');
+  await fileReady(finiteResults);
+  assert.ok((await fs.readFile(finiteResults, 'utf8')).includes('Aceptada'));
+  const finitePng = path.join(output, 'finite-results.png');
+  nextSave = { canceled: false, filePath: finitePng };
+  await click(activeFinite + ' button', 'Exportar PNG');
+  await fileReady(finitePng);
+  assert.equal((await fs.readFile(finitePng)).subarray(1, 4).toString(), 'PNG');
+  await click(activeFinite + ' button', 'Ver traza');
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'Aceptada',
+    ),
+  );
+  assert.ok(
+    await evaluate('document.querySelectorAll("dialog tbody tr").length>=4'),
+  );
+  await click('dialog button', 'Listo');
+  mark(
+    'AFN real: lote con cadena vacía, resultados esperados y exportación nativa',
+  );
+
+  await menu('Convertir', 'Convertir AFN a AFD');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".workspace-model")?.textContent.endsWith("AFD")',
+      ),
+    'AFD convertido',
+  );
+  await menu('Convertir', 'Comprobar equivalencia…');
+  await click('dialog button', path.basename(finiteFile, '.jff'));
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'mismo lenguaje',
+    ),
+  );
+  await click('dialog button', 'Listo');
+  await menu('Convertir', 'Minimizar autómata');
+  await wait(
+    () => evaluate('document.querySelectorAll(".graph-state").length===3'),
+    'AFD mínimo de 3 estados',
+  );
+  await menu('Convertir', 'Añadir estado trampa');
+  assert.equal(
+    await evaluate('document.querySelectorAll(".graph-state").length'),
+    3,
+  );
+  mark('AFN real: determinización, equivalencia, minimización y AFD completo');
+
+  const finiteSaved = path.join(output, 'finite-saved.jff');
+  nextSave = { canceled: false, filePath: finiteSaved };
+  await menu('Archivo', 'Guardar como…');
+  await fileReady(finiteSaved);
+  const finiteXml = await fs.readFile(finiteSaved, 'utf8');
+  assert.ok(finiteXml.includes('<type>fa</type>'));
+  assert.ok(!/<write|<move/.test(finiteXml));
+  const finiteSvg = path.join(output, 'finite.svg');
+  nextSave = { canceled: false, filePath: finiteSvg };
+  await menu('Archivo', 'Exportar imagen…');
+  await click('dialog button', 'SVG');
+  await fileReady(finiteSvg);
+  assert.ok(!(await fs.readFile(finiteSvg, 'utf8')).includes('; , R'));
+  await wait(async () => { const stored = JSON.parse(await invoke('readWorkspace')); return stored.documents.some(d => d.machine.kind === 'fa' && d.machine.states.length === 3 && d.machine.name.includes('Mínimo')); }, 'autoguardado del autómata mínimo');
+  await window.reload();
+  await new Promise((resolve) =>
+    window.webContents.once('did-finish-load', resolve),
+  );
+  await wait(
+    () => evaluate('!!document.querySelector(".home-page")'),
+    'inicio tras recarga',
+  );
+  await evaluate(
+    `(()=>{const b=[...document.querySelectorAll('.home-documents button')].find(b=>b.textContent.includes('Mínimo'));if(!b)throw Error('Documento finito no restaurado');b.click()})()`,
+  );
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".workspace-model")?.textContent.includes("Autómata finito") && document.querySelectorAll(".graph-state").length===3',
+      ),
+    'tipo finito restaurado',
+  );
+  mark(
+    'FA nativo guarda/exporta el formato correcto y recupera su tipo tras recargar',
+  );
+
   const workspace = JSON.stringify({
     version: 1,
     activeId: 'native-test',
@@ -1073,7 +1298,7 @@ async function run() {
 const timeout = setTimeout(() => {
   console.error('FAIL native integration timed out');
   app.exit(1);
-}, 60000);
+}, 120000);
 run()
   .then((code) => {
     clearTimeout(timeout);

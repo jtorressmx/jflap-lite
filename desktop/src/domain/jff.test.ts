@@ -166,7 +166,6 @@ describe('JFLAP XML compatibility', () => {
     ).toEqual(['5']);
   });
   it.each([
-    '<structure><type>fa</type></structure>',
     wrap(state, '<tapes>2</tapes>'),
     wrap(state, '<block/>'),
     wrap(

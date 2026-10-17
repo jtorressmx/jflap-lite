@@ -1,3 +1,4 @@
+import { machineKind } from '../domain/model';
 import type { Machine } from '../domain/model';
 
 export async function download(
@@ -111,7 +112,16 @@ export function machineSvg(m: Machine): string {
     group.forEach((item, index) => {
       const y = ly - (group.length - 1 - index) * 19,
         label =
-          (item.read || '□') + '; ' + (item.write || '□') + ', ' + item.move;
+          machineKind(m) === 'fa'
+            ? item.read ||
+              (localStorage.getItem('jflap-lite.empty-symbol') === 'λ'
+                ? 'λ'
+                : 'ε')
+            : (item.read || '□') +
+              '; ' +
+              (item.write || '□') +
+              ', ' +
+              item.move;
       content +=
         '<rect x="' +
         (lx - label.length * 3.5 - 5) +

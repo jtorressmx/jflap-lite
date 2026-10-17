@@ -27,10 +27,20 @@ export interface Note {
   y: number;
 }
 export interface Machine {
+  kind?: 'turing' | 'fa';
   name: string;
   states: State[];
   transitions: Transition[];
   notes: Note[];
+}
+export type MachineKind = 'turing' | 'fa';
+export function machineKind(machine: Machine): MachineKind {
+  return machine.kind ?? 'turing';
+}
+export function machineTitle(machine: Machine): string {
+  return machineKind(machine) === 'fa'
+    ? 'Autómata finito'
+    : 'Máquina de Turing';
 }
 export interface Preferences {
   acceptFinal: boolean;

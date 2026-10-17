@@ -8,6 +8,8 @@ import { Field, IconButton, Popover } from './ui';
 import {
   defaultPreferences,
   movementSymbol,
+  machineKind,
+  machineTitle,
   nextStateId,
 } from '../domain/model';
 import {
@@ -24,6 +26,7 @@ type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type State = Machine['states'][number];
 type Transition = Machine['transitions'][number];
 type Props = {
+  emptySymbol?: 'ε' | 'λ';
   editRequest?: {
     type: 'state' | 'transition';
     id?: string;
@@ -65,7 +68,12 @@ type Drag = {
 
 const RADIUS = 32;
 const symbol = (value: string) => (value === '' ? '□' : value);
-function transitionText(transition: Transition) {
+function transitionText(
+  transition: Transition,
+  finite = false,
+  emptySymbol = 'ε',
+) {
+  if (finite) return transition.read || emptySymbol;
   const read = Array.isArray(transition.read)
     ? transition.read
     : [transition.read];
@@ -129,6 +137,7 @@ function edgeGeometry(
 }
 
 export function GraphEditor({
+  emptySymbol = 'ε',
   machine,
   tool,
   selected,
@@ -748,7 +757,7 @@ export function GraphEditor({
         ref={svg}
         className="graph-canvas"
         role="application"
-        aria-label="Editor de máquina de Turing. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo."
+        aria-label={`Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`}
         tabIndex={0}
         onPointerDown={backgroundDown}
         onPointerMove={pointerMove}
@@ -890,7 +899,11 @@ export function GraphEditor({
                       : -(group.length - 1 - index)) *
                       23 *
                       labelScale;
-                  const label = transitionText(transition);
+                  const label = transitionText(
+                    transition,
+                    machineKind(machine) === 'fa',
+                    emptySymbol,
+                  );
                   return (
                     <g
                       key={transition.id}
@@ -1099,6 +1112,7 @@ export function GraphEditor({
             />
           ) : (
             <TransitionProperties
+              emptySymbol={emptySymbol}
               machine={machine}
               preferences={preferences}
               transition={machine.transitions.find((t) => t.id === editor.id)}
@@ -1216,6 +1230,7 @@ function StateProperties({
   );
 }
 function TransitionProperties({
+  emptySymbol = 'ε',
   machine,
   preferences,
   transition,
@@ -1225,6 +1240,7 @@ function TransitionProperties({
   onDelete,
   onClose,
 }: {
+  emptySymbol?: 'ε' | 'λ';
   machine: Machine;
   preferences: Preferences;
   transition?: Transition;
@@ -1238,6 +1254,7 @@ function TransitionProperties({
     [write, setWrite] = useState(transition?.write || ''),
     [move, setMove] = useState<Transition['move']>(transition?.move || 'R'),
     [error, setError] = useState('');
+  const finite = machineKind(machine) === 'fa';
   const a = transition?.from ?? from!,
     b = transition?.to ?? to!;
   function save() {
@@ -1246,11 +1263,11 @@ function TransitionProperties({
       id: transition?.id ?? crypto.randomUUID(),
       from: a,
       to: b,
-      read: normalizeRead(read),
-      write: normalizeWrite(write),
-      move,
+      read: finite ? read : normalizeRead(read),
+      write: finite ? '' : normalizeWrite(write),
+      move: finite ? 'R' : move,
     };
-    const issue = validateTransition(updated, preferences);
+    const issue = finite ? null : validateTransition(updated, preferences);
     if (issue) {
       setError(issue);
       return;
@@ -1287,37 +1304,52 @@ function TransitionProperties({
           <FiX />
         </IconButton>
       </div>
-      <div className="transition-expression">
-        <input
-          aria-label="Leer"
-          maxLength={1}
+      {finite && (
+        <Field
+          label="Símbolo o cadena"
+          hint={`Deja el campo vacío para una transición ${emptySymbol}.`}
           autoFocus
           value={read}
-          placeholder="□"
-          onChange={(e) => setRead(e.target.value.slice(0, 1))}
+          onChange={(e) => setRead(e.target.value)}
+          placeholder="Ej. a"
           spellCheck={false}
         />
-        <span>;</span>
-        <input
-          aria-label="Escribir"
-          maxLength={1}
-          value={write}
-          placeholder="□"
-          onChange={(e) => setWrite(e.target.value.slice(0, 1))}
-          spellCheck={false}
-        />
-        <span>,</span>
-        <select
-          aria-label="Movimiento"
-          value={move}
-          onChange={(e) => setMove(e.target.value as Transition['move'])}
-        >
-          <option value="L">Izquierda</option>
-          <option value="R">Derecha</option>
-          {(preferences.allowStay || transition?.move === 'S') && (
-            <option value="S">Permanecer</option>
-          )}
-        </select>
+      )}
+      <div className="transition-expression">
+        {!finite && (
+          <>
+            <input
+              aria-label="Leer"
+              maxLength={1}
+              autoFocus
+              value={read}
+              placeholder="□"
+              onChange={(e) => setRead(e.target.value.slice(0, 1))}
+              spellCheck={false}
+            />
+            <span>;</span>
+            <input
+              aria-label="Escribir"
+              maxLength={1}
+              value={write}
+              placeholder="□"
+              onChange={(e) => setWrite(e.target.value.slice(0, 1))}
+              spellCheck={false}
+            />
+            <span>,</span>
+            <select
+              aria-label="Movimiento"
+              value={move}
+              onChange={(e) => setMove(e.target.value as Transition['move'])}
+            >
+              <option value="L">Izquierda</option>
+              <option value="R">Derecha</option>
+              {(preferences.allowStay || transition?.move === 'S') && (
+                <option value="S">Permanecer</option>
+              )}
+            </select>
+          </>
+        )}
         <IconButton label="Guardar transición" onClick={save}>
           <FiCheck />
         </IconButton>

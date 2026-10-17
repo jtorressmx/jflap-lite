@@ -1,8 +1,10 @@
 # JFLAP Lite · Electron
 
-Aplicación de escritorio para construir y simular máquinas de Turing de una cinta. La interfaz usa React, iconos de `react-icons`, componentes compartidos y un tema inspirado en Fluent de Windows 11. Electron proporciona menús, archivos, impresión y persistencia nativos.
+Aplicación de escritorio para construir y simular autómatas finitos y máquinas de Turing de una cinta. La interfaz usa React, iconos de `react-icons`, componentes compartidos y un tema inspirado en Fluent de Windows 11. Electron proporciona menús, archivos, impresión y persistencia nativos.
 
-La primera fase migra **máquinas de Turing**. El proyecto Java original permanece en `src/`; conserva los autómatas finitos para la siguiente fase de migración a Electron.
+Ambos modelos están disponibles en Electron. El proyecto Java original permanece en `src/` como referencia.
+
+La página de inicio permite elegir **Máquina de Turing** o **Autómatas finitos**, abrir un archivo `.jff` y recuperar documentos. El editor de autómatas admite AFD/AFN, transiciones vacías y etiquetas de varios caracteres; simulación con cierre ε o transición por transición; ramas, congelación y trazas; ejecución múltiple, conversión AFN → AFD, minimización, estado trampa y equivalencia con una cadena que distingue los lenguajes. La aceptación requiere consumir toda la entrada en un estado final. Los documentos conservan su tipo al guardar y recuperar el espacio de trabajo.
 
 ## Ejecutar
 
@@ -43,7 +45,7 @@ Las pruebas diferenciales contra Java necesitan compilar el oráculo como se des
 | Preferencias    | Aceptación por final/parada, transiciones desde finales, permanecer, paletas, tema claro/oscuro, ε/λ y cantidad de acciones de deshacer                                                                |
 | Exportación     | SVG, PNG, JPG, GIF, BMP, PDF e impresión nativa                                                                                                                                                        |
 
-La aplicación inicia con un lienzo vacío. Los documentos se cambian mediante el selector «Archivo de trabajo» y se crean con «+» junto a él. Los menús y controles principales se conservan; se eliminan el encabezado con logo, las pestañas de documentos y la barra inferior. No hay explorador, inspector ni biblioteca de ejemplos. La simulación está cerrada inicialmente y puede abrirse u ocultarse sin perder su estado. El menú nativo está eliminado; los atajos de archivos y simulación se gestionan desde Electron y los de edición respetan el control enfocado.
+La aplicación inicia en la selección de modelo y cada editor nuevo abre un lienzo vacío. Los documentos se cambian mediante el selector «Archivo de trabajo» y se crean con «+» junto a él. Los menús y controles principales se conservan; se eliminan el encabezado con logo, las pestañas de documentos y la barra inferior. No hay explorador, inspector ni biblioteca de ejemplos. La simulación está cerrada inicialmente y puede abrirse u ocultarse sin perder su estado. El menú nativo está eliminado; los atajos de archivos y simulación se gestionan desde Electron y los de edición respetan el control enfocado.
 
 La rueda desplaza el lienzo; Ctrl + rueda y el pellizco del touchpad permiten acercar o alejar alrededor del cursor. Un botón «Simulación» abre u oculta el panel con ejecución, entradas múltiples y traza. La cinta se desliza suavemente bajo un cabezal fijo, respeta el movimiento reducido y muestra «Aceptada» o «Rechazada» debajo, con color verde o rojo. Los estados tienen mayor tamaño y contraste. Las transiciones desde estados finales están habilitadas, incluidos los ajustes guardados de versiones previas. La edición de lectura y escritura admite un carácter; las etiquetas muestran flechas y el selector solo los nombres de las direcciones.
 

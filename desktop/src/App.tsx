@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   FiActivity,
+  FiHome,
+  FiGitBranch,
   FiArrowRight,
   FiBookOpen,
   FiCircle,
@@ -46,8 +48,24 @@ import {
 import type { MenuEntry } from './components/ui';
 import GraphEditor from './components/GraphEditor';
 import SimulationPanel from './components/SimulationPanel';
-import { defaultPreferences, emptyMachine, nextStateId } from './domain/model';
-import type { Machine, Preferences } from './domain/model';
+import FiniteSimulationPanel from './components/FiniteSimulationPanel';
+import HomePage from './components/HomePage';
+import {
+  completeDfa,
+  emptyFinite,
+  equivalentFinite,
+  finiteNondeterminism,
+  minimizeFinite,
+  toDfa,
+} from './domain/finite';
+import {
+  defaultPreferences,
+  emptyMachine,
+  nextStateId,
+  machineKind,
+  machineTitle,
+} from './domain/model';
+import type { Machine, MachineKind, Preferences } from './domain/model';
 import { nondeterministicStates } from './domain/turing';
 import { parseJff, serializeJff } from './domain/jff';
 import license from './license.txt?raw';
@@ -69,6 +87,7 @@ type Dialog =
         | 'settings'
         | 'help'
         | 'about'
+        | 'equivalence'
         | 'combine'
         | 'close'
         | 'export'
@@ -91,6 +110,38 @@ export default function App() {
   const workspace = useWorkspace(emptyMachine('Sin título'));
   const { active, change, undo, redo } = workspace;
   const machine = active.machine;
+  const finite = machineKind(machine) === 'fa';
+  const [home, setHome] = useState(true);
+  const [comparison, setComparison] = useState('');
+  function createDocument(kind: MachineKind) {
+    workspace.open(kind === 'fa' ? emptyFinite() : emptyMachine('Sin título'));
+    setHome(false);
+    setSimulationOpen(false);
+  }
+  function resumeDocument(id: string) {
+    workspace.setActiveId(id);
+    setHome(false);
+  }
+  function convert(operation: (m: Machine) => Machine) {
+    try {
+      workspace.open(operation(machine));
+      setHome(false);
+    } catch (error) {
+      notify((error as Error).message);
+    }
+  }
+  function compare(second: Machine) {
+    try {
+      const result = equivalentFinite(machine, second);
+      setComparison(
+        result.equivalent
+          ? 'Los autómatas reconocen el mismo lenguaje.'
+          : `Los lenguajes son diferentes. La cadena ${result.witness ? '«' + result.witness + '»' : emptySymbol + ' (vacía)'} los distingue.`,
+      );
+    } catch (error) {
+      setComparison((error as Error).message);
+    }
+  }
   const uiSettings = useRef(readUiSettings()).current;
   const [preferences, setPreferences] = useState<Preferences>(readPreferences);
   const [theme, setTheme] = useState(
@@ -137,7 +188,11 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null);
   const combineInput = useRef<HTMLInputElement>(null);
   const [importedCombine, setImportedCombine] = useState<Machine | null>(null);
-  const nd = useMemo(() => nondeterministicStates(machine), [machine]);
+  const nd = useMemo(
+    () =>
+      finite ? finiteNondeterminism(machine) : nondeterministicStates(machine),
+    [machine],
+  );
   const selectedState = machine.states.find((s) => selected.includes(s.id));
   const dirty = JSON.stringify(machine) !== active.saved;
   const dirtyCount = workspace.documents.filter(
@@ -191,6 +246,7 @@ export default function App() {
   function simulate(
     action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace',
   ) {
+    setHome(false);
     setSimulationOpen(true);
     setRequest({ id: Date.now(), docId: active.id, action });
   }
@@ -298,7 +354,10 @@ export default function App() {
         if (combine) {
           setImportedCombine(m);
           setDialog({ type: 'combine' });
-        } else workspace.open(m);
+        } else {
+          workspace.open(m);
+          setHome(false);
+        }
       } catch (e) {
         errors.push(`${f.name}: ${(e as Error).message}`);
       }
@@ -316,7 +375,10 @@ export default function App() {
         if (combineMode) {
           setImportedCombine(parsed);
           setDialog({ type: 'combine' });
-        } else workspace.open(parsed, file.path);
+        } else {
+          workspace.open(parsed, file.path);
+          setHome(false);
+        }
       } catch (error) {
         notify(file.name + ': ' + (error as Error).message);
       }
@@ -435,7 +497,7 @@ export default function App() {
     return window.desktop.onCommand((command) => {
       switch (command) {
         case 'new':
-          workspace.open(emptyMachine('Sin título'));
+          createDocument(machineKind(machine));
           break;
         case 'open':
           void openDialog();
@@ -493,8 +555,34 @@ export default function App() {
       return;
     }
     workspace.close(id);
+    if (workspace.documents.length === 1) setHome(true);
+  }
+  const comparisonInput = useRef<HTMLInputElement>(null);
+  async function openComparison() {
+    if (!window.desktop) {
+      comparisonInput.current?.click();
+      return;
+    }
+    try {
+      const files = await window.desktop.openFiles({
+        kind: 'machine',
+        multiple: false,
+      });
+      if (files[0]) {
+        const m = parseJff(files[0].content);
+        if (machineKind(m) !== 'fa')
+          throw new Error('Selecciona un autómata finito.');
+        compare(m);
+      }
+    } catch (error) {
+      setComparison((error as Error).message);
+    }
   }
   function combine(second: Machine) {
+    if (machineKind(second) !== machineKind(machine)) {
+      notify('Combina documentos del mismo tipo.');
+      return;
+    }
     const ids = new Map<string, string>();
     let result: Machine = {
       ...structuredClone(machine),
@@ -560,7 +648,7 @@ export default function App() {
           else void save();
         }
         if (k === 'o') void openDialog();
-        if (k === 'n') workspace.open(emptyMachine('Sin título'));
+        if (k === 'n') createDocument(machineKind(machine));
         if (k === 'z') e.shiftKey ? redo() : undo();
         if (k === 'y') redo();
         if (k === 'a') setSelected(machine.states.map((s) => s.id));
@@ -604,8 +692,14 @@ export default function App() {
       label: 'Nueva máquina de Turing',
       icon: <FiFilePlus />,
       shortcut: 'Ctrl+N',
-      onClick: () => workspace.open(emptyMachine('Sin título')),
+      onClick: () => createDocument('turing'),
     },
+    {
+      label: 'Nuevo autómata finito',
+      icon: <FiGitBranch />,
+      onClick: () => createDocument('fa'),
+    },
+    { label: 'Ir al inicio', icon: <FiHome />, onClick: () => setHome(true) },
     {
       label: 'Abrir archivo…',
       icon: <FiFolder />,
@@ -715,6 +809,7 @@ export default function App() {
     },
     {
       label: 'Entradas múltiples con salida',
+      disabled: finite,
       icon: <FiCode />,
       onClick: () => simulate('output'),
     },
@@ -770,6 +865,26 @@ export default function App() {
       />
       <input
         hidden
+        ref={comparisonInput}
+        type="file"
+        accept=".jff,.xml"
+        aria-label="Autómata para comparar"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          e.target.value = '';
+          if (!file) return;
+          try {
+            const m = parseJff(await file.text());
+            if (machineKind(m) !== 'fa')
+              throw new Error('Selecciona un autómata finito.');
+            compare(m);
+          } catch (error) {
+            setComparison((error as Error).message);
+          }
+        }}
+      />
+      <input
+        hidden
         ref={combineInput}
         type="file"
         accept=".jff,.xml"
@@ -781,59 +896,119 @@ export default function App() {
         role="navigation"
         aria-label="Menú de la aplicación"
       >
+        <IconButton label="Inicio" active={home} onClick={() => setHome(true)}>
+          <FiHome />
+        </IconButton>
         <Menu label="Archivo" entries={fileMenu} />
-        <Menu label="Editar" entries={editMenu} />
-        <Menu label="Entrada" entries={inputMenu} />
-        <Menu label="Vista" entries={viewMenu} />
-        <Menu
-          label="Pruebas"
-          entries={[
-            {
-              label: 'Resaltar no determinismo',
-              icon: <FiActivity />,
-              onClick: highlightND,
-            },
-            {
-              label: 'Resaltar transiciones λ',
-              onClick: () => {
-                setHighlights([]);
-                notify(
-                  'Las máquinas de Turing no tienen transiciones λ. □ representa el símbolo blanco.',
-                );
-              },
-            },
-            {
-              label: 'Quitar resaltado',
-              disabled: !highlights.length,
-              onClick: () => setHighlights([]),
-            },
-          ]}
-        />
-        <Menu
-          label="Convertir"
-          entries={[
-            {
-              label: 'Combinar máquinas…',
-              icon: <FiLayers />,
-              onClick: () => setDialog({ type: 'combine' }),
-            },
-          ]}
-        />
-        <Menu
-          label="Ayuda"
-          entries={[
-            {
-              label: 'Guía de máquinas de Turing',
-              icon: <FiBookOpen />,
-              onClick: () => setDialog({ type: 'help' }),
-            },
-            {
-              label: 'Acerca de JFLAP Lite',
-              icon: <FiInfo />,
-              onClick: () => setDialog({ type: 'about' }),
-            },
-          ]}
-        />
+        {!home && (
+          <>
+            <Menu label="Editar" entries={editMenu} />
+            <Menu
+              label="Entrada"
+              entries={inputMenu.filter(
+                (entry) =>
+                  !('label' in entry) ||
+                  !finite ||
+                  entry.label !== 'Entradas múltiples con salida',
+              )}
+            />
+            <Menu label="Vista" entries={viewMenu} />
+            <Menu
+              label="Pruebas"
+              entries={[
+                {
+                  label: 'Resaltar no determinismo',
+                  icon: <FiActivity />,
+                  onClick: highlightND,
+                },
+                {
+                  label: `Resaltar transiciones ${emptySymbol}`,
+                  onClick: () => {
+                    if (finite) {
+                      const states = [
+                        ...new Set(
+                          machine.transitions
+                            .filter((t) => !t.read)
+                            .map((t) => t.from),
+                        ),
+                      ];
+                      setHighlights(states);
+                      notify(
+                        `${states.length} estados con transiciones ${emptySymbol}.`,
+                      );
+                      return;
+                    }
+                    setHighlights([]);
+                    notify(
+                      'Las máquinas de Turing no tienen transiciones λ. □ representa el símbolo blanco.',
+                    );
+                  },
+                },
+                {
+                  label: 'Quitar resaltado',
+                  disabled: !highlights.length,
+                  onClick: () => setHighlights([]),
+                },
+              ]}
+            />
+            <Menu
+              label="Convertir"
+              entries={[
+                ...(finite
+                  ? [
+                      {
+                        label: 'Convertir AFN a AFD',
+                        onClick: () => convert(toDfa),
+                      },
+                      {
+                        label: 'Minimizar autómata',
+                        onClick: () => convert(minimizeFinite),
+                      },
+                      {
+                        label: 'Añadir estado trampa',
+                        onClick: () => {
+                          try {
+                            change(completeDfa(machine));
+                          } catch (error) {
+                            notify((error as Error).message);
+                          }
+                        },
+                      },
+                      {
+                        label: 'Comprobar equivalencia…',
+                        onClick: () => {
+                          setComparison('');
+                          setDialog({ type: 'equivalence' });
+                        },
+                      },
+                    ]
+                  : []),
+                {
+                  label: 'Combinar máquinas…',
+                  icon: <FiLayers />,
+                  onClick: () => setDialog({ type: 'combine' }),
+                },
+              ]}
+            />
+            <Menu
+              label="Ayuda"
+              entries={[
+                {
+                  label: finite
+                    ? 'Guía de autómatas finitos'
+                    : 'Guía de máquinas de Turing',
+                  icon: <FiBookOpen />,
+                  onClick: () => setDialog({ type: 'help' }),
+                },
+                {
+                  label: 'Acerca de JFLAP Lite',
+                  icon: <FiInfo />,
+                  onClick: () => setDialog({ type: 'about' }),
+                },
+              ]}
+            />
+          </>
+        )}
         <div className="menubar-spacer" />
         <div
           className="active-document"
@@ -850,7 +1025,7 @@ export default function App() {
                 (JSON.stringify(doc.machine) !== doc.saved ? ' •' : ''),
               icon: <FiFile />,
               checked: doc.id === active.id,
-              onClick: () => workspace.setActiveId(doc.id),
+              onClick: () => resumeDocument(doc.id),
             }))}
           >
             <FiFile />
@@ -869,7 +1044,7 @@ export default function App() {
           </IconButton>
           <IconButton
             label="Nueva máquina"
-            onClick={() => workspace.open(emptyMachine('Sin título'))}
+            onClick={() => createDocument(machineKind(machine))}
           >
             <FiPlus />
           </IconButton>
@@ -887,16 +1062,44 @@ export default function App() {
           <FiSettings />
         </IconButton>
       </div>
-      <div className="app-body">
+      {home && (
+        <HomePage
+          onCreate={createDocument}
+          onOpen={() => void openDialog()}
+          onResume={resumeDocument}
+          documents={workspace.documents
+            .filter(
+              (d) =>
+                d.machine.states.length ||
+                d.machine.notes.length ||
+                d.path ||
+                JSON.stringify(d.machine) !== d.saved,
+            )
+            .map((d) => ({
+              id: d.id,
+              machine: d.machine,
+              dirty: JSON.stringify(d.machine) !== d.saved,
+            }))}
+        />
+      )}
+      <div className="app-body" hidden={home}>
         <main className="main-workspace">
           <>
             <div className="commandbar">
               <div className="command-group">
-                <Button variant="subtle" onClick={() => void openDialog()}>
+                <Button
+                  variant="subtle"
+                  aria-label="Abrir"
+                  onClick={() => void openDialog()}
+                >
                   <FiFolder />
                   <span>Abrir</span>
                 </Button>
-                <Button variant="subtle" onClick={() => void save()}>
+                <Button
+                  variant="subtle"
+                  aria-label="Guardar"
+                  onClick={() => void save()}
+                >
                   <FiSave />
                   <span>Guardar</span>
                 </Button>
@@ -919,6 +1122,11 @@ export default function App() {
                 </IconButton>
               </div>
               <div className="command-spacer" />
+              <span className="workspace-model">
+                <FiGitBranch />
+                {machineTitle(machine)}
+                {finite ? ` · ${nd.length ? 'AFN' : 'AFD'}` : ''}
+              </span>
               <Button
                 variant="primary"
                 aria-expanded={simulationOpen}
@@ -935,6 +1143,8 @@ export default function App() {
               >
                 <div className="canvas-content">
                   <GraphEditor
+                    key={active.id}
+                    emptySymbol={emptySymbol}
                     machine={machine}
                     preferences={preferences}
                     editRequest={
@@ -1073,27 +1283,36 @@ export default function App() {
           onClose={() => setDialog(null)}
         >
           <div className="modal-body settings-body">
-            <h3>Máquina de Turing</h3>
-            <Toggle
-              label="Aceptar por estado final"
-              description="Acepta al alcanzar un estado final."
-              checked={preferences.acceptFinal}
-              onChange={(v) =>
-                setPreferences((p) => ({ ...p, acceptFinal: v }))
-              }
-            />
-            <Toggle
-              label="Aceptar por parada"
-              description="Acepta cuando no hay una transición aplicable en el simulador determinista."
-              checked={preferences.acceptHalt}
-              onChange={(v) => setPreferences((p) => ({ ...p, acceptHalt: v }))}
-            />
-            <Toggle
-              label="Permitir permanecer"
-              description="Habilita S para escribir sin mover el cabezal."
-              checked={preferences.allowStay}
-              onChange={(v) => setPreferences((p) => ({ ...p, allowStay: v }))}
-            />
+            {!finite && (
+              <>
+                {' '}
+                <h3>Máquina de Turing</h3>
+                <Toggle
+                  label="Aceptar por estado final"
+                  description="Acepta al alcanzar un estado final."
+                  checked={preferences.acceptFinal}
+                  onChange={(v) =>
+                    setPreferences((p) => ({ ...p, acceptFinal: v }))
+                  }
+                />
+                <Toggle
+                  label="Aceptar por parada"
+                  description="Acepta cuando no hay una transición aplicable en el simulador determinista."
+                  checked={preferences.acceptHalt}
+                  onChange={(v) =>
+                    setPreferences((p) => ({ ...p, acceptHalt: v }))
+                  }
+                />
+                <Toggle
+                  label="Permitir permanecer"
+                  description="Habilita S para escribir sin mover el cabezal."
+                  checked={preferences.allowStay}
+                  onChange={(v) =>
+                    setPreferences((p) => ({ ...p, allowStay: v }))
+                  }
+                />
+              </>
+            )}
             <h3>Apariencia</h3>
             <div className="form-row">
               <Select
@@ -1179,11 +1398,13 @@ export default function App() {
                 onChange={(e) => setStateScale(Number(e.target.value))}
               />
             </label>
-            <p className="info-note">
-              <FiInfo />
-              Como JFLAP 7.1, el modo no determinista utiliza lecturas
-              literales. La aceptación respeta estas preferencias.
-            </p>
+            {!finite && (
+              <p className="info-note">
+                <FiInfo />
+                Como JFLAP 7.1, el modo no determinista utiliza lecturas
+                literales. La aceptación respeta estas preferencias.
+              </p>
+            )}
           </div>
           <div className="modal-footer">
             <Button onClick={() => setPreferences(defaultPreferences)}>
@@ -1212,6 +1433,7 @@ export default function App() {
             <Button
               onClick={() => {
                 workspace.close(active.id);
+                if (workspace.documents.length === 1) setHome(true);
                 setDialog(null);
               }}
             >
@@ -1223,6 +1445,7 @@ export default function App() {
                 void save().then((saved) => {
                   if (saved) {
                     workspace.close(active.id);
+                    if (workspace.documents.length === 1) setHome(true);
                     setDialog(null);
                   }
                 });
@@ -1230,6 +1453,36 @@ export default function App() {
             >
               Guardar y cerrar
             </Button>
+          </div>
+        </Modal>
+      )}
+      {dialog?.type === 'equivalence' && (
+        <Modal
+          title="Equivalencia de autómatas"
+          subtitle="Compara los lenguajes reconocidos por dos autómatas finitos."
+          onClose={() => setDialog(null)}
+        >
+          <div className="modal-body">
+            <div className="combine-list">
+              {workspace.documents
+                .filter(
+                  (d) => d.id !== active.id && machineKind(d.machine) === 'fa',
+                )
+                .map((d) => (
+                  <Button key={d.id} onClick={() => compare(d.machine)}>
+                    <FiFile />
+                    {d.machine.name}
+                  </Button>
+                ))}
+            </div>
+            <Button onClick={() => void openComparison()}>
+              <FiFolder />
+              Abrir autómata .jff
+            </Button>
+            {comparison && <p role="status">{comparison}</p>}
+          </div>
+          <div className="modal-footer">
+            <Button onClick={() => setDialog(null)}>Listo</Button>
           </div>
         </Modal>
       )}
@@ -1246,7 +1499,11 @@ export default function App() {
             </p>
             <div className="combine-list">
               {workspace.documents
-                .filter((d) => d.id !== active.id)
+                .filter(
+                  (d) =>
+                    d.id !== active.id &&
+                    machineKind(d.machine) === machineKind(machine),
+                )
                 .map((d) => (
                   <button key={d.id} onClick={() => combine(d.machine)}>
                     <FiFile />
@@ -1332,12 +1589,16 @@ export default function App() {
         </Modal>
       )}
       {dialog?.type === 'help' && (
-        <HelpDialog onClose={() => setDialog(null)} />
+        <HelpDialog
+          finite={finite}
+          emptySymbol={emptySymbol}
+          onClose={() => setDialog(null)}
+        />
       )}
       {dialog?.type === 'about' && (
         <Modal
           title="JFLAP Lite para escritorio"
-          subtitle="Máquinas de Turing · Inspirado en Fluent de Windows 11"
+          subtitle="Autómatas finitos y máquinas de Turing · Fluent"
           onClose={() => setDialog(null)}
         >
           <div className="modal-body about-body">
@@ -1359,9 +1620,9 @@ export default function App() {
               Leer la licencia original <FiExternalLink />
             </Button>
             <p className="muted">
-              Compatibilidad con máquinas de Turing de una cinta. La aplicación
-              Java conserva los autómatas finitos; su migración a Electron
-              corresponde a la siguiente fase.
+              Compatibilidad con autómatas finitos y máquinas de Turing de una
+              cinta. La aplicación Java conserva los autómatas finitos; su
+              migración a Electron corresponde a la siguiente fase.
             </p>
           </div>
           <div className="modal-footer">
@@ -1387,7 +1648,18 @@ function SimulationHost({
   );
   return (
     <div className="simulation-host" hidden={!enabled}>
-      <SimulationPanel {...props} onActivity={report} />
+      {machineKind(props.machine) === 'fa' ? (
+        <FiniteSimulationPanel
+          machine={props.machine}
+          emptySymbol={props.emptySymbol ?? 'ε'}
+          request={props.request}
+          onActivity={report}
+          onMessage={props.onMessage}
+          onClose={props.onClose}
+        />
+      ) : (
+        <SimulationPanel {...props} onActivity={report} />
+      )}
     </div>
   );
 }
@@ -1438,7 +1710,15 @@ function NoteDialog({
     </Modal>
   );
 }
-function HelpDialog({ onClose }: { onClose: () => void }) {
+function HelpDialog({
+  onClose,
+  finite,
+  emptySymbol,
+}: {
+  onClose: () => void;
+  finite: boolean;
+  emptySymbol: 'ε' | 'λ';
+}) {
   return (
     <Modal
       title="Un recorrido por tu máquina"
@@ -1461,17 +1741,37 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
           </p>
         </section>
         <section>
-          <h3>Sigue la cinta</h3>
-          <p>
-            Escribe una entrada, incluso vacía, y pulsa Ejecutar o Paso.{' '}
-            <code>□</code> representa un blanco; la cinta crece hacia ambos
-            lados. L mueve a la izquierda, R a la derecha y S permanece.
-          </p>
-          <p>
-            En no determinismo aparecen varias configuraciones. Puedes
-            seleccionarlas, congelarlas, descongelarlas, quitarlas o consultar
-            su traza.
-          </p>
+          {finite ? (
+            <>
+              <h3>Sigue la entrada</h3>
+              <p>
+                Escribe una cadena o deja la entrada vacía para probar{' '}
+                {emptySymbol}. Las transiciones vacías avanzan sin consumir
+                símbolos. Se acepta cuando una configuración consume toda la
+                cadena en un estado final.
+              </p>
+              <p>
+                Usa el cierre {emptySymbol} para avanzar por símbolo, o
+                transición por transición para ver cada salto. En Convertir
+                puedes obtener un AFD, minimizarlo, completar sus transiciones
+                con un estado trampa o comparar lenguajes.
+              </p>
+            </>
+          ) : (
+            <>
+              <h3>Sigue la cinta</h3>
+              <p>
+                Escribe una entrada, incluso vacía, y pulsa Ejecutar o Paso.{' '}
+                <code>□</code> representa un blanco; la cinta crece hacia ambos
+                lados. L mueve a la izquierda, R a la derecha y S permanece.
+              </p>
+              <p>
+                En no determinismo aparecen varias configuraciones. Puedes
+                seleccionarlas, congelarlas, descongelarlas, quitarlas o
+                consultar su traza.
+              </p>
+            </>
+          )}
         </section>
         <section>
           <h3>Prueba y comparte</h3>
@@ -1480,11 +1780,13 @@ function HelpDialog({ onClose }: { onClose: () => void }) {
             activa, comparar resultados y exportarlos como texto o imagen. Una
             línea vacía prueba la cadena vacía.
           </p>
-          <p>
-            La salida de JFLAP empieza bajo el cabezal y termina antes del
-            primer blanco. El límite de ejecución se muestra como «Límite», sin
-            confundirlo con rechazo.
-          </p>
+          {!finite && (
+            <p>
+              La salida de JFLAP empieza bajo el cabezal y termina antes del
+              primer blanco. El límite de ejecución se muestra como «Límite»,
+              sin confundirlo con rechazo.
+            </p>
+          )}
         </section>
         <section>
           <h3>Atajos</h3>

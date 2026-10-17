@@ -8,6 +8,24 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 describe('diagram export', () => {
+  it('exports finite labels and epsilon without tape writes or movements', () => {
+    vi.stubGlobal('getComputedStyle', () => ({
+      getPropertyValue: () => '#202329',
+    }));
+    const machine = structuredClone(testMachines[0]);
+    machine.kind = 'fa';
+    machine.transitions = machine.transitions
+      .slice(0, 2)
+      .map((t, i) => ({ ...t, read: i ? 'a' : '', write: '', move: 'R' }));
+    const xml = new DOMParser().parseFromString(
+      machineSvg(machine),
+      'image/svg+xml',
+    );
+    const labels = [...xml.querySelectorAll('text')].map((n) => n.textContent);
+    expect(labels).toContain('ε');
+    expect(labels).toContain('a');
+    expect(labels.some((s) => s?.includes(';'))).toBe(false);
+  });
   it('escapes labels and gives parallel transitions distinct readable rows', () => {
     vi.stubGlobal('getComputedStyle', () => ({
       getPropertyValue: () => '#202329',

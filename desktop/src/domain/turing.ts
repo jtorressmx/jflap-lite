@@ -1,4 +1,4 @@
-import { BLANK, defaultPreferences } from './model';
+import { BLANK, defaultPreferences, machineKind } from './model';
 import type {
   Configuration,
   Machine,
@@ -99,6 +99,8 @@ export function createSession(
   input: string,
   preferences: Preferences = defaultPreferences,
 ): Session {
+  if (machineKind(machine) !== 'turing')
+    throw new Error('Selecciona una máquina de Turing para esta simulación.');
   const initial = machine.states.find((state) => state.initial);
   if (!initial) throw new Error('Define un estado inicial antes de simular.');
   if (

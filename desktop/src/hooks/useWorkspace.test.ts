@@ -42,6 +42,21 @@ afterEach(async () => {
   node.remove();
 });
 describe('workspace history and documents', () => {
+  it('preserves the finite type when editing, undoing and switching models', async () => {
+    await act(async () =>
+      api.open({ ...initial, kind: 'fa', name: 'Autómata' }),
+    );
+    const id = api.active.id;
+    await act(async () =>
+      api.change({ ...api.active.machine, name: 'Editado' }),
+    );
+    await act(async () => api.undo());
+    expect(api.active.machine.kind).toBe('fa');
+    await act(async () => api.open(initial));
+    expect(api.active.machine.kind).toBeUndefined();
+    await act(async () => api.setActiveId(id));
+    expect(api.active.machine.kind).toBe('fa');
+  });
   it('undoes an entire drag to its original position and redoes it', async () => {
     for (const x of [120, 150, 200])
       await act(async () =>

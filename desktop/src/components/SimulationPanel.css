@@ -16,7 +16,7 @@
   padding: 0 var(--space-4);
   border-bottom: 1px solid var(--border);
 }
-.simulation-tabs > button {
+:is(.simulation-tabs, .simulation-tab-buttons) > button {
   position: relative;
   align-self: stretch;
   padding: var(--space-3) var(--space-3);
@@ -26,15 +26,15 @@
   font-size: var(--font-size-sm);
   cursor: pointer;
 }
-.simulation-tabs > button:hover {
+:is(.simulation-tabs, .simulation-tab-buttons) > button:hover {
   color: var(--text);
   background: var(--accent-soft);
 }
-.simulation-tabs > button.is-active {
+:is(.simulation-tabs, .simulation-tab-buttons) > button.is-active {
   color: var(--accent);
   font-weight: 600;
 }
-.simulation-tabs > button.is-active::after {
+:is(.simulation-tabs, .simulation-tab-buttons) > button.is-active::after {
   position: absolute;
   content: '';
   height: 3px;
@@ -502,7 +502,7 @@
     gap: 0;
     padding: 0 var(--space-2);
   }
-  .simulation-tabs > button {
+  :is(.simulation-tabs, .simulation-tab-buttons) > button {
     padding: var(--space-3) var(--space-2);
   }
   .simulation-tab-status > span {
@@ -551,3 +551,5 @@
     min-width: 65px;
   }
 }
+
+.simulation-tab-buttons { display:flex; align-self:stretch; gap:var(--space-2); }

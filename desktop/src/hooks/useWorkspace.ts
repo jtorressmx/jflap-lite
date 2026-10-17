@@ -17,6 +17,7 @@ function validMachine(value: unknown): value is Machine {
   const m = value as Machine;
   return (
     typeof m.name === 'string' &&
+    (m.kind === undefined || m.kind === 'turing' || m.kind === 'fa') &&
     Array.isArray(m.states) &&
     m.states.every(
       (s) =>
