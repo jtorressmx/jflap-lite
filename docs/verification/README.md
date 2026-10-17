@@ -1,4 +1,12 @@
-# Verificación diferencial de Turing
+# Verificación diferencial
+
+## Autómatas finitos
+
+Desde `desktop`, ejecuta `npm run test:finite:original`. El comando compila las clases FA extraídas sin modificar del commit original `ae447cb`, compila `FiniteOracle.java` y ejecuta 38 comparaciones. Incluye los frentes completos y ancestros de cada configuración en ambos modos, rangos, ciclos, cierres, cadenas, ramas convergentes, aceptación temprana, conversión a AFD y minimización. La suite falla si se exige el oráculo y no está disponible. En `npm test` se omite explícitamente cuando falta la compilación original.
+
+Consulta [el inventario de funciones de FA](../FINITE-PARITY.md) para el alcance y las diferencias deliberadas.
+
+## Turing
 
 El oráculo ejecuta las clases Java originales del proyecto; no vuelve a implementar sus transiciones. Utiliza `SimulatorFactory`, `stepConfiguration` y `Configuration.isAccept`. Reproduce `ConfigurationPane.getValidConfigurations` y `clearThawed`: una rama recién rechazada aparece durante un paso y se elimina del siguiente frente; solo avanzan las configuraciones normales.
 
@@ -15,7 +23,7 @@ npx vitest run src/domain
 
 La comprobación incluye una rama que rechaza antes de que otra acepte, para verificar que la rama descartada desaparece del frente siguiente. Las pruebas unitarias adicionales comprueban la exploración interactiva después de aceptar/rechazar y la conservación de ramas congeladas.
 
-Resultado actual de la suite TypeScript: **99 pruebas pasan**, incluidas **25 comparaciones directas con Java** y **74 pruebas unitarias**. Cada comparación revisa también el contenido de cinta, cabezal y salida de cada nodo de la traza. Los tres casos añadidos de `contadorOs.jff` importan el formato antiguo con bloques vacíos y exportan una máquina estándar antes de compararla con Java; no verifican ejecución de submáquinas anidadas.
+Las 25 comparaciones de Turing revisan el contenido de cinta, cabezal y salida de cada nodo de la traza. Los tres casos de `contadorOs.jff` importan el formato antiguo con bloques vacíos y exportan una máquina estándar antes de compararla con Java; no verifican ejecución de submáquinas anidadas.
 
 Las pruebas del oráculo se omiten explícitamente si falta `target/oracle/TuringOracle.class`. Las pruebas TypeScript de motor, persistencia y geometría siguen ejecutándose sin Java.
 

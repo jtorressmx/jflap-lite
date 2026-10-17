@@ -13,6 +13,7 @@
   color: var(--text-secondary);
 }
 .finite-progress > code {
+  white-space: pre-wrap;
   font-size: var(--font-size-lg);
   overflow-wrap: anywhere;
   min-width: 0;
@@ -39,6 +40,17 @@
 }
 .finite-configuration > span {
   color: var(--text-secondary);
+}
+.finite-configuration code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.finite-configuration mark {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.finite-configuration .finite-consumed {
+  text-decoration: line-through;
 }
 .finite-batch-actions {
   display: flex;

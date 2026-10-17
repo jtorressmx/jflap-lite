@@ -1,0 +1,104 @@
+.finite-tools {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+.finite-tools h3 {
+  margin: var(--space-2) var(--space-0);
+  font-size: var(--font-size-md);
+}
+.finite-tool-actions,
+.finite-tool-form {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  align-items: start;
+}
+.finite-tool-actions {
+  align-items: center;
+}
+.finite-tool-form .field {
+  flex: 1;
+  min-width: var(--movement-input-width);
+}
+.finite-tool-form > .button {
+  align-self: center;
+  margin-top: var(--space-6);
+}
+.finite-tool-pair {
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--document-picker-width)), 1fr)
+  );
+  gap: var(--space-4);
+}
+.finite-tool-pair > * {
+  min-width: 0;
+}
+.finite-tool-graph {
+  height: var(--finite-preview-height);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  position: relative;
+}
+.finite-partitions,
+.finite-production-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+.finite-partitions > div {
+  padding: var(--space-3);
+  border-inline-start: var(--space-1) solid var(--accent-soft);
+  font-size: var(--font-size-sm);
+}
+.finite-partitions > div > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.finite-partitions [aria-pressed='true'] {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.finite-production-list label {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+}
+.finite-tool-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--font-size-sm);
+}
+.finite-tool-table th,
+.finite-tool-table td {
+  padding: var(--space-2);
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+}
+.finite-tool-table th {
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+.finite-tool-table code {
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+.finite-tool-scroll {
+  overflow: auto;
+}
+.finite-expression {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding: var(--space-4);
+  background: var(--canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-size: var(--font-size-md);
+}

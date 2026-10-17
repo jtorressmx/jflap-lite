@@ -69,17 +69,17 @@ describe('Finite automata migration', () => {
     m.states.forEach((s) => (s.final = false));
     expect(runFinite(m, '', false).status).toBe('rejected');
   });
-  it('keeps actual transition traces through epsilon closures and selected branches', () => {
+  it('uses the original closure ancestry rather than inventing epsilon steps', () => {
     const m = nfa();
     let s = createFiniteSession(m, 'ab');
     expect(s.configurations.map((c) => c.state)).toEqual(['0', '1']);
     s = stepFinite(m, s);
-    expect(s.configurations.map((c) => c.state)).toEqual(['1', '2']);
+    expect(s.configurations.map((c) => c.state)).toEqual(['0', '1', '2']);
     s = stepFinite(m, s);
     const final = s.configurations.find((c) => c.state === '3')!;
     const trace = finiteTrace(s, final.id);
-    expect(trace.map((c) => c.state)).toEqual(['0', '1', '2', '3']);
-    expect(trace.map((c) => c.offset)).toEqual([0, 0, 1, 2]);
+    expect(trace.map((c) => c.state)).toEqual(['1', '2', '3']);
+    expect(trace.map((c) => c.offset)).toEqual([0, 1, 2]);
   });
   it('preserves literal multi-character labels, whitespace, wildcard-looking characters and blanks', () => {
     const m = nfa();
@@ -104,11 +104,12 @@ describe('Finite automata migration', () => {
   });
   it('minimizes reachable states and preserves the language, including the empty language', () => {
     const m = nfa(),
-      minimized = minimizeFinite(m);
+      minimized = minimizeFinite(toDfa(m));
     expect(minimized.states).toHaveLength(3);
     expect(equivalentFinite(m, minimized).equivalent).toBe(true);
     m.states.forEach((s) => (s.final = false));
-    expect(minimizeFinite(m).states).toHaveLength(1);
+    expect(() => minimizeFinite(m)).toThrow(/AFD/);
+    expect(minimizeFinite(toDfa(m)).states).toHaveLength(1);
   });
   it('adds exactly the missing trap transitions to an incomplete DFA', () => {
     const m = nfa();

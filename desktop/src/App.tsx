@@ -49,14 +49,16 @@ import type { MenuEntry } from './components/ui';
 import GraphEditor from './components/GraphEditor';
 import SimulationPanel from './components/SimulationPanel';
 import FiniteSimulationPanel from './components/FiniteSimulationPanel';
+import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
+import type { FiniteTool } from './components/FiniteTools';
+import { finiteLayouts, layoutFinite } from './domain/finite/layout';
+import type { FiniteLayout } from './domain/finite/layout';
 import HomePage from './components/HomePage';
 import {
-  completeDfa,
   emptyFinite,
   equivalentFinite,
   finiteNondeterminism,
-  minimizeFinite,
-  toDfa,
+  normalizeFinite,
 } from './domain/finite';
 import {
   defaultPreferences,
@@ -122,10 +124,15 @@ export default function App() {
     workspace.setActiveId(id);
     setHome(false);
   }
-  function convert(operation: (m: Machine) => Machine) {
+  const [finiteTool, setFiniteTool] = useState<FiniteTool | null>(null);
+  const [layoutOpen, setLayoutOpen] = useState(false),
+    [layout, setLayout] = useState<FiniteLayout>('circle'),
+    [angle, setAngle] = useState('90');
+  const savedLayouts = useRef(new Map<string, Machine>());
+  function convert(tool: FiniteTool) {
     try {
-      workspace.open(operation(machine));
-      setHome(false);
+      validateFiniteTool(tool, machine);
+      setFiniteTool(tool);
     } catch (error) {
       notify((error as Error).message);
     }
@@ -183,7 +190,15 @@ export default function App() {
   const [request, setRequest] = useState<{
     id: number;
     docId: string;
-    action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace';
+    action:
+      | 'start'
+      | 'step'
+      | 'fast'
+      | 'batch'
+      | 'output'
+      | 'trace'
+      | 'closure'
+      | 'state';
   }>();
   const fileInput = useRef<HTMLInputElement>(null);
   const combineInput = useRef<HTMLInputElement>(null);
@@ -244,7 +259,15 @@ export default function App() {
     setActiveTransition(undefined);
   }, [active.id]);
   function simulate(
-    action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace',
+    action:
+      | 'start'
+      | 'step'
+      | 'fast'
+      | 'batch'
+      | 'output'
+      | 'trace'
+      | 'closure'
+      | 'state',
   ) {
     setHome(false);
     setSimulationOpen(true);
@@ -785,6 +808,15 @@ export default function App() {
     },
   ];
   const inputMenu: MenuEntry[] = [
+    ...(finite
+      ? [
+          {
+            label: `Paso con cierre ${emptySymbol}`,
+            onClick: () => simulate('closure'),
+          },
+          { label: 'Paso por estado', onClick: () => simulate('state') },
+        ]
+      : []),
     {
       label: 'Simular paso a paso',
       icon: <FiSkipForward />,
@@ -820,6 +852,47 @@ export default function App() {
     },
   ];
   const viewMenu: MenuEntry[] = [
+    ...(finite
+      ? [
+          {
+            label: 'Guardar distribución del grafo',
+            onClick: () => {
+              savedLayouts.current.set(active.id, structuredClone(machine));
+              notify('Distribución guardada.');
+            },
+          },
+          {
+            label: 'Restaurar distribución guardada',
+            onClick: () => {
+              const saved = savedLayouts.current.get(active.id);
+              if (!saved) {
+                notify('Guarda primero una distribución.');
+                return;
+              }
+              change({
+                ...machine,
+                states: machine.states.map((s) => {
+                  const p = saved.states.find((x) => x.id === s.id);
+                  return p ? { ...s, x: p.x, y: p.y } : s;
+                }),
+                transitions: machine.transitions.map((t) => ({
+                  ...t,
+                  control: saved.transitions.find((x) => x.id === t.id)
+                    ?.control,
+                })),
+                notes: machine.notes.map((n) => {
+                  const p = saved.notes.find((x) => x.id === n.id);
+                  return p ? { ...n, x: p.x, y: p.y } : n;
+                }),
+              });
+            },
+          },
+          {
+            label: 'Distribución y transformaciones…',
+            onClick: () => setLayoutOpen(true),
+          },
+        ]
+      : []),
     {
       label: 'Ajustar al lienzo',
       icon: <FiMaximize />,
@@ -949,6 +1022,17 @@ export default function App() {
                   disabled: !highlights.length,
                   onClick: () => setHighlights([]),
                 },
+                ...(finite
+                  ? [
+                      {
+                        label: 'Comprobar equivalencia…',
+                        onClick: () => {
+                          setComparison('');
+                          setDialog({ type: 'equivalence' });
+                        },
+                      },
+                    ]
+                  : []),
               ]}
             />
             <Menu
@@ -958,19 +1042,31 @@ export default function App() {
                   ? [
                       {
                         label: 'Convertir AFN a AFD',
-                        onClick: () => convert(toDfa),
+                        onClick: () => convert('dfa'),
                       },
                       {
                         label: 'Minimizar autómata',
-                        onClick: () => convert(minimizeFinite),
+                        onClick: () => convert('minimize'),
                       },
                       {
                         label: 'Añadir estado trampa',
+                        onClick: () => convert('trap'),
+                      },
+                      {
+                        label: 'Convertir a gramática regular',
+                        onClick: () => convert('grammar'),
+                      },
+                      {
+                        label: 'Convertir a expresión regular',
+                        onClick: () => convert('regex'),
+                      },
+                      {
+                        label: 'Expandir rangos y cadenas',
                         onClick: () => {
                           try {
-                            change(completeDfa(machine));
-                          } catch (error) {
-                            notify((error as Error).message);
+                            change(normalizeFinite(machine));
+                          } catch (e) {
+                            notify((e as Error).message);
                           }
                         },
                       },
@@ -1062,6 +1158,88 @@ export default function App() {
           <FiSettings />
         </IconButton>
       </div>
+      {finiteTool && (
+        <FiniteTools
+          key={`${active.id}-${finiteTool}`}
+          tool={finiteTool}
+          machine={machine}
+          emptySymbol={emptySymbol}
+          onClose={() => setFiniteTool(null)}
+          onOpen={(result) => {
+            workspace.open(result);
+            setFiniteTool(null);
+            setSimulationOpen(false);
+          }}
+        />
+      )}
+      {layoutOpen && (
+        <Modal
+          title="Distribución del autómata"
+          onClose={() => setLayoutOpen(false)}
+        >
+          <div className="modal-body">
+            <Select
+              label="Distribución o transformación"
+              value={layout}
+              onChange={(e) => setLayout(e.target.value as FiniteLayout)}
+            >
+              {Object.entries(finiteLayouts).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </Select>
+            {layout === 'rotate' && (
+              <Field
+                label="Ángulo en grados"
+                type="number"
+                value={angle}
+                onChange={(e) => setAngle(e.target.value)}
+              />
+            )}
+            <div className="modal-footer">
+              <Button
+                onClick={() => {
+                  const choices: FiniteLayout[] = [
+                    'circle',
+                    'gem',
+                    'random',
+                    'spiral',
+                    'degree',
+                    'hierarchy',
+                    'two-circle',
+                  ];
+                  change(
+                    layoutFinite(
+                      machine,
+                      choices[Math.floor(Math.random() * choices.length)],
+                    ),
+                  );
+                  setFitKey((k) => k + 1);
+                  setLayoutOpen(false);
+                }}
+              >
+                Elegir al azar
+              </Button>
+              <Button
+                variant="primary"
+                onClick={() => {
+                  const degrees = Number(angle);
+                  if (!Number.isFinite(degrees)) {
+                    notify('Escribe un ángulo válido.');
+                    return;
+                  }
+                  change(layoutFinite(machine, layout, degrees));
+                  setFitKey((k) => k + 1);
+                  setLayoutOpen(false);
+                }}
+              >
+                Aplicar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
       {home && (
         <HomePage
           onCreate={createDocument}
@@ -1621,8 +1799,7 @@ export default function App() {
             </Button>
             <p className="muted">
               Compatibilidad con autómatas finitos y máquinas de Turing de una
-              cinta. La aplicación Java conserva los autómatas finitos; su
-              migración a Electron corresponde a la siguiente fase.
+              cinta, disponibles en esta aplicación de escritorio.
             </p>
           </div>
           <div className="modal-footer">
@@ -1639,7 +1816,21 @@ export default function App() {
 function SimulationHost({
   enabled,
   ...props
-}: React.ComponentProps<typeof SimulationPanel> & { enabled: boolean }) {
+}: Omit<React.ComponentProps<typeof SimulationPanel>, 'request'> & {
+  enabled: boolean;
+  request?: {
+    id: number;
+    action:
+      | 'start'
+      | 'step'
+      | 'fast'
+      | 'batch'
+      | 'output'
+      | 'trace'
+      | 'closure'
+      | 'state';
+  };
+}) {
   const report = useCallback(
     (states: string[], transition?: string) => {
       if (enabled) props.onActivity(states, transition);
@@ -1658,7 +1849,17 @@ function SimulationHost({
           onClose={props.onClose}
         />
       ) : (
-        <SimulationPanel {...props} onActivity={report} />
+        <SimulationPanel
+          {...props}
+          request={
+            props.request &&
+            props.request.action !== 'closure' &&
+            props.request.action !== 'state'
+              ? { id: props.request.id, action: props.request.action }
+              : undefined
+          }
+          onActivity={report}
+        />
       )}
     </div>
   );
@@ -1751,10 +1952,22 @@ function HelpDialog({
                 cadena en un estado final.
               </p>
               <p>
-                Usa el cierre {emptySymbol} para avanzar por símbolo, o
-                transición por transición para ver cada salto. En Convertir
-                puedes obtener un AFD, minimizarlo, completar sus transiciones
-                con un estado trampa o comparar lenguajes.
+                Paso por estado muestra cada transición. Paso con cierre{' '}
+                {emptySymbol} agrupa los saltos vacíos. Las etiquetas admiten
+                cadenas completas y rangos como [a-z]. Selecciona varias
+                configuraciones con Ctrl para congelarlas, quitarlas o consultar
+                sus trazas.
+              </p>
+              <p>
+                En Convertir puedes construir y comprobar un AFD, refinar el
+                árbol de minimización, añadir un estado trampa y obtener una
+                gramática o expresión regular. Vista permite guardar, restaurar
+                y transformar la distribución del grafo.
+              </p>
+              <p>
+                JFLAP 7.1 omite el cierre vacío después de un rango. Para
+                aplicar el cierre también en ese caso, usa Convertir → Expandir
+                rangos y cadenas.
               </p>
             </>
           ) : (

@@ -16,6 +16,8 @@ import type { Machine } from '../domain/model';
 import { machineKind } from '../domain/model';
 import {
   createFiniteSession,
+  canStepFinite,
+  finiteStatus,
   finiteAccepts,
   finiteNondeterminism,
   finiteTrace,
@@ -78,6 +80,8 @@ export default function FiniteSimulationPanel({
     [playing, setPlaying] = useState(false);
   const [selectedId, setSelectedId] = useState<string>(),
     [speed, setSpeed] = useState(650);
+  const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [configurationLimit, setConfigurationLimit] = useState(50000);
   const [batch, setBatch] = useState(''),
     [results, setResults] = useState<BatchRow[]>([]);
   const [result, setResult] = useState<BatchRow | null>(null);
@@ -88,20 +92,27 @@ export default function FiniteSimulationPanel({
   const signature = JSON.stringify([machine.states, machine.transitions]);
   useEffect(() => {
     setSession(null);
+    setSelectedId(undefined);
+    setSelectedIds([]);
     setPlaying(false);
     setResults([]);
     setSelectedId(undefined);
   }, [signature]);
-  const frontier = session?.configurations.length
-    ? session.configurations
-    : (session?.history
-        .slice()
-        .reverse()
-        .find((layer) => layer.length) ?? []);
+  const frontier = session?.configurations ?? [];
   const chosen =
     frontier.find((c) => c.id === selectedId) ??
     frontier.find((c) => session && finiteAccepts(machine, c, session.input)) ??
+    frontier.find((c) => !c.rejected) ??
     frontier[0];
+  const selectedConfigurations = frontier.filter((c) =>
+    selectedIds.length ? selectedIds.includes(c.id) : c.id === chosen?.id,
+  );
+  const selectionFrozen = selectedConfigurations.some((c) =>
+    session?.frozenIds?.includes(c.id),
+  );
+  const selectionNormal = selectedConfigurations.some(
+    (c) => session && !c.rejected && !finiteAccepts(machine, c, session.input),
+  );
   useEffect(() => {
     onActivity(
       session?.configurations.map((c) => c.state) ?? [],
@@ -112,10 +123,21 @@ export default function FiniteSimulationPanel({
     const next = createFiniteSession(machine, input, closure);
     setSession(next);
     setSelectedId(undefined);
+    setSelectedIds([]);
     return next;
   }
   function perform(action: string) {
     try {
+      if (action === 'closure' || action === 'state') {
+        const mode = action === 'closure';
+        setClosure(mode);
+        setSession(createFiniteSession(machine, input, mode));
+        setSelectedId(undefined);
+        setSelectedIds([]);
+        setTab('simulation');
+        setPlaying(false);
+        return;
+      }
       if (action === 'batch') {
         setTab('batch');
         setPlaying(false);
@@ -127,17 +149,20 @@ export default function FiniteSimulationPanel({
       }
       setTab('simulation');
       if (action === 'fast' || action === 'output') {
-        setSession(runFinite(machine, input, closure));
+        setSession(runFinite(machine, input, closure, configurationLimit));
         setPlaying(false);
         setSelectedId(undefined);
+        setSelectedIds([]);
       } else if (action === 'step') {
         setSession(
           stepFinite(
             machine,
             session ?? createFiniteSession(machine, input, closure),
+            configurationLimit,
           ),
         );
         setSelectedId(undefined);
+        setSelectedIds([]);
       } else {
         if (
           session?.configurations.length &&
@@ -147,10 +172,8 @@ export default function FiniteSimulationPanel({
           return;
         }
         const next =
-          !session || !['ready', 'running'].includes(session.status)
-            ? begin()
-            : session;
-        setPlaying(next.status === 'ready' || next.status === 'running');
+          !session || !canStepFinite(machine, session) ? begin() : session;
+        setPlaying(canStepFinite(machine, next));
       }
     } catch (error) {
       setPlaying(false);
@@ -164,19 +187,24 @@ export default function FiniteSimulationPanel({
   }, [request]);
   useEffect(() => {
     if (!playing) return;
-    if (session && !['ready', 'running'].includes(session.status)) {
+    if (session && !canStepFinite(machine, session)) {
       setPlaying(false);
       return;
     }
-    const timer = setTimeout(
-      () =>
-        setSession((current) =>
-          current ? stepFinite(machine, current) : null,
-        ),
-      speed,
-    );
+    const timer = setTimeout(() => {
+      try {
+        setSession(
+          session ? stepFinite(machine, session, configurationLimit) : null,
+        );
+      } catch (error) {
+        setPlaying(false);
+        onMessage((error as Error).message);
+      }
+      setSelectedId(undefined);
+      setSelectedIds([]);
+    }, speed);
     return () => clearTimeout(timer);
-  }, [playing, session, machine, speed]);
+  }, [playing, session, machine, speed, configurationLimit]);
   function back() {
     setPlaying(false);
     if (!session || session.history.length < 2) return;
@@ -187,15 +215,11 @@ export default function FiniteSimulationPanel({
       history,
       configurations: configs,
       steps: Math.max(0, session.steps - 1),
-      status: configs.some((c) => finiteAccepts(machine, c, session.input))
-        ? 'accepted'
-        : 'running',
+      status: finiteStatus(machine, {
+        input: session.input,
+        configurations: configs,
+      }),
       frozenIds: [],
-      visited: [
-        ...new Set(
-          history.flat().map((c) => JSON.stringify([c.state, c.offset])),
-        ),
-      ],
     });
     setSelectedId(undefined);
   }
@@ -205,7 +229,7 @@ export default function FiniteSimulationPanel({
       for (const target of [machine, ...batchMachines])
         for (const line of batch.split(/\r?\n/)) {
           const [value, expected] = line.split('\t');
-          const result = runFinite(target, value, closure);
+          const result = runFinite(target, value, closure, configurationLimit);
           rows.push({
             name: target.name,
             input: value,
@@ -260,32 +284,49 @@ export default function FiniteSimulationPanel({
       aria-label="Simulación de autómata finito"
     >
       <div className="simulation-tabs">
-        <div className="simulation-tab-buttons" role="tablist" aria-label="Herramientas de simulación">
-        {(['simulation', 'batch', 'trace'] as const).map((id, i) => (
-          <button
-            key={id}
-            id={`${panelId}-${id}-tab`}
-            aria-controls={`${panelId}-${id}`}
-            role="tab"
-            aria-selected={tab === id}
-            tabIndex={tab === id ? 0 : -1}
-            onKeyDown={event => {
-              if (!['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
-              event.preventDefault();
-              const ids = ['simulation','batch','trace'] as const;
-              const index = event.key === 'Home' ? 0 : event.key === 'End' ? 2 : (i + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
-              setTab(ids[index]); setPlaying(false);
-              document.getElementById(`${panelId}-${ids[index]}-tab`)?.focus();
-            }}
-            className={tab === id ? 'is-active' : ''}
-            onClick={() => {
-              setTab(id);
-              setPlaying(false);
-            }}
-          >
-            {['Simulación', 'Entradas múltiples', 'Traza'][i]}
-          </button>
-        ))}
+        <div
+          className="simulation-tab-buttons"
+          role="tablist"
+          aria-label="Herramientas de simulación"
+        >
+          {(['simulation', 'batch', 'trace'] as const).map((id, i) => (
+            <button
+              key={id}
+              id={`${panelId}-${id}-tab`}
+              aria-controls={`${panelId}-${id}`}
+              role="tab"
+              aria-selected={tab === id}
+              tabIndex={tab === id ? 0 : -1}
+              onKeyDown={(event) => {
+                if (
+                  !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
+                    event.key,
+                  )
+                )
+                  return;
+                event.preventDefault();
+                const ids = ['simulation', 'batch', 'trace'] as const;
+                const index =
+                  event.key === 'Home'
+                    ? 0
+                    : event.key === 'End'
+                      ? 2
+                      : (i + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
+                setTab(ids[index]);
+                setPlaying(false);
+                document
+                  .getElementById(`${panelId}-${ids[index]}-tab`)
+                  ?.focus();
+              }}
+              className={tab === id ? 'is-active' : ''}
+              onClick={() => {
+                setTab(id);
+                setPlaying(false);
+              }}
+            >
+              {['Simulación', 'Entradas múltiples', 'Traza'][i]}
+            </button>
+          ))}
         </div>
         <div className="simulation-tab-status">
           <Badge>{finiteNondeterminism(machine).length ? 'AFN' : 'AFD'}</Badge>
@@ -338,7 +379,16 @@ export default function FiniteSimulationPanel({
               }}
             >
               <option value="closure">Con cierre {emptySymbol}</option>
-              <option value="state">Transición por transición</option>
+              <option value="state">Paso por estado</option>
+            </Select>
+            <Select
+              label="Máximo de configuraciones"
+              value={configurationLimit}
+              onChange={(e) => setConfigurationLimit(Number(e.target.value))}
+            >
+              <option value={10000}>10 000</option>
+              <option value={50000}>50 000</option>
+              <option value={100000}>100 000</option>
             </Select>
             <div className="simulation-buttons">
               <Button
@@ -391,7 +441,11 @@ export default function FiniteSimulationPanel({
           </div>
           {session && chosen ? (
             <>
-              <div className="finite-progress" aria-label="Progreso de lectura">
+              <div
+                className="finite-progress"
+                role="group"
+                aria-label="Progreso de lectura"
+              >
                 <span>Entrada</span>
                 <code>
                   <span className="finite-consumed">
@@ -410,72 +464,134 @@ export default function FiniteSimulationPanel({
               </div>
               <div
                 className="configuration-list"
+                role="group"
                 aria-label="Configuraciones activas"
               >
                 {frontier.map((c) => (
                   <Button
                     key={c.id}
+                    aria-pressed={selectedIds.includes(c.id)}
                     className={
-                      chosen.id === c.id
+                      selectedIds.includes(c.id)
                         ? 'finite-configuration is-selected'
                         : 'finite-configuration'
                     }
-                    onClick={() => setSelectedId(c.id)}
+                    onClick={(e) => {
+                      setSelectedId(c.id);
+                      setSelectedIds((ids) =>
+                        e.ctrlKey || e.metaKey || e.shiftKey
+                          ? ids.includes(c.id)
+                            ? ids.filter((id) => id !== c.id)
+                            : [...ids, c.id]
+                          : [c.id],
+                      );
+                    }}
                   >
                     <strong>{label(c.state)}</strong>
                     <span>
-                      Por leer: {session.input.slice(c.offset) || emptySymbol}
+                      <code>
+                        <span className="finite-consumed">
+                          {session.input.slice(0, c.offset)}
+                        </span>
+                        <mark>
+                          {session.input.slice(c.offset) || emptySymbol}
+                        </mark>
+                      </code>
                       {session.frozenIds?.includes(c.id) ? ' · Congelada' : ''}
                     </span>
                     {finiteAccepts(machine, c, session.input) && (
-                      <Badge tone="success">Final</Badge>
+                      <Badge tone="success">Aceptada</Badge>
                     )}
+                    {c.rejected && <Badge tone="danger">Rechazada</Badge>}
                   </Button>
                 ))}
               </div>
               <div className="finite-batch-actions">
                 <Button
-                  disabled={!['ready', 'running'].includes(session.status)}
+                  disabled={!selectionFrozen && !selectionNormal}
                   onClick={() => {
                     setPlaying(false);
                     setSession((current) =>
                       current
                         ? {
                             ...current,
-                            frozenIds: current.frozenIds?.includes(chosen.id)
-                              ? current.frozenIds.filter(
-                                  (id) => id !== chosen.id,
+                            frozenIds: selectionFrozen
+                              ? (current.frozenIds ?? []).filter(
+                                  (id) =>
+                                    !(
+                                      selectedIds.length
+                                        ? selectedIds
+                                        : [chosen.id]
+                                    ).includes(id),
                                 )
-                              : [...(current.frozenIds ?? []), chosen.id],
+                              : [
+                                  ...new Set([
+                                    ...(current.frozenIds ?? []),
+                                    ...current.configurations
+                                      .filter(
+                                        (c) =>
+                                          (selectedIds.length
+                                            ? selectedIds
+                                            : [chosen.id]
+                                          ).includes(c.id) &&
+                                          !c.rejected &&
+                                          !finiteAccepts(
+                                            machine,
+                                            c,
+                                            current.input,
+                                          ),
+                                      )
+                                      .map((c) => c.id),
+                                  ]),
+                                ],
                           }
                         : null,
                     );
                   }}
                 >
-                  {session.frozenIds?.includes(chosen.id)
+                  {selectionFrozen
                     ? 'Descongelar configuración'
                     : 'Congelar configuración'}
                 </Button>
                 <Button
-                  disabled={!['ready', 'running'].includes(session.status)}
                   onClick={() => {
                     setPlaying(false);
                     setSession((current) => {
                       if (!current) return null;
                       const configurations = current.configurations.filter(
-                        (c) => c.id !== chosen.id,
+                        (c) =>
+                          !(
+                            selectedIds.length ? selectedIds : [chosen.id]
+                          ).includes(c.id),
                       );
                       return {
                         ...current,
                         configurations,
-                        status: configurations.length ? 'running' : 'rejected',
+                        status: finiteStatus(machine, {
+                          input: current.input,
+                          configurations,
+                        }),
                       };
                     });
                     setSelectedId(undefined);
+                    setSelectedIds([]);
                   }}
                 >
                   <FiTrash2 />
                   Quitar configuración
+                </Button>
+                <Button
+                  onClick={() => setSelectedIds(frontier.map((c) => c.id))}
+                >
+                  Seleccionar todas
+                </Button>
+                <Button
+                  onClick={() => {
+                    setPlaying(false);
+                    setTab('trace');
+                  }}
+                >
+                  Ver trazas seleccionadas
                 </Button>
               </div>
               {session.status === 'rejected' && (
@@ -692,6 +808,22 @@ export default function FiniteSimulationPanel({
               Exportar traza
             </Button>
           </div>
+          {selectedIds.length > 1 && (
+            <Select
+              label="Configuración de la traza"
+              value={chosen?.id}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              {frontier
+                .filter((c) => selectedIds.includes(c.id))
+                .map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {label(c.state)} ·{' '}
+                    {session!.input.slice(c.offset) || emptySymbol} · {c.id}
+                  </option>
+                ))}
+            </Select>
+          )}
           <table>
             <thead>
               <tr>

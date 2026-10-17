@@ -1,7 +1,7 @@
 {
   "name": "jflap-lite-desktop",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
   "scripts": {
     "dev": "node scripts/dev.mjs",
@@ -10,7 +10,8 @@
     "test": "vitest run && node --test electron/policy.test.cjs electron/main.test.cjs",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && node scripts/package.mjs",
-    "test:native": "node scripts/test-native.mjs"
+    "test:native": "node scripts/test-native.mjs",
+    "test:finite:original": "node scripts/verify-finite-original.mjs"
   },
   "dependencies": {
     "gifenc": "^1.0.3",

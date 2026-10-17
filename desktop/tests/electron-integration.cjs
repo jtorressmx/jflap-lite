@@ -1084,7 +1084,33 @@ async function run() {
   await evaluate(
     `(()=>{const i=document.querySelector('.transition-popover input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'ab');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
   );
+  await evaluate(
+    `document.querySelector('.transition-popover input').dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',shiftKey:true,bubbles:true,cancelable:true}))`,
+  );
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".transition-popover input")?.value===""',
+      ),
+    'Mayús+Intro prepara otra transición',
+  );
+  await evaluate(
+    `(()=>{const i=document.querySelector('.transition-popover input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'cd');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
   await click('button', 'Guardar transición');
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll(".edge-label")].filter(e=>e.textContent.trim()==="cd").length',
+    ),
+    1,
+  );
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll(".edge-label")].find(e=>e.textContent.trim()==="cd")?.getAttribute("aria-label")',
+    ),
+    'Transición de q0 a q1: cd. Intro para editar.',
+  );
+  await menu('Editar', 'Deshacer');
   assert.ok(
     (
       await evaluate('document.querySelector(".edge-label").textContent')
@@ -1113,7 +1139,7 @@ async function run() {
     await evaluate(
       `document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-configuration')}).length`,
     ),
-    2,
+    3,
   );
   await click(activeFinite + ' button', 'Congelar configuración');
   assert.ok(
@@ -1122,6 +1148,21 @@ async function run() {
         `document.querySelector(${JSON.stringify(activeFinite)}).textContent`,
       )
     ).includes('Congelada'),
+  );
+  await click(activeFinite + ' button', 'Descongelar configuración');
+  await click(activeFinite + ' button', 'Seleccionar todas');
+  await click(activeFinite + ' button', 'Congelar configuración');
+  assert.equal(
+    await evaluate(
+      `document.querySelector(${JSON.stringify(activeFinite)}).querySelectorAll('.finite-configuration').length`,
+    ),
+    3,
+  );
+  assert.equal(
+    await evaluate(
+      `[...document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-configuration')})].filter(c=>c.textContent.includes('Congelada')).length`,
+    ),
+    2,
   );
   await click(activeFinite + ' button', 'Descongelar configuración');
   await click(activeFinite + ' button', 'Ejecutar sin interacción');
@@ -1137,7 +1178,7 @@ async function run() {
     await evaluate(
       `document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')}).length`,
     ),
-    5,
+    4,
   );
   mark('AFN real: cierre ε, ramas, congelar/descongelar, aceptación y traza');
 
@@ -1173,7 +1214,7 @@ async function run() {
     ),
   );
   assert.ok(
-    await evaluate('document.querySelectorAll("dialog tbody tr").length>=4'),
+    await evaluate('document.querySelectorAll("dialog tbody tr").length===3'),
   );
   await click('dialog button', 'Listo');
   mark(
@@ -1181,6 +1222,22 @@ async function run() {
   );
 
   await menu('Convertir', 'Convertir AFN a AFD');
+  await finiteFill('dialog input[placeholder="Ej. q0, q2"]', 'q999');
+  await click('dialog button', 'Añadir transición');
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'no coincide',
+    ),
+  );
+  await click('dialog button', 'Pista');
+  await click('dialog button', 'Completar');
+  await click('dialog button', 'Comprobar');
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'completa y es correcta',
+    ),
+  );
+  await click('dialog button', 'Abrir resultado');
   await wait(
     () =>
       evaluate(
@@ -1197,16 +1254,88 @@ async function run() {
   );
   await click('dialog button', 'Listo');
   await menu('Convertir', 'Minimizar autómata');
+  await click('dialog button', 'Comprobar nodo');
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'sin omitir ni repetir',
+    ),
+  );
+  await click('dialog button', 'Completar árbol');
+  await click('dialog button', 'Construir AFD mínimo');
+  await click('dialog button', 'Completar');
+  await click('dialog button', 'Abrir resultado');
   await wait(
     () => evaluate('document.querySelectorAll(".graph-state").length===3'),
     'AFD mínimo de 3 estados',
   );
   await menu('Convertir', 'Añadir estado trampa');
+  await click('dialog button', 'Abrir resultado');
   assert.equal(
     await evaluate('document.querySelectorAll(".graph-state").length'),
     3,
   );
   mark('AFN real: determinización, equivalencia, minimización y AFD completo');
+
+  await menu('Convertir', 'Convertir a gramática regular');
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll("dialog button")].find(b=>b.textContent==="Exportar gramática .jff").disabled',
+    ),
+    true,
+  );
+  await click('dialog button', 'Mostrar todas');
+  await click('dialog button', 'Comprobar');
+  assert.ok(
+    (await evaluate('document.querySelector("dialog").textContent')).includes(
+      'gramática está completa',
+    ),
+  );
+  const grammarFile = path.join(output, 'finite-grammar.jff');
+  nextSave = { canceled: false, filePath: grammarFile };
+  await click('dialog button', 'Exportar gramática .jff');
+  await fileReady(grammarFile);
+  assert.ok(
+    (await fs.readFile(grammarFile, 'utf8')).includes('<type>grammar</type>'),
+  );
+  await click('dialog button', 'Cerrar diálogo');
+  await menu('Convertir', 'Convertir a expresión regular');
+  await click('dialog button', 'Eliminar estado');
+  await click('dialog button', 'Deshacer');
+  await click('dialog button', 'Completar eliminación');
+  const expressionFile = path.join(output, 'finite-expression.jff');
+  nextSave = { canceled: false, filePath: expressionFile };
+  await click('dialog button', 'Exportar expresión .jff');
+  await fileReady(expressionFile);
+  assert.ok(
+    (await fs.readFile(expressionFile, 'utf8')).includes('<type>re</type>'),
+  );
+  await click('dialog button', 'Cerrar diálogo');
+  mark(
+    'FA: gramática guiada y expresión por eliminación, deshacer y exportación JFLAP',
+  );
+
+  const beforeLayout = await evaluate(
+    '[...document.querySelectorAll(".graph-state")].map(s=>s.getAttribute("transform"))',
+  );
+  await menu('Vista', 'Guardar distribución del grafo');
+  await menu('Vista', 'Distribución y transformaciones…');
+  await click('dialog button', 'Aplicar');
+  assert.notDeepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".graph-state")].map(s=>s.getAttribute("transform"))',
+    ),
+    beforeLayout,
+  );
+  await menu('Vista', 'Restaurar distribución guardada');
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".graph-state")].map(s=>s.getAttribute("transform"))',
+    ),
+    beforeLayout,
+  );
+  mark(
+    'FA: distribución circular y restauración de coordenadas sin alterar el lenguaje',
+  );
 
   const finiteSaved = path.join(output, 'finite-saved.jff');
   nextSave = { canceled: false, filePath: finiteSaved };
@@ -1221,7 +1350,53 @@ async function run() {
   await click('dialog button', 'SVG');
   await fileReady(finiteSvg);
   assert.ok(!(await fs.readFile(finiteSvg, 'utf8')).includes('; , R'));
-  await wait(async () => { const stored = JSON.parse(await invoke('readWorkspace')); return stored.documents.some(d => d.machine.kind === 'fa' && d.machine.states.length === 3 && d.machine.name.includes('Mínimo')); }, 'autoguardado del autómata mínimo');
+  await wait(async () => {
+    const stored = JSON.parse(await invoke('readWorkspace'));
+    return stored.documents.some(
+      (d) =>
+        d.machine.kind === 'fa' &&
+        d.machine.states.length === 3 &&
+        d.machine.name.includes('Mínimo'),
+    );
+  }, 'autoguardado del autómata mínimo');
+  const rangeFile = path.join(output, 'range.jff');
+  await fs.writeFile(
+    rangeFile,
+    '<structure><type>fa</type><automaton><state id="0" name="q0"><x>100</x><y>150</y><initial/></state><state id="1" name="q1"><x>280</x><y>150</y></state><state id="2" name="q2"><x>460</x><y>150</y><final/></state><transition><from>0</from><to>1</to><read>[a-z]</read></transition><transition><from>1</from><to>2</to><read/></transition></automaton></structure>',
+  );
+  nextOpen = { canceled: false, filePaths: [rangeFile] };
+  await menu('Archivo', 'Abrir archivo…');
+  await menu('Entrada', 'Paso por estado');
+  await finiteFill(activeFinite + ' input[placeholder="Ej. aabb"]', 'm');
+  await click(activeFinite + ' button', 'Ejecutar sin interacción');
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite)}).textContent.includes('Aceptada')`,
+      ),
+    'rango en modo por estado',
+  );
+  await menu('Entrada', 'Paso con cierre ε');
+  await click(activeFinite + ' button', 'Ejecutar sin interacción');
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite)}).textContent.includes('Rechazada')`,
+      ),
+    'compatibilidad de rango y cierre en 7.1',
+  );
+  await menu('Convertir', 'Expandir rangos y cadenas');
+  await click(activeFinite + ' button', 'Ejecutar sin interacción');
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite)}).textContent.includes('Aceptada')`,
+      ),
+    'rango normalizado con cierre',
+  );
+  mark(
+    'FA: rangos en ambos modos, cierre original y expansión explícita de etiquetas',
+  );
   await window.reload();
   await new Promise((resolve) =>
     window.webContents.once('did-finish-load', resolve),

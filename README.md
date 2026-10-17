@@ -4,11 +4,11 @@ Aplicación de escritorio para construir y simular autómatas finitos y máquina
 
 Ambos modelos están disponibles en Electron. El proyecto Java original permanece en `src/` como referencia.
 
-La página de inicio permite elegir **Máquina de Turing** o **Autómatas finitos**, abrir un archivo `.jff` y recuperar documentos. El editor de autómatas admite AFD/AFN, transiciones vacías y etiquetas de varios caracteres; simulación con cierre ε o transición por transición; ramas, congelación y trazas; ejecución múltiple, conversión AFN → AFD, minimización, estado trampa y equivalencia con una cadena que distingue los lenguajes. La aceptación requiere consumir toda la entrada en un estado final. Los documentos conservan su tipo al guardar y recuperar el espacio de trabajo.
+La página de inicio permite elegir **Máquina de Turing** o **Autómatas finitos**, abrir un archivo `.jff` y recuperar documentos. La sección de autómatas se reconstruyó desde el código de JFLAP 7.1 guardado en el commit `ae447cb`. La simulación conserva estado y entrada pendiente, con modos por estado y por cierre ε, rangos, cadenas, ramas, congelación, selección múltiple y trazas. Incluye construcción guiada de AFD, minimización por particiones y construcción del resultado, estado trampa, equivalencia, gramática regular, expresión regular por eliminación y distribuciones del grafo. El [inventario de funciones y decisiones de compatibilidad](docs/FINITE-PARITY.md) relaciona cada función con su origen y verificación.
 
 ## Ejecutar
 
-El ejecutable portátil para Windows se genera en `desktop/release/JFLAP-Lite-0.1.0-x64.exe`.
+El ejecutable portátil para Windows se genera en `desktop/release/JFLAP-Lite-0.2.0-x64.exe`.
 
 Para desarrollar desde PowerShell, con Node.js 24:
 
@@ -26,6 +26,7 @@ npm start         # Electron con archivos locales de producción
 npm run dist      # Ejecutable portátil Windows x64
 npm test          # Motor, archivos, historial y procesos nativos
 npm run test:native # Integración en Electron real; requiere build
+npm run test:finite:original # Compila las clases FA del commit original y verifica sus resultados
 ```
 
 Las pruebas diferenciales contra Java necesitan compilar el oráculo como se describe en [docs/verification/README.md](docs/verification/README.md). Cuando no está compilado, se omiten explícitamente esas pruebas; el resto puede ejecutarse sin Java.
@@ -55,7 +56,7 @@ Entradas múltiples trabaja con la máquina activa. El campo inicia vacío, las 
 
 La reconstrucción usa el código completo del proyecto seleccionado. Se verifican casos concretos de aceptación, rechazo, sintaxis, no determinismo y trazas contra las clases Java originales; esto permite comprobar equivalencia en esos casos, sin afirmar una demostración para toda máquina posible.
 
-Las opciones de organización automática y transformación del grafo se retiraron por petición del usuario. Las posiciones faltantes al importar reciben una cuadrícula. Los límites de ejecución se muestran explícitamente y pueden ampliarse. Los errores heredados de archivos malformados y ciertas inconsistencias de los lotes se presentan de forma controlada.
+Las opciones de organización automática y transformación del grafo permanecen retiradas de Turing por petición del usuario; se recuperan para autómatas finitos. Las posiciones faltantes al importar reciben una cuadrícula. Los límites de ejecución se muestran explícitamente y pueden ampliarse. Los errores heredados de archivos malformados y ciertas inconsistencias de los lotes se presentan de forma controlada.
 
 La importación admite también archivos antiguos que representan estados como bloques con máquinas internas vacías, como `contadorOs.jff` (21 estados y 77 transiciones). Conserva las posiciones, marcadores y movimientos L/R/S; al guardar utiliza el formato estándar de una cinta. Los bloques que contienen submáquinas ejecutables siguen indicando explícitamente que no están admitidos.
 

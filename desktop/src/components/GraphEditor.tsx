@@ -26,6 +26,7 @@ type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type State = Machine['states'][number];
 type Transition = Machine['transitions'][number];
 type Props = {
+  readOnly?: boolean;
   emptySymbol?: 'ε' | 'λ';
   editRequest?: {
     type: 'state' | 'transition';
@@ -137,6 +138,7 @@ function edgeGeometry(
 }
 
 export function GraphEditor({
+  readOnly = false,
   emptySymbol = 'ε',
   machine,
   tool,
@@ -176,10 +178,12 @@ export function GraphEditor({
     };
   }
   function onEditState(id: string) {
+    if (readOnly) return;
     const state = machine.states.find((s) => s.id === id);
     if (state) setEditor({ kind: 'state', id, ...anchor(state) });
   }
   function onEditTransition(id: string) {
+    if (readOnly) return;
     const transition = machine.transitions.find((t) => t.id === id);
     if (!transition) return;
     const from = machine.states.find((s) => s.id === transition.from),
@@ -472,6 +476,10 @@ export function GraphEditor({
       return;
     }
     if (event.button !== 0) return;
+    if (readOnly) {
+      choose(id, event.shiftKey || event.ctrlKey || event.metaKey);
+      return;
+    }
     if (tool === 'delete') {
       remove([id]);
       return;
@@ -719,6 +727,7 @@ export function GraphEditor({
       onSelect([]);
     }
     if (
+      !readOnly &&
       (event.key === 'Delete' || event.key === 'Backspace') &&
       selected.length
     ) {
@@ -757,7 +766,11 @@ export function GraphEditor({
         ref={svg}
         className="graph-canvas"
         role="application"
-        aria-label={`Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`}
+        aria-label={
+          readOnly
+            ? `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
+            : `Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`
+        }
         tabIndex={0}
         onPointerDown={backgroundDown}
         onPointerMove={pointerMove}
@@ -766,6 +779,7 @@ export function GraphEditor({
         onKeyDown={keyboard}
         onContextMenu={(event) => event.preventDefault()}
         onDoubleClick={(event) => {
+          if (readOnly) return;
           if (
             event.target !== svg.current &&
             !(
@@ -1118,7 +1132,7 @@ export function GraphEditor({
               transition={machine.transitions.find((t) => t.id === editor.id)}
               from={editor.from}
               to={editor.to}
-              onSave={(updated) => {
+              onSave={(updated, repeat) => {
                 const current = live.current.machine;
                 onChange({
                   ...current,
@@ -1129,7 +1143,16 @@ export function GraphEditor({
                     : [...current.transitions, updated],
                 });
                 onSelect([updated.id]);
-                setEditor(null);
+                setEditor(
+                  repeat
+                    ? {
+                        ...editor,
+                        id: undefined,
+                        from: updated.from,
+                        to: updated.to,
+                      }
+                    : null,
+                );
               }}
               onDelete={
                 editor.id
@@ -1246,7 +1269,7 @@ function TransitionProperties({
   transition?: Transition;
   from?: string;
   to?: string;
-  onSave: (t: Transition) => void;
+  onSave: (t: Transition, repeat?: boolean) => void;
   onDelete?: () => void;
   onClose: () => void;
 }) {
@@ -1257,7 +1280,7 @@ function TransitionProperties({
   const finite = machineKind(machine) === 'fa';
   const a = transition?.from ?? from!,
     b = transition?.to ?? to!;
-  function save() {
+  function save(repeat = false) {
     const updated: Transition = {
       ...transition,
       id: transition?.id ?? crypto.randomUUID(),
@@ -1286,10 +1309,20 @@ function TransitionProperties({
       setError('Esta transición ya existe.');
       return;
     }
-    onSave(updated);
+    onSave(updated, repeat);
+    if (repeat) {
+      setRead('');
+      setError('');
+    }
   }
   return (
     <form
+      onKeyDown={(event) => {
+        if (finite && event.key === 'Enter' && event.shiftKey) {
+          event.preventDefault();
+          save(true);
+        }
+      }}
       onSubmit={(event) => {
         event.preventDefault();
         save();
@@ -1307,7 +1340,7 @@ function TransitionProperties({
       {finite && (
         <Field
           label="Símbolo o cadena"
-          hint={`Deja el campo vacío para una transición ${emptySymbol}.`}
+          hint={`Vacío: ${emptySymbol}. También admite cadenas y rangos como [a-z]. Mayús+Intro guarda y añade otra.`}
           autoFocus
           value={read}
           onChange={(e) => setRead(e.target.value)}
@@ -1350,7 +1383,7 @@ function TransitionProperties({
             </select>
           </>
         )}
-        <IconButton label="Guardar transición" onClick={save}>
+        <IconButton label="Guardar transición" onClick={() => save()}>
           <FiCheck />
         </IconButton>
         {onDelete && (

@@ -83,6 +83,7 @@
     --canvas-min-height: 180px;
     --dialog-width: 500px;
     --dialog-wide-width: 760px;
+    --finite-preview-height: 240px;
     --state-popover-width: 230px;
     --transition-popover-width: 360px;
     --transition-input-width: 64px;
