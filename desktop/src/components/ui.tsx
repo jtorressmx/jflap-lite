@@ -8,6 +8,16 @@ import type {
 } from 'react';
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi';
 
+export function shortcutLabel(label: string) {
+  return window.desktop.platform === 'darwin'
+    ? label
+        .replace(/Ctrl/g, '⌘')
+        .replace(/Mayús/g, '⇧')
+        .replace(/Alt/g, '⌥')
+        .replace(/Supr/g, '⌫')
+    : label;
+}
+
 export function Button({
   variant = 'default',
   className = '',
@@ -38,6 +48,7 @@ export function IconButton({
   active?: boolean;
   tooltip?: boolean;
 }) {
+  label = shortcutLabel(label);
   return (
     <button
       type="button"
@@ -318,7 +329,7 @@ export function Menu({
                     {entry.checked ? <FiCheck /> : entry.icon}
                   </span>
                   <span>{entry.label}</span>
-                  {entry.shortcut && <kbd>{entry.shortcut}</kbd>}
+                  {entry.shortcut && <kbd>{shortcutLabel(entry.shortcut)}</kbd>}
                 </button>
                 {entry.action && (
                   <IconButton

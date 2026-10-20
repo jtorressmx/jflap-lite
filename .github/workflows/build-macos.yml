@@ -1,0 +1,78 @@
+name: Build macOS
+
+on:
+   workflow_dispatch:
+
+permissions:
+   contents: read
+
+jobs:
+   package:
+      name: macOS ${{ matrix.arch }}
+      strategy:
+         fail-fast: false
+         matrix:
+            include:
+               - runner: macos-15
+                 arch: arm64
+               - runner: macos-15-intel
+                 arch: x64
+      runs-on: ${{ matrix.runner }}
+      timeout-minutes: 25
+      defaults:
+         run:
+            working-directory: desktop
+      steps:
+         - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+         - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+           with:
+              node-version: '24'
+              cache: npm
+              cache-dependency-path: desktop/package-lock.json
+         - run: npm ci
+         - run: npm run dist -- --${{ matrix.arch }} --publish never
+         - name: Validate package and runtime
+           env:
+              EXPECTED_ARCH: ${{ matrix.arch }}
+           run: |
+              app=$(find release -maxdepth 2 -name '*.app' -type d -print -quit)
+              test -n "$app"
+              codesign --verify --deep --strict "$app"
+              hdiutil verify "release/JFLAP-Lite-macOS-${EXPECTED_ARCH}.dmg"
+              ELECTRON_RUN_AS_NODE=1 "$app/Contents/MacOS/JFLAP Lite" -e 'if (process.arch !== process.env.EXPECTED_ARCH) process.exit(1); console.log(`Electron ${process.versions.electron}, ${process.arch}`)'
+              "$app/Contents/MacOS/JFLAP Lite" --remote-debugging-port=9222 > "$RUNNER_TEMP/jflap-launch.log" 2>&1 &
+              app_pid=$!
+              trap 'kill "$app_pid" 2>/dev/null || true; cat "$RUNNER_TEMP/jflap-launch.log"' EXIT
+              node --input-type=module <<'NODE'
+              let page;
+              for (let attempt = 0; attempt < 60; attempt++) {
+                const pages = await fetch('http://127.0.0.1:9222/json/list').then(r => r.json()).catch(() => []);
+                page = pages.find(p => p.type === 'page' && p.url.startsWith('file:'));
+                if (page) break;
+                await new Promise(resolve => setTimeout(resolve, 500));
+              }
+              if (!page) throw new Error('The packaged app did not open its renderer');
+              const socket = new WebSocket(page.webSocketDebuggerUrl);
+              await new Promise((resolve, reject) => { socket.onopen = resolve; socket.onerror = reject; });
+              const result = new Promise(resolve => socket.onmessage = e => {
+                const message = JSON.parse(e.data);
+                if (message.id === 1) resolve(message);
+              });
+              socket.send(JSON.stringify({id: 1, method: 'Runtime.evaluate', params: {
+                expression: 'new Promise(resolve => { const timer = setInterval(() => { if (document.querySelector("#root")?.innerText.length > 30) { clearInterval(timer); resolve({platform: window.desktop.platform, title: document.title, nodeIsolated: typeof require === "undefined"}); } }, 100); })',
+                awaitPromise: true, returnByValue: true, timeout: 15000
+              }}));
+              const response = await result;
+              socket.close();
+              const state = response.result?.result?.value;
+              if (state?.platform !== 'darwin' || !state.nodeIsolated) throw new Error(JSON.stringify(response));
+              console.log('Packaged renderer ready:', state);
+              NODE
+              kill -0 "$app_pid"
+         - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+           with:
+              name: macos-${{ matrix.arch }}
+              path: desktop/release/*.dmg
+              if-no-files-found: error
+              compression-level: 0
+              retention-days: 7

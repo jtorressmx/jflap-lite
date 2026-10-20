@@ -13,7 +13,7 @@ import {
   FiTrash2,
   FiX,
 } from 'react-icons/fi';
-import { Button, Field, IconButton, Popover } from './ui';
+import { Button, Field, IconButton, Popover, shortcutLabel } from './ui';
 import {
   defaultPreferences,
   movementSymbol,
@@ -896,7 +896,9 @@ function GraphEditor({
         role="application"
         aria-label={
           readOnly
-            ? `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
+            ? shortcutLabel(
+                `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`,
+              )
             : `Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`
         }
         tabIndex={0}

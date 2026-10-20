@@ -44,6 +44,7 @@ import {
   Modal,
   Select,
   Toggle,
+  shortcutLabel,
 } from './components/ui';
 import type { MenuEntry } from './components/ui';
 import GraphEditor from './components/GraphEditor';
@@ -2064,8 +2065,8 @@ function HelpDialog({
                 {emptySymbol} agrupa los saltos vacíos. En una etiqueta, [abz]
                 añade a, b y z; solo las expresiones con guion, como [a-z], son
                 rangos. También se admiten cadenas completas. Selecciona varias
-                configuraciones con Ctrl para congelarlas, quitarlas o consultar
-                sus trazas.
+                configuraciones con {shortcutLabel('Ctrl')} para congelarlas,
+                quitarlas o consultar sus trazas.
               </p>
               <p>
                 En Convertir puedes construir y comprobar un AFD, refinar el
@@ -2127,7 +2128,7 @@ function HelpDialog({
             ].map(([key, label]) => (
               <div key={key}>
                 <span>{label}</span>
-                <kbd>{key}</kbd>
+                <kbd>{shortcutLabel(key)}</kbd>
               </div>
             ))}
           </div>

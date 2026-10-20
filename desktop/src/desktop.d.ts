@@ -31,6 +31,7 @@ declare global {
   type DesktopRecentFile = { path: string; name: string };
   type DesktopSaveResult = { path?: string; canceled: boolean };
   interface DesktopBridge {
+    readonly platform: string;
     getRecentFiles(): Promise<DesktopRecentFile[]>;
     removeRecentFile(path: string): Promise<DesktopRecentFile[]>;
     openRecentFile(path: string): Promise<DesktopFile | null>;

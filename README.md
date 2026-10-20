@@ -6,13 +6,33 @@ Permite editar diagramas, abrir y guardar archivos `.jff`, recuperar documentos,
 
 ## Descargar y usar
 
-Para Windows x64. Ejecuta este comando en PowerShell desde la carpeta donde quieras guardar la aplicación:
+### Windows x64
+
+Ejecuta este comando en PowerShell desde la carpeta donde quieras guardar la aplicación:
 
 ```powershell
 Invoke-WebRequest -Uri "https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe" -OutFile ".\JFLAP-Lite.exe"
 ```
 
 Después abre `JFLAP-Lite.exe`. Es portátil y no requiere instalar Node.js ni Java. También puedes [descargar el ejecutable directamente](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe).
+
+### macOS
+
+Descarga el instalador para tu procesador:
+
+- [Apple Silicon (M1 y posteriores)](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-arm64.dmg).
+- [Intel](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-x64.dmg).
+
+También puedes descargar la versión adecuada desde Terminal:
+
+```sh
+arch=$(uname -m)
+[ "$arch" = "x86_64" ] && arch=x64
+curl -fL "https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-${arch}.dmg" -o JFLAP-Lite.dmg
+open JFLAP-Lite.dmg
+```
+
+Arrastra `JFLAP Lite.app` a Aplicaciones. No requiere Node.js ni Java. La aplicación no está notarizada por Apple: si macOS bloquea la primera apertura, sigue el procedimiento de [Apple para abrir una aplicación de un desarrollador no identificado](https://support.apple.com/es-mx/102445) desde Ajustes del Sistema → Privacidad y seguridad → Abrir igualmente.
 
 ## Desarrollo
 
@@ -29,7 +49,9 @@ npm run dev
 | `npm run dev` | Electron con recarga del renderer |
 | `npm run build` | Comprobación estricta de TypeScript y compilación del renderer |
 | `npm start` | Electron con la compilación local |
-| `npm run dist` | Compila y genera el ejecutable portátil de Windows x64 en `desktop/release/` |
+| `npm run dist` | Compila y genera el portátil de Windows x64 o el DMG de macOS para la arquitectura del equipo en `desktop/release/` |
+
+El empaquetado se ejecuta en el sistema de destino. El workflow `Build macOS` compila y valida los DMG en runners nativos de Apple Silicon e Intel.
 
 ## Estructura
 

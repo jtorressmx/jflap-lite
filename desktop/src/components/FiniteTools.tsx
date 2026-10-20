@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, Field, Modal, Select, Badge } from './ui';
+import { Button, Field, Modal, Select, Badge, shortcutLabel } from './ui';
 import GraphEditor from './GraphEditor';
 import type { Machine } from '../domain/model';
 import {
@@ -235,7 +235,9 @@ function BuildAutomaton({
           placeholder={subsets ? 'Ej. q0, q2' : 'Ej. q1'}
           hint={
             subsets
-              ? 'También puedes seleccionar estados en el autómata de origen con Ctrl.'
+              ? shortcutLabel(
+                  'También puedes seleccionar estados en el autómata de origen con Ctrl.',
+                )
               : undefined
           }
           onKeyDown={(e) => {

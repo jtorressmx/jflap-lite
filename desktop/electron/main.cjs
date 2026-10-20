@@ -13,8 +13,6 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const policy = require('./policy.cjs');
 const { shortcutCommand } = require('./shortcuts.cjs');
-Menu.setApplicationMenu(null);
-
 app.setName('JFLAP Lite');
 if (process.platform === 'win32') app.setAppUserModelId('org.jflap.lite');
 const hasLock = app.requestSingleInstanceLock();
@@ -547,6 +545,13 @@ async function createWindow() {
   });
   mainWindow.setMenuBarVisibility(false);
   mainWindow.webContents.on('before-input-event', (event, input) => {
+    if (process.platform === 'darwin') {
+      // Let the renderer handle diagram selection and history shortcuts.
+      mainWindow.webContents.setIgnoreMenuShortcuts(
+        (input.meta || input.control) &&
+          ['z', 'y', 'a'].includes(input.key.toLowerCase()),
+      );
+    }
     const name = shortcutCommand(input);
     if (name) {
       event.preventDefault();
@@ -582,6 +587,15 @@ if (hasLock) {
   app
     .whenReady()
     .then(async () => {
+      Menu.setApplicationMenu(
+        process.platform === 'darwin'
+          ? Menu.buildFromTemplate([
+              { role: 'appMenu' },
+              { role: 'editMenu' },
+              { role: 'windowMenu' },
+            ])
+          : null,
+      );
       registerBridge();
       await receiveFiles(process.argv.slice(app.isPackaged ? 1 : 2));
       await createWindow();
