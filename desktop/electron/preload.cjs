@@ -12,8 +12,6 @@ function subscribe(channel, callback) {
 contextBridge.exposeInMainWorld(
   'desktop',
   Object.freeze({
-    platform: process.platform,
-    getInfo: () => ipcRenderer.invoke('desktop:info'),
     openFiles: (options) => ipcRenderer.invoke('desktop:open-files', options),
     getRecentFiles: () => ipcRenderer.invoke('desktop:recent-files'),
     removeRecentFile: (path) =>

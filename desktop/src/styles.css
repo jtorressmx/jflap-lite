@@ -375,12 +375,6 @@
   .muted {
     color: var(--text-secondary);
   }
-  .print-frame {
-    position: fixed;
-    width: 1px;
-    height: 1px;
-    left: -9999px;
-  }
 }
 @layer components {
   .field-prominent input {
@@ -451,11 +445,6 @@
     background: transparent;
     border-color: transparent;
     box-shadow: none;
-  }
-  .button-danger {
-    background: var(--danger);
-    color: var(--on-accent);
-    border-color: var(--danger);
   }
   .icon-button {
     width: var(--control-height);
@@ -745,18 +734,6 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: var(--space-4);
-  }
-  .info-note {
-    display: flex;
-    align-items: flex-start;
-    gap: var(--space-2);
-    background: var(--accent-soft);
-    color: var(--accent);
-    padding: var(--space-3);
-    border-radius: var(--radius-md);
-  }
-  .info-note svg {
-    margin-top: var(--space-1);
   }
   .settings-body {
     display: grid;

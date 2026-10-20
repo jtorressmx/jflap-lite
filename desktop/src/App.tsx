@@ -74,10 +74,10 @@ import {
 import type { Machine, MachineKind, Preferences } from './domain/model';
 import { nondeterministicStates } from './domain/turing';
 import { parseJff, serializeJff } from './domain/jff';
-import license from './license.txt?raw';
+import license from '../LICENSE?raw';
 import { useWorkspace } from './hooks/useWorkspace';
 import type { WorkspaceDocument } from './hooks/useWorkspace';
-import { download, exportImage, exportPdf, printMachine } from './lib/files';
+import { exportImage, exportPdf, printMachine } from './lib/files';
 import {
   readUiSettings,
   settingsChanged,
@@ -117,41 +117,6 @@ function documentNameFromPath(filePath: string) {
     .split(/[\\/]/)
     .pop()
     ?.replace(/\.(?:jff|xml)$/i, '') || '';
-}
-const dismissedRecentsStorageKey = 'jflap-lite.dismissed-recents.v1';
-function recentPathKey(filePath: string) {
-  return filePath.replace(/\\/g, '/').toLowerCase();
-}
-function readDismissedRecents() {
-  try {
-    const paths: unknown = JSON.parse(
-      localStorage.getItem(dismissedRecentsStorageKey) || '[]',
-    );
-    return new Set(
-      Array.isArray(paths)
-        ? paths.filter((value): value is string => typeof value === 'string')
-        : [],
-    );
-  } catch {
-    return new Set<string>();
-  }
-}
-function writeDismissedRecents(paths: Set<string>) {
-  try {
-    localStorage.setItem(dismissedRecentsStorageKey, JSON.stringify([...paths]));
-  } catch {
-    // Hiding the item in the current view still works when storage is unavailable.
-  }
-}
-function dismissRecentPath(filePath: string) {
-  const dismissed = readDismissedRecents();
-  dismissed.add(recentPathKey(filePath));
-  writeDismissedRecents(dismissed);
-}
-function restoreRecentPath(filePath: string) {
-  const dismissed = readDismissedRecents();
-  dismissed.delete(recentPathKey(filePath));
-  writeDismissedRecents(dismissed);
 }
 function readPreferences(): Preferences {
   try {
@@ -261,8 +226,6 @@ export default function App() {
       | 'closure'
       | 'state';
   }>();
-  const fileInput = useRef<HTMLInputElement>(null);
-  const combineInput = useRef<HTMLInputElement>(null);
   const [importedCombine, setImportedCombine] = useState<Machine | null>(null);
   const nd = useMemo(
     () =>
@@ -276,27 +239,8 @@ export default function App() {
   ).length;
   const notify = useCallback((text: string) => setMessage(text), []);
   const refreshRecentFiles = useCallback(async () => {
-    if (!window.desktop) return;
     try {
-      let files = await window.desktop.getRecentFiles();
-      let dismissed = readDismissedRecents();
-      if (typeof window.desktop.removeRecentFile === 'function') {
-        for (const file of files.filter((item) =>
-          dismissed.has(recentPathKey(item.path)),
-        )) {
-          try {
-            files = await window.desktop.removeRecentFile(file.path);
-            dismissed.delete(recentPathKey(file.path));
-            writeDismissedRecents(dismissed);
-          } catch {
-            // Keep the local dismissal if this window has an older native bridge.
-          }
-        }
-      }
-      dismissed = readDismissedRecents();
-      setRecentFiles(
-        files.filter((file) => !dismissed.has(recentPathKey(file.path))),
-      );
+      setRecentFiles(await window.desktop.getRecentFiles());
     } catch (error) {
       notify(
         'No se pudieron cargar los archivos recientes: ' +
@@ -316,48 +260,19 @@ export default function App() {
       return;
     }
     try {
-      const opened = await window.desktop?.openRecentFile?.(file.path);
+      const opened = await window.desktop.openRecentFile(file.path);
       if (opened) receiveNativeFiles([opened]);
-      else {
-        dismissRecentPath(file.path);
-        setRecentFiles((current) =>
-          current.filter(
-            (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
-          ),
-        );
-        void refreshRecentFiles();
-      }
-    } catch {
-      dismissRecentPath(file.path);
-      setRecentFiles((current) =>
-        current.filter(
-          (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
-        ),
-      );
+      else void refreshRecentFiles();
+    } catch (error) {
+      notify((error as Error).message);
       void refreshRecentFiles();
     }
   }
   async function removeRecentFile(file: DesktopRecentFile) {
-    if (!window.desktop) return;
-    dismissRecentPath(file.path);
-    setRecentFiles((current) =>
-      current.filter(
-        (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
-      ),
-    );
     try {
-      const updated = await window.desktop.removeRecentFile?.(file.path);
-      if (updated) {
-        restoreRecentPath(file.path);
-        const dismissed = readDismissedRecents();
-        setRecentFiles(
-          updated.filter(
-            (recent) => !dismissed.has(recentPathKey(recent.path)),
-          ),
-        );
-      }
-    } catch {
-      // Preserve the local dismissal so an older native bridge cannot restore it.
+      setRecentFiles(await window.desktop.removeRecentFile(file.path));
+    } catch (error) {
+      notify((error as Error).message);
     }
   }
   useEffect(() => {
@@ -479,61 +394,46 @@ export default function App() {
     });
     setSelected([...ids.values()]);
   }
-  async function save(asCopy = false, overrideName?: string) {
+  async function save(asCopy = false) {
     if (!workspace.active) return false;
-    let snapshot = overrideName
-      ? { ...machine, name: overrideName }
-      : machine;
+    let snapshot = machine;
     let savedFileName = snapshot.name;
     try {
-      if (window.desktop) {
-        let savesToChosenPath = asCopy || !active.path;
-        let result;
-        try {
-          result = await window.desktop.saveFile({
-            content: serializeJff(snapshot),
-            name: snapshot.name,
-            path: asCopy ? undefined : active.path,
-            kind: 'jff',
-          });
-        } catch (error) {
-          if (!active.path || asCopy) throw error;
-          savesToChosenPath = true;
-          result = await window.desktop.saveFile({
-            content: serializeJff(snapshot),
-            name: snapshot.name,
-            kind: 'jff',
-          });
-        }
-        if (result.canceled) return false;
-        if (savesToChosenPath && result.path) {
-          const chosenName = documentNameFromPath(result.path);
-          if (chosenName && chosenName !== snapshot.name) {
-            snapshot = { ...snapshot, name: chosenName };
-            result = await window.desktop.saveFile({
-              content: serializeJff(snapshot),
-              name: snapshot.name,
-              path: result.path,
-              kind: 'jff',
-            });
-            if (result.canceled) return false;
-          }
-        }
-        savedFileName = result.path?.split(/[\\/]/).pop() || snapshot.name;
-        if (overrideName || snapshot.name !== machine.name) change(snapshot);
-        workspace.markSaved(result.path, active.id, snapshot);
-      } else {
-        savedFileName = snapshot.name;
-        await download(
-          serializeJff(snapshot),
-          snapshot.name.endsWith('.jff')
-            ? snapshot.name
-            : snapshot.name + '.jff',
-          'application/xml;charset=utf-8',
-        );
-        if (overrideName) change(snapshot);
-        workspace.markSaved(undefined, active.id, snapshot);
+      let savesToChosenPath = asCopy || !active.path;
+      let result;
+      try {
+        result = await window.desktop.saveFile({
+          content: serializeJff(snapshot),
+          name: snapshot.name,
+          path: asCopy ? undefined : active.path,
+          kind: 'jff',
+        });
+      } catch (error) {
+        if (!active.path || asCopy) throw error;
+        savesToChosenPath = true;
+        result = await window.desktop.saveFile({
+          content: serializeJff(snapshot),
+          name: snapshot.name,
+          kind: 'jff',
+        });
       }
+      if (result.canceled) return false;
+      if (savesToChosenPath && result.path) {
+        const chosenName = documentNameFromPath(result.path);
+        if (chosenName && chosenName !== snapshot.name) {
+          snapshot = { ...snapshot, name: chosenName };
+          result = await window.desktop.saveFile({
+            content: serializeJff(snapshot),
+            name: snapshot.name,
+            path: result.path,
+            kind: 'jff',
+          });
+          if (result.canceled) return false;
+        }
+      }
+      savedFileName = result.path?.split(/[\\/]/).pop() || snapshot.name;
+      if (snapshot.name !== machine.name) change(snapshot);
+      workspace.markSaved(result.path, active.id, snapshot);
       if (!/\.jff$/i.test(savedFileName)) savedFileName += '.jff';
       notify(`${savedFileName} guardado.`);
       void refreshRecentFiles();
@@ -543,35 +443,11 @@ export default function App() {
       return false;
     }
   }
-  async function openFiles(files: FileList | null, combine = false) {
-    if (!files) return;
-    const errors: string[] = [];
-    for (const f of Array.from(files)) {
-      try {
-        const m = parseJff(await f.text());
-        m.name = f.name.replace(/\.jff$/i, '');
-        if (combine) {
-          setImportedCombine(m);
-          setDialog({ type: 'combine' });
-        } else {
-          workspace.open(m);
-          setHome(false);
-        }
-      } catch (e) {
-        errors.push(`${f.name}: ${(e as Error).message}`);
-      }
-    }
-
-    if (errors.length) notify(errors.join(' · '));
-    if (fileInput.current) fileInput.current.value = '';
-    if (combineInput.current) combineInput.current.value = '';
-  }
   function receiveNativeFiles(files: DesktopFile[], combineMode = false) {
     for (const file of files) {
       try {
         const parsed = parseJff(file.content);
         parsed.name = file.name.replace(/\.jff$/i, '');
-        restoreRecentPath(file.path);
         if (combineMode) {
           setImportedCombine(parsed);
           setDialog({ type: 'combine' });
@@ -587,7 +463,6 @@ export default function App() {
   }
   async function saveAll() {
     const desktop = window.desktop;
-    if (!desktop) return;
     try {
       const savedDocuments = [...workspace.documents];
       for (let index = 0; index < savedDocuments.length; index++) {
@@ -658,7 +533,6 @@ export default function App() {
         name: machine.name,
         dirty: false,
         dirtyCount: 0,
-        path: active.path,
       });
       await desktop.completeClose({ saved: true });
       notify('Todos los archivos .jff guardados.');
@@ -668,10 +542,6 @@ export default function App() {
     }
   }
   async function openDialog(combineMode = false) {
-    if (!window.desktop) {
-      (combineMode ? combineInput : fileInput).current?.click();
-      return;
-    }
     try {
       receiveNativeFiles(
         await window.desktop.openFiles({
@@ -686,19 +556,16 @@ export default function App() {
   }
   useEffect(() => {
     const desktop = window.desktop;
-    if (!desktop) return;
     void desktop
       .setDocumentState({
         name: home ? '' : machine.name,
         dirty: dirtyCount > 0,
         dirtyCount,
-        path: active.path,
       })
       .catch((e) => notify(e.message));
-  }, [home, machine.name, dirtyCount, active.path, notify]);
+  }, [home, machine.name, dirtyCount, notify]);
   useEffect(() => {
     const desktop = window.desktop;
-    if (!desktop) return;
     let current = true;
     const unsubscribe = desktop.onOpenFiles((files) =>
       receiveNativeFiles(files),
@@ -715,7 +582,6 @@ export default function App() {
     };
   }, []);
   useEffect(() => {
-    if (!window.desktop) return;
     return window.desktop.onCommand((command) => {
       switch (command) {
         case 'new':
@@ -775,12 +641,7 @@ export default function App() {
     workspace.close(id);
     if (workspace.documents.length === 1) setHome(true);
   }
-  const comparisonInput = useRef<HTMLInputElement>(null);
   async function openComparison() {
-    if (!window.desktop) {
-      comparisonInput.current?.click();
-      return;
-    }
     try {
       const files = await window.desktop.openFiles({
         kind: 'machine',
@@ -870,19 +731,11 @@ export default function App() {
         return;
       if (ctrl) {
         const k = e.key.toLowerCase();
-        if (['s', 'o', 'n', 'z', 'y', 'a', 'd', 'p'].includes(k))
-          e.preventDefault();
-        if (k === 's') {
-          if (e.shiftKey) void save(true);
-          else void save();
-        }
-        if (k === 'o') void openDialog();
-        if (k === 'n') createDocument(machineKind(machine));
+        if (['z', 'y', 'a', 'd'].includes(k)) e.preventDefault();
         if (k === 'z') e.shiftKey ? redo() : undo();
         if (k === 'y') redo();
         if (k === 'a') setSelected(machine.states.map((s) => s.id));
         if (k === 'd') duplicateSelected();
-        if (k === 'p' && workspace.active) printMachine(machine);
         return;
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -903,14 +756,6 @@ export default function App() {
         n: 'note',
       };
       if (tools[e.key.toLowerCase()]) setTool(tools[e.key.toLowerCase()]);
-      if (e.key === 'F5') {
-        e.preventDefault();
-        simulate('start');
-      }
-      if (e.key === 'F6') {
-        e.preventDefault();
-        simulate('step');
-      }
     };
     window.addEventListener('keydown', key);
     return () => window.removeEventListener('keydown', key);
@@ -1149,43 +994,6 @@ export default function App() {
 
   return (
     <div className={`app-shell ${grid ? '' : 'no-grid'}`}>
-      <input
-        hidden
-        ref={fileInput}
-        type="file"
-        accept=".jff,.xml"
-        multiple
-        aria-label="Abrir archivos JFLAP"
-        onChange={(e) => void openFiles(e.target.files)}
-      />
-      <input
-        hidden
-        ref={comparisonInput}
-        type="file"
-        accept=".jff,.xml"
-        aria-label="Autómata para comparar"
-        onChange={async (e) => {
-          const file = e.target.files?.[0];
-          e.target.value = '';
-          if (!file) return;
-          try {
-            const m = parseJff(await file.text());
-            if (machineKind(m) !== 'fa')
-              throw new Error('Selecciona un autómata finito.');
-            compare(m);
-          } catch (error) {
-            setComparison((error as Error).message);
-          }
-        }}
-      />
-      <input
-        hidden
-        ref={combineInput}
-        type="file"
-        accept=".jff,.xml"
-        aria-label="Importar máquina para combinar"
-        onChange={(e) => void openFiles(e.target.files, true)}
-      />
       <div
         className="menubar"
         role="navigation"

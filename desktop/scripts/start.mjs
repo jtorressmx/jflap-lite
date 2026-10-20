@@ -8,7 +8,7 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
   cwd: fileURLToPath(new URL('../', import.meta.url)),
   env,
   stdio: 'inherit',
-  windowsHide: false,
+  windowsHide: true,
 });
 child.on('exit', (code) => process.exit(code || 0));
 child.on('error', (error) => {

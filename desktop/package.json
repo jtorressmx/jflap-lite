@@ -6,19 +6,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "start": "node scripts/start.mjs",
-    "build": "tsc -b && vite build",
-    "test": "vitest run && node --test electron/policy.test.cjs electron/main.test.cjs",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && node scripts/package.mjs",
-    "test:native": "node scripts/test-native.mjs",
-    "test:finite:original": "node scripts/verify-finite-original.mjs",
-    "test:jff:original": "node scripts/verify-jff-original.mjs"
-  },
-  "dependencies": {
-    "gifenc": "^1.0.3",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
-    "react-icons": "^5.5.0"
+    "build": "tsc && vite build",
+    "dist": "npm run build && node scripts/package.mjs"
   },
   "devDependencies": {
     "@types/node": "^24.0.0",
@@ -27,10 +16,12 @@
     "@vitejs/plugin-react": "^6.1.2",
     "electron": "^44.8.0",
     "electron-builder": "^26.15.3",
-    "jsdom": "^26.1.0",
+    "gifenc": "^1.0.3",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-icons": "^5.5.0",
     "typescript": "^5.9.3",
-    "vite": "^8.3.4",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.4"
   },
   "description": "Autómatas finitos y máquinas de Turing de JFLAP Lite para Windows.",
   "main": "electron/main.cjs",
@@ -44,10 +35,9 @@
     "files": [
       "dist/**/*",
       "electron/**/*",
-      "!electron/*.test.cjs",
       "package.json",
-      "public/JFLAP-LICENSE.txt",
-      "build/icon*"
+      "build/icon*",
+      "LICENSE"
     ],
     "win": {
       "target": [
@@ -71,5 +61,5 @@
     ],
     "electronDist": "node_modules/electron/dist"
   },
-  "license": "SEE LICENSE IN public/JFLAP-LICENSE.txt"
+  "license": "SEE LICENSE IN LICENSE"
 }

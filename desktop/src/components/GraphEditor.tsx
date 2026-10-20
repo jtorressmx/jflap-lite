@@ -190,7 +190,7 @@ function connectionPreviewPath(
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
-export function GraphEditor({
+function GraphEditor({
   readOnly = false,
   emptySymbol = 'ε',
   machine,
@@ -374,7 +374,6 @@ export function GraphEditor({
     });
     didFit.current = true;
     // A new fit request deliberately fits the current document, not every edit.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey, size.width, size.height]);
 
   useEffect(() => {
@@ -415,7 +414,6 @@ export function GraphEditor({
     }));
     previousZoom.current = zoom;
     // Canvas resize is handled by fitting; only external zoom changes need recentering.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [zoom]);
 
   useEffect(() => {
@@ -1332,7 +1330,6 @@ function StateProperties({
 }) {
   const [name, setName] = useState(state.name),
     [label, setLabel] = useState(state.label);
-  if (!state) return null;
   const save = () =>
     onChange({ ...state, name: name.trim() || state.name, label });
   const submitOnEnter = (event: ReactKeyboardEvent<HTMLInputElement>) => {

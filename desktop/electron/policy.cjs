@@ -161,7 +161,6 @@ function printDocument(svg, title) {
 
 module.exports = {
   MAX_DOCUMENT_BYTES,
-  MAX_EXPORT_BYTES,
   text,
   format,
   filename,

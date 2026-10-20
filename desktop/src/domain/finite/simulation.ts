@@ -1,11 +1,11 @@
 import { machineKind } from '../model';
 import type { Machine } from '../model';
 
-export type FiniteAutomaton = {
+type FiniteAutomaton = {
   states: { id: string; initial: boolean; final: boolean }[];
   edges: { id: string; from: string; to: string; label: string }[];
 };
-export function finiteModel(machine: Machine): FiniteAutomaton {
+function finiteModel(machine: Machine): FiniteAutomaton {
   if (machineKind(machine) !== 'fa')
     throw new Error('Selecciona un autómata finito.');
   return {
@@ -71,7 +71,7 @@ export function rangeSymbols(label: string): string[] | undefined {
     String.fromCharCode(start + i),
   );
 }
-export interface FiniteConfiguration {
+interface FiniteConfiguration {
   id: string;
   state: string;
   offset: number;

@@ -15,8 +15,7 @@ declare global {
     | 'batch'
     | 'output'
     | 'preferences'
-    | 'help'
-    | 'about';
+    | 'help';
   type DesktopFileKind =
     | 'jff'
     | 'xml'
@@ -32,15 +31,9 @@ declare global {
   type DesktopRecentFile = { path: string; name: string };
   type DesktopSaveResult = { path?: string; canceled: boolean };
   interface DesktopBridge {
-    readonly platform: string;
     getRecentFiles(): Promise<DesktopRecentFile[]>;
-    removeRecentFile?(path: string): Promise<DesktopRecentFile[]>;
-    openRecentFile?(path: string): Promise<DesktopFile | null>;
-    getInfo(): Promise<{
-      version: string;
-      platform: string;
-      electronVersion: string;
-    }>;
+    removeRecentFile(path: string): Promise<DesktopRecentFile[]>;
+    openRecentFile(path: string): Promise<DesktopFile | null>;
     openFiles(options?: {
       kind?: 'machine' | 'text';
       multiple?: boolean;
@@ -68,13 +61,12 @@ declare global {
       name: string;
       dirty: boolean;
       dirtyCount?: number;
-      path?: string;
     }): Promise<void>;
     completeClose(result: { saved: boolean }): Promise<boolean>;
     readWorkspace(): Promise<string | null>;
     writeWorkspace(content: string): Promise<void>;
   }
   interface Window {
-    desktop?: DesktopBridge;
+    desktop: DesktopBridge;
   }
 }

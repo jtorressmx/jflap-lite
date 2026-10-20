@@ -35,7 +35,7 @@ export function validateTransition(
 }
 
 /** A direct port of TMNondeterminismDetector, including its legacy string rules. */
-export function readsOverlap(first: string, second: string): boolean {
+function readsOverlap(first: string, second: string): boolean {
   const a = normalizeRead(first),
     b = normalizeRead(second);
   if (a === b || a === '~' || b === '~') return true;

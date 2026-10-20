@@ -70,7 +70,7 @@ export interface Configuration {
   depth: number;
 }
 
-export type SessionStatus =
+type SessionStatus =
   | 'ready'
   | 'running'
   | 'accepted'

@@ -110,10 +110,9 @@ export function useWorkspace() {
           })),
         });
         localStorage.setItem(KEY, value);
-        if (window.desktop)
-          void window.desktop
-            .writeWorkspace(value)
-            .catch(() => setStorageError(true));
+        void window.desktop
+          .writeWorkspace(value)
+          .catch(() => setStorageError(true));
         setStorageError(false);
       } catch {
         setStorageError(true);

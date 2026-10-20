@@ -1,7 +1,0 @@
-# Archivos de compatibilidad
-
-`jflap-official-anbncn.jff` se descargó del [tutorial oficial de máquinas de Turing de una cinta](https://www.jflap.org/tutorial/turing/one/index.html), [archivo original](https://www.jflap.org/tutorial/turing/one/turingAnBnCn.jff). Su comentario identifica JFLAP 6.1; se conserva el XML sin convertirlo. La prueba verifica la apertura y la aceptación de `aabbcc`, además del rechazo de `aabcc`.
-
-`contadorOs.jff` es una copia sin modificaciones del archivo local proporcionado por el usuario. Su comentario identifica JFLAP 6.4. Contiene 21 estados codificados como `<block>`, 77 transiciones ordinarias y 21 definiciones `<MachineN/>` vacías dentro del autómata. El importador verifica que cada referencia tenga una única definición vacía antes de interpretar el bloque como un estado ordinario; no descarta el contenido de submáquinas reales.
-
-Las pruebas verifican posiciones, etiquetas, estado inicial/final, movimientos L/R/S, guardado y reapertura; ejecutan el contador con 1, 2, 9 y 10 letras O mayúsculas seguidas de `=`, además de entradas rechazadas. Tres comparaciones con el oráculo Java comprueban las trazas de la máquina importada y exportada al formato estándar. Esta comparación verifica el motor sobre la máquina normalizada, no constituye soporte de ejecución de submáquinas anidadas. La integración Electron abre la copia original, comprueba 21 estados y 77 transiciones, ejecuta `OOO=` con salida `=3`, guarda en otro archivo y lo reabre conservando el original.

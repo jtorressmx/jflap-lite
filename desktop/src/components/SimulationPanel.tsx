@@ -422,7 +422,6 @@ export function SimulationPanel({
   } | null>(null);
   const [traceId, setTraceId] = useState<string | undefined>();
   const [traceFocusId, setTraceFocusId] = useState<string | undefined>();
-  const textFile = useRef<HTMLInputElement>(null);
   const signature = JSON.stringify([
     machine.states,
     machine.transitions,
@@ -432,12 +431,8 @@ export function SimulationPanel({
   const latest = useRef({ session, machine, preferences, onMessage });
   latest.current = { session, machine, preferences, onMessage };
 
-  function saveText(
-    name: string,
-    text: string,
-    type = 'text/plain;charset=utf-8',
-  ) {
-    void download(text, name, type).catch((error) =>
+  function saveText(name: string, text: string) {
+    void download(text, name).catch((error) =>
       onMessage((error as Error).message),
     );
   }
@@ -534,7 +529,7 @@ export function SimulationPanel({
       onMessage((error as Error).message);
     }
   }
-  function fast(showOutput = false) {
+  function fast() {
     try {
       setDirecting(false);
       const next = focusAccepted(
@@ -546,10 +541,6 @@ export function SimulationPanel({
       setTraceId(undefined);
       setTab('simulation');
       setResultModal({ machine, session: next });
-      if (showOutput && next.status !== 'accepted')
-        onMessage(
-          'La ejecución no llegó a una configuración de aceptación. Puedes revisar su cinta y su traza.',
-        );
     } catch (error) {
       onMessage((error as Error).message);
     }
@@ -640,7 +631,6 @@ export function SimulationPanel({
         break;
     }
     // Each menu request is an explicit command; edits must not replay it.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [request?.id]);
 
   const preview: Configuration = useMemo(
@@ -847,10 +837,6 @@ export function SimulationPanel({
     }
   }
   async function openBatchText() {
-    if (!window.desktop) {
-      textFile.current?.click();
-      return;
-    }
     try {
       const [file] = await window.desktop.openFiles({ kind: 'text' });
       if (file) {
@@ -1266,20 +1252,6 @@ export function SimulationPanel({
               </table>
             )}
           </div>
-          <input
-            ref={textFile}
-            hidden
-            type="file"
-            accept=".txt,.tsv,text/plain,text/tab-separated-values"
-            onChange={async (event) => {
-              const file = event.target.files?.[0];
-              if (file) {
-                setBatchFile({ name: file.name, content: await file.text() });
-                setResults([]);
-              }
-              event.target.value = '';
-            }}
-          />
         </div>
       )}
       {tab === 'trace' && (

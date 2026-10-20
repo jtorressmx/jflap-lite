@@ -7,24 +7,16 @@ export async function download(
   type = 'text/plain;charset=utf-8',
 ): Promise<boolean> {
   const blob = new Blob([content], { type });
-  if (window.desktop) {
-    const extension = name.split('.').pop()?.toLowerCase() as DesktopFileKind;
-    const result = await window.desktop.exportFile({
-      data: Array.from(new Uint8Array(await blob.arrayBuffer())),
-      name,
-      kind: extension || 'txt',
-    });
-    return !result.canceled;
-  }
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = name;
-  a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
-  return true;
+  const extension = name.split('.').pop()?.toLowerCase() as DesktopFileKind;
+  const result = await window.desktop.exportFile({
+    data: Array.from(new Uint8Array(await blob.arrayBuffer())),
+    name,
+    kind: extension || 'txt',
+  });
+  return !result.canceled;
 }
-export function escapeXml(s: string) {
+
+function escapeXml(s: string) {
   return s.replace(
     /[&<>"']/g,
     (c) =>
@@ -37,7 +29,7 @@ export function escapeXml(s: string) {
       })[c]!,
   );
 }
-export function machineSvg(m: Machine): string {
+function machineSvg(m: Machine): string {
   const all = [
     ...m.states,
     ...m.notes,
@@ -354,30 +346,11 @@ export async function exportImage(
   );
 }
 export async function printMachine(machine: Machine) {
-  if (window.desktop) {
-    const result = await window.desktop.print(
-      machineSvg(machine),
-      machine.name,
-    );
-    if (!result.success && result.error && result.error !== 'cancelled')
-      throw new Error(result.error);
-    return;
-  }
-  const frame = document.createElement('iframe');
-  frame.className = 'print-frame';
-  frame.title = 'Impresión del diagrama';
-  frame.srcdoc = `<!doctype html><html lang="es"><head><title>${escapeXml(machine.name)}</title><style>body{font-family:Segoe UI,sans-serif;margin:24px}svg{width:100%;height:auto}p{font-size:11px;color:#555}@page{size:landscape;margin:14mm}</style></head><body><h2>${escapeXml(machine.name)}</h2>${machineSvg(machine)}<p>JFLAP Lite · Máquina de Turing · ${machine.states.length} estados · ${machine.transitions.length} transiciones</p></body></html>`;
-  frame.onload = () => {
-    frame.contentWindow?.focus();
-    frame.contentWindow?.print();
-    setTimeout(() => frame.remove(), 60000);
-  };
-  document.body.appendChild(frame);
+  const result = await window.desktop.print(machineSvg(machine), machine.name);
+  if (!result.success && result.error && result.error !== 'cancelled')
+    throw new Error(result.error);
 }
 export async function exportPdf(machine: Machine) {
-  if (window.desktop)
-    return !(await window.desktop.exportPdf(machineSvg(machine), machine.name))
-      .canceled;
-  await printMachine(machine);
-  return true;
+  return !(await window.desktop.exportPdf(machineSvg(machine), machine.name))
+    .canceled;
 }

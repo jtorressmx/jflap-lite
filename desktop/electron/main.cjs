@@ -313,11 +313,6 @@ function registerBridge() {
       return null;
     }
   });
-  handle('desktop:info', () => ({
-    version: app.getVersion(),
-    platform: process.platform,
-    electronVersion: process.versions.electron,
-  }));
   handle('desktop:open-files', async (options = {}) => {
     const kind = options?.kind === 'text' ? 'text' : 'machine';
     const result = await dialog.showOpenDialog(mainWindow, {

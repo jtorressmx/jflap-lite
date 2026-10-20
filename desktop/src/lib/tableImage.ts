@@ -1,7 +1,7 @@
 import { download } from './files';
 
 type Tone = 'success' | 'danger' | 'warning' | 'accent';
-export type ImageTableCell = { text: string; tone?: Tone; mono?: boolean };
+type ImageTableCell = { text: string; tone?: Tone; mono?: boolean };
 
 function wrap(
   context: CanvasRenderingContext2D,

@@ -19,7 +19,7 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
   cwd: root,
   env,
   stdio: 'inherit',
-  windowsHide: false,
+  windowsHide: true,
 });
 let closing = false;
 async function close(code = 0) {

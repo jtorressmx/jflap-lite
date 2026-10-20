@@ -55,7 +55,7 @@ export function normalizeFinite(original: Machine): Machine {
   );
   return machine;
 }
-export function characterAlphabet(machine: Machine): string[] {
+function characterAlphabet(machine: Machine): string[] {
   return alphabet(normalizeFinite(machine));
 }
 export type SubsetConstruction = {
@@ -115,14 +115,14 @@ export function subsetConstruction(
     subsets: Object.fromEntries(sets.map((set, i) => [String(i), set])),
   };
 }
-export function toDfa(
+function toDfa(
   original: Machine,
   complete = false,
   symbols?: string[],
 ): Machine {
   return subsetConstruction(original, complete, symbols).result;
 }
-export function assertDfa(machine: Machine) {
+function assertDfa(machine: Machine) {
   assertFiniteInitial(machine);
   if (finiteNondeterminism(machine).length)
     throw new Error(
@@ -159,7 +159,7 @@ export function completeDfa(machine: Machine): Machine {
   );
   return result;
 }
-export type PartitionStep = {
+type PartitionStep = {
   groups: string[][];
   split?: string[];
   symbol?: string;
@@ -252,13 +252,6 @@ export function partitionMachine(source: Machine, groups: string[][]): Machine {
     }
   });
   return result;
-}
-export function minimizeFinite(machine: Machine): Machine {
-  const source = prepareMinimization(machine);
-  let groups = initialPartition(source),
-    next: PartitionStep | undefined;
-  while ((next = nextPartition(source, groups))) groups = next.groups;
-  return partitionMachine(source, groups);
 }
 export function equivalentFinite(
   first: Machine,
@@ -353,7 +346,7 @@ export function grammarJff(productions: Production[]): string {
   return `<?xml version="1.0" encoding="UTF-8"?>\n<structure><type>grammar</type>${productions.map((p) => `<production><left>${xml(p.lhs)}</left><right>${xml(p.rhs)}</right></production>`).join('')}</structure>`;
 }
 // Structured expressions keep literal transition characters separate from RE operators.
-export type Regex =
+type Regex =
   | { type: 'empty' }
   | { type: 'epsilon' }
   | { type: 'literal'; value: string }
@@ -361,7 +354,7 @@ export type Regex =
   | { type: 'star'; term: Regex };
 const empty: Regex = { type: 'empty' },
   epsilon: Regex = { type: 'epsilon' };
-export function union(...terms: Regex[]): Regex {
+function union(...terms: Regex[]): Regex {
   const flat = terms
     .flatMap((r) => (r.type === 'union' ? r.terms : [r]))
     .filter((r) => r.type !== 'empty');
@@ -405,19 +398,6 @@ export function regexText(r: Regex, emptySymbol = 'λ', parent = 0): string {
           .map((t) => regexText(t, emptySymbol, priority))
           .join(r.type === 'union' ? '+' : '');
   return priority < parent ? `(${text})` : text;
-}
-export function regexMatches(r: Regex, input: string): boolean {
-  const source = (e: Regex): string =>
-    e.type === 'empty'
-      ? '(?!)'
-      : e.type === 'epsilon'
-        ? ''
-        : e.type === 'literal'
-          ? e.value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-          : e.type === 'star'
-            ? `(?:${source(e.term)})*`
-            : `(?:${e.terms.map(source).join(e.type === 'union' ? '|' : '')})`;
-  return new RegExp(`^(?:${source(r)})$`).exec(input)?.[0] === input;
 }
 export interface Elimination {
   states: string[];

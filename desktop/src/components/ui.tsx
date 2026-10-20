@@ -14,7 +14,7 @@ export function Button({
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: 'default' | 'primary' | 'subtle' | 'danger';
+  variant?: 'default' | 'primary' | 'subtle';
 }) {
   return (
     <button
@@ -55,14 +55,12 @@ export function IconButton({
 export function Field({
   label,
   hint,
-  error,
   variant = 'default',
   className = '',
   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
   label: string;
   hint?: string;
-  error?: string;
   variant?: 'default' | 'prominent';
 }) {
   const id = useId();
@@ -73,16 +71,12 @@ export function Field({
       <label htmlFor={id}>{label}</label>
       <input
         id={id}
-        aria-invalid={!!error}
-        aria-describedby={hint || error ? `${id}-help` : undefined}
+        aria-describedby={hint ? `${id}-help` : undefined}
         {...props}
       />
-      {(hint || error) && (
-        <span
-          id={`${id}-help`}
-          className={error ? 'field-error' : 'field-hint'}
-        >
-          {error || hint}
+      {hint && (
+        <span id={`${id}-help`} className="field-hint">
+          {hint}
         </span>
       )}
     </div>
