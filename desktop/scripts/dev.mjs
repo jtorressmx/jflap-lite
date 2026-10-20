@@ -1,7 +1,9 @@
-import { createServer } from 'vite';
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
+
+import { createServer } from 'vite';
+
 const require = createRequire(import.meta.url);
 const root = fileURLToPath(new URL('../', import.meta.url));
 const server = await createServer({
@@ -9,6 +11,7 @@ const server = await createServer({
   server: { host: '127.0.0.1', port: 5173 },
 });
 await server.listen();
+server.printUrls();
 const address = server.httpServer.address();
 const env = {
   ...process.env,
@@ -19,7 +22,8 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
   cwd: root,
   env,
   stdio: 'inherit',
-  windowsHide: true,
+  // Electron is an interactive GUI; hiding its process also hides its first window.
+  windowsHide: false,
 });
 let closing = false;
 async function close(code = 0) {

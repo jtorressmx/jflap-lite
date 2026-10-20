@@ -8,7 +8,8 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
   cwd: fileURLToPath(new URL('../', import.meta.url)),
   env,
   stdio: 'inherit',
-  windowsHide: true,
+  // Electron is an interactive GUI; hiding its process also hides its first window.
+  windowsHide: false,
 });
 child.on('exit', (code) => process.exit(code || 0));
 child.on('error', (error) => {
