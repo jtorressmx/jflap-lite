@@ -4,6 +4,16 @@ Aplicación de escritorio para construir y simular autómatas finitos y máquina
 
 Permite editar diagramas, abrir y guardar archivos `.jff`, recuperar documentos, deshacer cambios, explorar ramas y trazas, probar varias entradas y exportar diagramas y resultados. Los autómatas finitos incluyen conversión a AFD, minimización, equivalencia, estado trampa, gramáticas, expresiones regulares y distribuciones del grafo.
 
+## Descargar y usar
+
+Para Windows x64. Ejecuta este comando en PowerShell desde la carpeta donde quieras guardar la aplicación:
+
+```powershell
+Invoke-WebRequest -Uri "https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe" -OutFile ".\JFLAP-Lite.exe"
+```
+
+Después abre `JFLAP-Lite.exe`. Es portátil y no requiere instalar Node.js ni Java. También puedes [descargar el ejecutable directamente](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe).
+
 ## Desarrollo
 
 Requiere Node.js 24 y npm. Desde la raíz:

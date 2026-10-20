@@ -48,7 +48,7 @@
           ]
         }
       ],
-      "artifactName": "JFLAP-Lite-${version}-${arch}.${ext}",
+      "artifactName": "JFLAP-Lite-Windows-${arch}.${ext}",
       "icon": "build/icon.ico",
       "signExecutable": false
     },
