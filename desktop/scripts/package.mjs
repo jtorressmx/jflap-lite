@@ -4,6 +4,8 @@ const require = createRequire(import.meta.url);
 if (!['win32', 'darwin'].includes(process.platform)) {
   throw new Error('El empaquetado requiere Windows o macOS.');
 }
+// Electron downloads its host binary on first use, before the packager needs it.
+require('electron');
 const platform = process.platform === 'darwin' ? '--mac' : '--win';
 const env = {
   ...process.env,
