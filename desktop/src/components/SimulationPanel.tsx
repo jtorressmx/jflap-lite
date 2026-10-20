@@ -9,10 +9,12 @@ import {
 import {
   FiArrowRight,
   FiCheckCircle,
+  FiCrosshair,
   FiDownload,
   FiFileText,
   FiImage,
   FiList,
+  FiMinus,
   FiPause,
   FiPauseCircle,
   FiPlay,
@@ -44,6 +46,13 @@ import {
 } from '../domain/turing';
 import { download } from '../lib/files';
 import { exportTablePng } from '../lib/tableImage';
+import {
+  BatchInputTable,
+  BatchTextFileNotice,
+  createBatchInputItem,
+  manualBatchInputs,
+} from './BatchInputTable';
+import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
 import { Badge, Button, EmptyState, Field, IconButton, Modal } from './ui';
 import './SimulationPanel.css';
 
@@ -56,9 +65,17 @@ type Props = {
   machine: Machine;
   preferences: Preferences;
   request?: Request;
-  onActivity: (states: string[], transition?: string) => void;
+  onActivity: (
+    states: string[],
+    transition?: string,
+    guide?: SimulationGuide,
+  ) => void;
   onMessage: (message: string) => void;
   emptySymbol?: 'ε' | 'λ';
+};
+export type SimulationGuide = {
+  state?: string;
+  transitions: string[];
 };
 type BatchResult = {
   id: string;
@@ -86,6 +103,8 @@ const tone = (status?: Session['status']) =>
         : 'accent';
 const terminal = (session: Session) =>
   ['accepted', 'rejected', 'limit'].includes(session.status);
+const MAX_DIRECT_SPEED = 2;
+const MIN_DIRECT_INTERVAL = 1000 / MAX_DIRECT_SPEED;
 const isRejected = (configuration: Configuration) =>
   !!(configuration as Configuration & { rejected?: boolean }).rejected;
 function frontier(session: Session): Configuration[] {
@@ -160,6 +179,89 @@ function ExecutionVerdict({ status }: { status?: Session['status'] }) {
     </p>
   );
 }
+
+function SelectableOutput({ value }: { value: string }) {
+  const outputRef = useRef<HTMLOutputElement>(null);
+  const [selection, setSelection] = useState<{
+    count: number;
+    x: number;
+    y: number;
+    below: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    const updateSelection = () => {
+      const output = outputRef.current;
+      const current = window.getSelection();
+      if (
+        !output ||
+        !current ||
+        current.isCollapsed ||
+        !current.rangeCount
+      ) {
+        setSelection(null);
+        return;
+      }
+      const range = current.getRangeAt(0);
+      if (
+        !output.contains(range.startContainer) ||
+        !output.contains(range.endContainer)
+      ) {
+        setSelection(null);
+        return;
+      }
+      const selectedText = current.toString();
+      if (!selectedText) {
+        setSelection(null);
+        return;
+      }
+      const rect = range.getBoundingClientRect();
+      setSelection({
+        count: Array.from(selectedText).length,
+        x: Math.max(64, Math.min(window.innerWidth - 64, rect.left + rect.width / 2)),
+        y: rect.top < 40 ? rect.bottom : rect.top,
+        below: rect.top < 40,
+      });
+    };
+    document.addEventListener('selectionchange', updateSelection);
+    window.addEventListener('scroll', updateSelection, true);
+    window.addEventListener('resize', updateSelection);
+    return () => {
+      document.removeEventListener('selectionchange', updateSelection);
+      window.removeEventListener('scroll', updateSelection, true);
+      window.removeEventListener('resize', updateSelection);
+    };
+  }, []);
+
+  useEffect(() => setSelection(null), [value]);
+
+  return (
+    <section className="simulation-output" aria-label="Salida de la máquina">
+      <span className="simulation-output-label">Salida</span>
+      <div className="simulation-output-content">
+        <output
+          ref={outputRef}
+          className="simulation-output-value"
+          aria-label="Cadena de salida"
+        >
+          {value}
+        </output>
+      </div>
+      {selection && (
+        <span
+          className={`simulation-output-count${selection.below ? ' is-below' : ''}`}
+          role="tooltip"
+          aria-live="polite"
+          style={{ left: selection.x, top: selection.y }}
+        >
+          {selection.count}{' '}
+          {selection.count === 1 ? 'carácter' : 'caracteres'}
+        </span>
+      )}
+    </section>
+  );
+}
+
 function Tape({
   configuration,
   compact = false,
@@ -305,10 +407,14 @@ export function SimulationPanel({
   const [session, setSession] = useState<Session | null>(null);
   const [playing, setPlaying] = useState(false);
   const [speed, setSpeed] = useState(650);
+  const [directing, setDirecting] = useState(false);
   const [stepLimit, setStepLimit] = useState(1000);
   const [configurationLimit, setConfigurationLimit] = useState(2000);
   const [notice, setNotice] = useState('');
-  const [batchInput, setBatchInput] = useState('');
+  const [batchItems, setBatchItems] = useState<BatchInputItem[]>(() => [
+    createBatchInputItem(),
+  ]);
+  const [batchFile, setBatchFile] = useState<BatchTextFile | null>(null);
   const [results, setResults] = useState<BatchResult[]>([]);
   const [resultModal, setResultModal] = useState<{
     machine: Machine;
@@ -343,6 +449,7 @@ export function SimulationPanel({
       setNotice('La máquina cambió. Inicia una nueva simulación.');
     setSession(null);
     setPlaying(false);
+    setDirecting(false);
     setTraceId(undefined);
     setResults([]);
     setResultModal(null);
@@ -353,6 +460,11 @@ export function SimulationPanel({
       return;
     }
     const config = chosen(session);
+    const path = directing
+      ? traceSession(session, config?.id)
+          .map((item) => item.transitionId)
+          .filter((id): id is string => !!id)
+      : [];
     onActivity(
       session.configurations.length
         ? [
@@ -366,15 +478,19 @@ export function SimulationPanel({
           ? [config.state]
           : [],
       config?.transitionId,
+      directing
+        ? { state: config?.state, transitions: path }
+        : undefined,
     );
     if (terminal(session)) setPlaying(false);
-  }, [session, onActivity]);
+  }, [session, onActivity, directing]);
 
   function begin() {
     try {
       const next = createSession(machine, input, preferences);
       setSession(next);
       setPlaying(false);
+      setDirecting(false);
       setNotice('');
       setTraceId(undefined);
       setTab('simulation');
@@ -383,6 +499,22 @@ export function SimulationPanel({
       onMessage((error as Error).message);
       return null;
     }
+  }
+  function closeSimulation() {
+    setSession(null);
+    setPlaying(false);
+    setDirecting(false);
+    setInput('');
+    setNotice('');
+    setTab('simulation');
+    setTraceId(undefined);
+    setTraceFocusId(undefined);
+    setResults([]);
+    setBatchItems([createBatchInputItem()]);
+    setBatchFile(null);
+    setResultModal(null);
+    onActivity([], undefined);
+    onClose?.();
   }
   function step() {
     try {
@@ -404,6 +536,7 @@ export function SimulationPanel({
   }
   function fast(showOutput = false) {
     try {
+      setDirecting(false);
       const next = focusAccepted(
         runMachine(machine, input, preferences, stepLimit, configurationLimit),
       );
@@ -427,6 +560,16 @@ export function SimulationPanel({
       return;
     }
     const current = !session || terminal(session) ? begin() : session;
+    if (current && !terminal(current)) setPlaying(true);
+  }
+  function toggleDirecting() {
+    if (directing) {
+      setDirecting(false);
+      return;
+    }
+    const current = !session || terminal(session) ? begin() : session;
+    setSpeed((currentSpeed) => Math.max(currentSpeed, MIN_DIRECT_INTERVAL));
+    setDirecting(true);
     if (current && !terminal(current)) setPlaying(true);
   }
   function focusAccepted(next: Session) {
@@ -520,6 +663,7 @@ export function SimulationPanel({
   const currentState = machine.states.find(
     (state) => state.id === visible.state,
   );
+  const output = session ? getOutput(visible) : '';
 
   function freeze(id: string) {
     if (!session) return;
@@ -551,7 +695,10 @@ export function SimulationPanel({
   }
   function runBatch() {
     setPlaying(false);
-    const lines = batchInput.replace(/\r/g, '').split('\n');
+    setDirecting(false);
+    const lines = batchFile
+      ? batchFile.content.replace(/\r/g, '').split('\n')
+      : manualBatchInputs(batchItems);
     const next: BatchResult[] = [];
     for (const line of lines) {
       const parsed = parseBatchLine(line);
@@ -707,7 +854,7 @@ export function SimulationPanel({
     try {
       const [file] = await window.desktop.openFiles({ kind: 'text' });
       if (file) {
-        setBatchInput(file.content);
+        setBatchFile({ name: file.name, content: file.content });
         setResults([]);
       }
     } catch (error) {
@@ -783,20 +930,18 @@ export function SimulationPanel({
           </button>
         ))}
         <div className="simulation-tab-status">
-          {session && (
-            <>
-              <span>{session.steps} pasos</span>
-              {session.status === 'limit' && (
-                <Badge tone="warning">{statusNames[session.status]}</Badge>
-              )}
-            </>
+          {session?.status === 'limit' && (
+            <Badge tone="warning">{statusNames[session.status]}</Badge>
           )}
         </div>
         {onClose && (
-          <IconButton label="Ocultar simulación" onClick={onClose}>
-            <FiX />
+          <IconButton label="Ocultar ventana" tooltip onClick={onClose}>
+            <FiMinus />
           </IconButton>
         )}
+        <IconButton label="Cerrar simulación" tooltip onClick={closeSimulation}>
+          <FiX />
+        </IconButton>
       </div>
       {tab === 'simulation' && (
         <div
@@ -815,6 +960,7 @@ export function SimulationPanel({
                 setInput(event.target.value);
                 setSession(null);
                 setPlaying(false);
+                setDirecting(false);
                 setNotice('');
               }}
               onKeyDown={(event) => {
@@ -822,7 +968,7 @@ export function SimulationPanel({
               }}
             />
             <div className="simulation-buttons">
-              <IconButton label="Reiniciar simulación" onClick={begin}>
+              <IconButton label="Reiniciar simulación" tooltip onClick={begin}>
                 <FiRotateCcw />
               </IconButton>
               <Button onClick={step} disabled={session?.status === 'limit'}>
@@ -832,7 +978,21 @@ export function SimulationPanel({
                 {playing ? <FiPause /> : <FiPlay />}
                 {playing ? 'Pausar' : 'Ejecutar'}
               </Button>
-              <IconButton label="Ejecución rápida" onClick={() => fast()}>
+              <Button
+                variant={directing ? 'primary' : 'default'}
+                className="simulation-follow-button"
+                aria-pressed={directing}
+                title={
+                  directing
+                    ? 'Detener el seguimiento del recorrido'
+                    : `Seguir cada transición (máximo ${MAX_DIRECT_SPEED.toFixed(1)} pasos/s)`
+                }
+                onClick={toggleDirecting}
+              >
+                <FiCrosshair />
+                {directing ? 'Dirigiendo' : 'Dirigir'}
+              </Button>
+              <IconButton label="Ejecución rápida" tooltip onClick={() => fast()}>
                 <FiZap />
               </IconButton>
             </div>
@@ -841,12 +1001,10 @@ export function SimulationPanel({
               <input
                 type="range"
                 min="100"
-                max="1500"
+                max={directing ? 1600 - MIN_DIRECT_INTERVAL : 1500}
                 step="50"
                 value={1600 - speed}
-                onChange={(event) =>
-                  setSpeed(1600 - Number(event.target.value))
-                }
+                onChange={(event) => setSpeed(1600 - Number(event.target.value))}
                 aria-label="Velocidad de simulación"
               />
               <span>{(1000 / speed).toFixed(1)} pasos/s</span>
@@ -875,6 +1033,7 @@ export function SimulationPanel({
               </span>
             </div>
           </div>
+          <SelectableOutput value={output} />
           {notice && (
             <p className="simulation-notice" role="status">
               {notice}
@@ -885,7 +1044,7 @@ export function SimulationPanel({
               <FiPlay /> Continuar con límites mayores
             </Button>
           )}
-          {session && (
+          {session && configurations.length > 1 && (
             <div
               className="configuration-list"
               role="group"
@@ -922,6 +1081,7 @@ export function SimulationPanel({
                         ? 'Descongelar configuración'
                         : 'Congelar configuración'
                     }
+                    tooltip
                     active={session.frozenIds?.includes(config.id)}
                     onClick={() => freeze(config.id)}
                     disabled={
@@ -932,6 +1092,7 @@ export function SimulationPanel({
                   </IconButton>
                   <IconButton
                     label="Ver traza de esta configuración"
+                    tooltip
                     onClick={() => {
                       setTraceId(config.id);
                       setTab('trace');
@@ -941,6 +1102,7 @@ export function SimulationPanel({
                   </IconButton>
                   <IconButton
                     label="Eliminar configuración"
+                    tooltip
                     onClick={() => removeConfiguration(config.id)}
                   >
                     <FiTrash2 />
@@ -959,30 +1121,50 @@ export function SimulationPanel({
           className="batch-content"
         >
           <div className="batch-entry">
-            <label className="sr-only" htmlFor={`${panelId}-multiple-inputs`}>
-              Entradas múltiples
-            </label>
-            <textarea
-              id={`${panelId}-multiple-inputs`}
-              value={batchInput}
-              onChange={(event) => {
-                setBatchInput(event.target.value);
-                setResults([]);
-              }}
-              spellCheck={false}
-            />
+            {batchFile ? (
+              <>
+                <BatchTextFileNotice
+                  fileName={batchFile.name}
+                  onClear={() => setBatchFile(null)}
+                />
+                <textarea
+                  aria-label="Entradas del archivo de texto"
+                  className="batch-text-file-editor"
+                  value={batchFile.content}
+                  onChange={(event) => {
+                    setBatchFile({
+                      ...batchFile,
+                      content: event.target.value,
+                    });
+                    setResults([]);
+                  }}
+                  spellCheck={false}
+                />
+              </>
+            ) : (
+              <BatchInputTable
+                items={batchItems}
+                onChange={(items) => {
+                  setBatchItems(items);
+                  setBatchFile(null);
+                  setResults([]);
+                }}
+              />
+            )}
             <div className="batch-actions">
               <Button variant="primary" onClick={runBatch}>
                 <FiPlay /> Probar todas
               </Button>
               <IconButton
                 label="Cargar entradas desde archivo de texto"
+                tooltip
                 onClick={() => void openBatchText()}
               >
                 <FiUpload />
               </IconButton>
               <IconButton
                 label="Exportar resultados como texto"
+                tooltip
                 disabled={!results.length}
                 onClick={() => void saveLegacyResults()}
               >
@@ -990,6 +1172,7 @@ export function SimulationPanel({
               </IconButton>
               <IconButton
                 label="Exportar resultados como imagen"
+                tooltip
                 disabled={!results.length}
                 onClick={() => void saveResultsImage()}
               >
@@ -1063,6 +1246,7 @@ export function SimulationPanel({
                             {row.session && (
                               <IconButton
                                 label={`Ver resultado y traza de ${row.input || 'entrada vacía'}`}
+                                tooltip
                                 onClick={() =>
                                   setResultModal({
                                     machine: row.machine,
@@ -1090,7 +1274,7 @@ export function SimulationPanel({
             onChange={async (event) => {
               const file = event.target.files?.[0];
               if (file) {
-                setBatchInput(await file.text());
+                setBatchFile({ name: file.name, content: await file.text() });
                 setResults([]);
               }
               event.target.value = '';

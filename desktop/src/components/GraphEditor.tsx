@@ -3,8 +3,17 @@ import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import { FiArrowRight, FiCheck, FiTrash2, FiX } from 'react-icons/fi';
-import { Field, IconButton, Popover } from './ui';
+import {
+  FiArrowRight,
+  FiCheck,
+  FiEye,
+  FiList,
+  FiMinus,
+  FiPlus,
+  FiTrash2,
+  FiX,
+} from 'react-icons/fi';
+import { Button, Field, IconButton, Popover } from './ui';
 import {
   defaultPreferences,
   movementSymbol,
@@ -19,12 +28,20 @@ import {
 } from '../domain/turing';
 import type { Preferences } from '../domain/model';
 import type { Machine } from '../domain/model';
+import { transitionLabels } from '../domain/finite/transitionInput';
 import './GraphEditor.css';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type State = Machine['states'][number];
 type Transition = Machine['transitions'][number];
+type TransitionDraft = {
+  key: string;
+  id?: string;
+  read: string;
+  write: string;
+  move: Transition['move'];
+};
 type Props = {
   readOnly?: boolean;
   emptySymbol?: 'ε' | 'λ';
@@ -43,10 +60,14 @@ type Props = {
   onChange: (machine: Machine, commit?: boolean) => void;
   onEditState: (id: string) => void;
   onEditTransition: (id: string) => void;
+  onViewTransitionRules?: (id: string) => void;
   onCreateTransition: (from: string, to: string) => void;
   onEditNote: (id: string) => void;
   activeStates?: string[];
   activeTransition?: string;
+  followCamera?: boolean;
+  followState?: string;
+  followedTransitions?: string[];
   highlightStates?: string[];
   showLabels: boolean;
   zoom: number;
@@ -67,7 +88,6 @@ type Drag = {
   additive?: boolean;
 };
 
-const RADIUS = 32;
 const symbol = (value: string) => (value === '' ? '□' : value);
 function transitionText(
   transition: Transition,
@@ -97,7 +117,7 @@ function edgeGeometry(
   to: State,
   reverse: boolean,
   transition: Transition,
-  radius = RADIUS,
+  radius: number,
   labelScale = 1,
 ) {
   const control = (transition as Transition & { control?: Point }).control;
@@ -120,12 +140,12 @@ function edgeGeometry(
   const firstAngle = Math.atan2(midpoint.y - from.y, midpoint.x - from.x);
   const lastAngle = Math.atan2(to.y - midpoint.y, to.x - midpoint.x);
   const start = {
-    x: from.x + Math.cos(firstAngle) * (radius + 1),
-    y: from.y + Math.sin(firstAngle) * (radius + 1),
+    x: from.x + Math.cos(firstAngle) * (radius + 0.5 * labelScale),
+    y: from.y + Math.sin(firstAngle) * (radius + 0.5 * labelScale),
   };
   const end = {
-    x: to.x - Math.cos(lastAngle) * (radius + 7 * labelScale),
-    y: to.y - Math.sin(lastAngle) * (radius + 7 * labelScale),
+    x: to.x - Math.cos(lastAngle) * (radius + 1.5 * labelScale),
+    y: to.y - Math.sin(lastAngle) * (radius + 1.5 * labelScale),
   };
   return {
     path: `M ${start.x} ${start.y} Q ${midpoint.x} ${midpoint.y} ${end.x} ${end.y}`,
@@ -135,6 +155,39 @@ function edgeGeometry(
     },
     control: midpoint,
   };
+}
+
+function connectionPreviewPath(
+  from: State,
+  cursor: Point,
+  target: State | undefined,
+  radius: number,
+  labelScale: number,
+) {
+  if (target?.id === from.id) {
+    const top = { x: from.x, y: from.y - radius - 50 * labelScale };
+    return `M ${from.x - radius * 0.707} ${from.y - radius * 0.707} C ${top.x - 48 * labelScale} ${top.y - 28 * labelScale}, ${top.x + 48 * labelScale} ${top.y - 28 * labelScale}, ${from.x + radius * 0.707} ${from.y - radius * 0.707}`;
+  }
+
+  const destination = target ?? cursor;
+  const control = {
+    x: (from.x + destination.x) / 2,
+    y: Math.min(from.y, destination.y) - radius - 48 * labelScale,
+  };
+  const startAngle = Math.atan2(control.y - from.y, control.x - from.x);
+  const start = {
+    x: from.x + Math.cos(startAngle) * (radius + 0.5 * labelScale),
+    y: from.y + Math.sin(startAngle) * (radius + 0.5 * labelScale),
+  };
+  let end = cursor;
+  if (target) {
+    const endAngle = Math.atan2(control.y - target.y, control.x - target.x);
+    end = {
+      x: target.x + Math.cos(endAngle) * (radius + 1.5 * labelScale),
+      y: target.y + Math.sin(endAngle) * (radius + 1.5 * labelScale),
+    };
+  }
+  return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
 export function GraphEditor({
@@ -147,6 +200,7 @@ export function GraphEditor({
   onChange,
   onEditState: _editState,
   onEditTransition: _editTransition,
+  onViewTransitionRules,
   onCreateTransition: _createTransition,
   onEditNote,
   editRequest,
@@ -154,6 +208,9 @@ export function GraphEditor({
   preferences = defaultPreferences,
   activeStates = [],
   activeTransition,
+  followCamera = false,
+  followState,
+  followedTransitions = [],
   highlightStates = [],
   showLabels,
   zoom,
@@ -173,8 +230,8 @@ export function GraphEditor({
   const suppressContext = useRef(false);
   function anchor(location: Point) {
     return {
-      x: location.x * zoom + pan.x + stateRadius,
-      y: location.y * zoom + pan.y - stateRadius,
+      x: location.x * zoom + pan.x + stateRadius * zoom,
+      y: location.y * zoom + pan.y - stateRadius * zoom,
     };
   }
   function onEditState(id: string) {
@@ -238,8 +295,26 @@ export function GraphEditor({
   const [box, setBox] = useState<{ start: Point; end: Point } | null>(null);
   const [panning, setPanning] = useState(false);
   const markerId = useId().replace(/:/g, '');
-  const labelScale = Math.max(1, 1 / zoom);
-  const stateRadius = Math.max(RADIUS, 26 / zoom) * stateScale;
+  const labelScale = 1;
+  const radius = useMemo(
+    () =>
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          '--graph-state-radius',
+        ),
+      ) || 20,
+    [],
+  );
+  const haloGap = useMemo(
+    () =>
+      Number.parseFloat(
+        getComputedStyle(document.documentElement).getPropertyValue(
+          '--graph-state-halo-gap',
+        ),
+      ) || 3,
+    [],
+  );
+  const stateRadius = radius * stateScale;
   const live = useRef({
     machine,
     selected,
@@ -301,6 +376,35 @@ export function GraphEditor({
     // A new fit request deliberately fits the current document, not every edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fitKey, size.width, size.height]);
+
+  useEffect(() => {
+    if (followCamera && zoom < 1) onZoom(1);
+  }, [followCamera, onZoom, zoom]);
+
+  useEffect(() => {
+    const width = Math.max(size.width, svg.current?.clientWidth ?? 0);
+    const height = Math.max(size.height, svg.current?.clientHeight ?? 0);
+    if (!followCamera || !followState || !width || !height) return;
+    const state = machine.states.find((item) => item.id === followState);
+    if (!state) return;
+    const nextPan = {
+      x: width / 2 - state.x * zoom,
+      y: height / 2 - state.y * zoom,
+    };
+    setPan((current) =>
+      Math.abs(current.x - nextPan.x) < 0.5 &&
+      Math.abs(current.y - nextPan.y) < 0.5
+        ? current
+        : nextPan,
+    );
+  }, [
+    followCamera,
+    followState,
+    machine.states,
+    size.width,
+    size.height,
+    zoom,
+  ]);
 
   useEffect(() => {
     if (!didFit.current || previousZoom.current === zoom) return;
@@ -426,6 +530,32 @@ export function GraphEditor({
     onChange(next);
     onSelect(selected.filter((id) => remaining.has(id)));
   }
+  function straightenTransition(id: string) {
+    const current = live.current.machine;
+    const selectedTransition = current.transitions.find(
+      (transition) => transition.id === id,
+    );
+    if (!selectedTransition) return;
+    const hasControl = current.transitions.some(
+      (transition) =>
+        transition.from === selectedTransition.from &&
+        transition.to === selectedTransition.to &&
+        transition.control,
+    );
+    if (!hasControl) return;
+    const transitions = current.transitions.map((transition) => {
+      if (
+        transition.from !== selectedTransition.from ||
+        transition.to !== selectedTransition.to ||
+        !transition.control
+      )
+        return transition;
+      const straightened = { ...transition };
+      delete straightened.control;
+      return straightened;
+    });
+    onChange({ ...current, transitions });
+  }
   function choose(id: string, additive: boolean) {
     const next = additive
       ? selected.includes(id)
@@ -534,7 +664,7 @@ export function GraphEditor({
         label: '',
         x: location.x,
         y: location.y,
-        initial: machine.states.length === 0,
+        initial: false,
         final: false,
       };
       onChange({ ...machine, states: [...machine.states, state] });
@@ -760,7 +890,7 @@ export function GraphEditor({
   return (
     <div
       ref={container}
-      className={`graph-editor graph-tool-${tool}${panning ? ' is-panning' : ''}`}
+      className={`graph-editor graph-tool-${tool}${panning ? ' is-panning' : ''}${followCamera ? ' is-following' : ''}`}
     >
       <svg
         ref={svg}
@@ -798,7 +928,7 @@ export function GraphEditor({
             name: `q${index}`,
             label: '',
             ...location,
-            initial: machine.states.length === 0,
+            initial: false,
             final: false,
           };
           onChange({ ...machine, states: [...machine.states, state] });
@@ -873,10 +1003,13 @@ export function GraphEditor({
             const isActive = group.some(
               (transition) => activeTransition === transition.id,
             );
+            const isFollowed = group.some((transition) =>
+              followedTransitions.includes(transition.id),
+            );
             return (
               <g
                 key={first.id}
-                className={`graph-edge${isSelected ? ' is-selected' : ''}${isActive ? ' is-active' : ''}`}
+                className={`graph-edge${isSelected ? ' is-selected' : ''}${isActive ? ' is-active' : ''}${isFollowed ? ' is-followed' : ''}`}
               >
                 <path
                   d={geometry.path}
@@ -892,7 +1025,7 @@ export function GraphEditor({
                 <path
                   d={geometry.path}
                   className="edge-line"
-                  markerEnd={`url(#${markerId}-${isActive || isSelected ? 'active-arrow' : 'arrow'})`}
+                  markerEnd={`url(#${markerId}-${isActive || isSelected || isFollowed ? 'active-arrow' : 'arrow'})`}
                 />
                 {isSelected && (
                   <circle
@@ -966,12 +1099,22 @@ export function GraphEditor({
             (preview || editor?.from) &&
             (() => {
               const from = machine.states.find((s) => s.id === transitionFrom);
-              const end = preview;
-              if (!from || !end) return null;
+              if (!from || !preview) return null;
+              const target = machine.states.find(
+                (state) =>
+                  Math.hypot(state.x - preview.x, state.y - preview.y) <=
+                  stateRadius + 12 / zoom,
+              );
               return (
                 <path
                   className="connection-preview"
-                  d={`M ${from.x} ${from.y} L ${end.x} ${end.y}`}
+                  d={connectionPreviewPath(
+                    from,
+                    preview,
+                    target,
+                    stateRadius,
+                    labelScale,
+                  )}
                   markerEnd={`url(#${markerId}-active-arrow)`}
                 />
               );
@@ -1053,11 +1196,11 @@ export function GraphEditor({
                   markerEnd={`url(#${markerId}-${activeStates.includes(state.id) || selected.includes(state.id) ? 'active-arrow' : 'arrow'})`}
                 />
               )}
-              <circle r={stateRadius + 6 * labelScale} className="state-halo" />
+              <circle r={stateRadius + haloGap * labelScale} className="state-halo" />
               <circle r={stateRadius} className="state-body" />
               {state.final && (
                 <circle
-                  r={stateRadius - 5 * labelScale}
+                  r={stateRadius - 3 * labelScale}
                   className="state-final"
                 />
               )}
@@ -1126,30 +1269,29 @@ export function GraphEditor({
             />
           ) : (
             <TransitionProperties
-              emptySymbol={emptySymbol}
               machine={machine}
               preferences={preferences}
               transition={machine.transitions.find((t) => t.id === editor.id)}
               from={editor.from}
               to={editor.to}
-              onSave={(updated, repeat) => {
+              onSave={(updates, repeat) => {
                 const current = live.current.machine;
                 onChange({
                   ...current,
                   transitions: editor.id
-                    ? current.transitions.map((t) =>
-                        t.id === editor.id ? updated : t,
+                    ? current.transitions.flatMap((t) =>
+                        t.id === editor.id ? updates : [t],
                       )
-                    : [...current.transitions, updated],
+                    : [...current.transitions, ...updates],
                 });
-                onSelect([updated.id]);
+                onSelect(updates.map((transition) => transition.id));
                 setEditor(
                   repeat
                     ? {
                         ...editor,
                         id: undefined,
-                        from: updated.from,
-                        to: updated.to,
+                        from: updates[0].from,
+                        to: updates[0].to,
                       }
                     : null,
                 );
@@ -1162,7 +1304,13 @@ export function GraphEditor({
                     }
                   : undefined
               }
+              onStraighten={
+                editor.id
+                  ? () => straightenTransition(editor.id!)
+                  : undefined
+              }
               onClose={() => setEditor(null)}
+              onViewRules={onViewTransitionRules}
             />
           )}
         </Popover>
@@ -1187,6 +1335,12 @@ function StateProperties({
   if (!state) return null;
   const save = () =>
     onChange({ ...state, name: name.trim() || state.name, label });
+  const submitOnEnter = (event: ReactKeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
   return (
     <form
       onSubmit={(event) => {
@@ -1206,12 +1360,14 @@ function StateProperties({
         autoFocus
         value={name}
         onChange={(e) => setName(e.target.value)}
+        onKeyDown={submitOnEnter}
         onBlur={save}
       />
       <Field
         label="Etiqueta"
         value={label}
         onChange={(e) => setLabel(e.target.value)}
+        onKeyDown={submitOnEnter}
         onBlur={save}
       />
       <div className="state-flags">
@@ -1253,7 +1409,6 @@ function StateProperties({
   );
 }
 function TransitionProperties({
-  emptySymbol = 'ε',
   machine,
   preferences,
   transition,
@@ -1261,55 +1416,169 @@ function TransitionProperties({
   to,
   onSave,
   onDelete,
+  onStraighten,
   onClose,
+  onViewRules,
 }: {
-  emptySymbol?: 'ε' | 'λ';
   machine: Machine;
   preferences: Preferences;
   transition?: Transition;
   from?: string;
   to?: string;
-  onSave: (t: Transition, repeat?: boolean) => void;
+  onSave: (t: Transition[], repeat?: boolean) => void;
   onDelete?: () => void;
+  onStraighten?: () => void;
   onClose: () => void;
+  onViewRules?: (id: string) => void;
 }) {
   const [read, setRead] = useState(transition?.read || ''),
     [write, setWrite] = useState(transition?.write || ''),
     [move, setMove] = useState<Transition['move']>(transition?.move || 'R'),
+    [multipleRules, setMultipleRules] = useState(false),
+    [rules, setRules] = useState<TransitionDraft[]>(() => [
+      {
+        key: transition?.id ?? crypto.randomUUID(),
+        id: transition?.id,
+        read: transition?.read || '',
+        write: transition?.write || '',
+        move: transition?.move || 'R',
+      },
+    ]),
     [error, setError] = useState('');
   const finite = machineKind(machine) === 'fa';
   const a = transition?.from ?? from!,
     b = transition?.to ?? to!;
+  const hasCurvature = machine.transitions.some(
+    (item) => item.from === a && item.to === b && item.control,
+  );
+  function changeRule(index: number, update: Partial<TransitionDraft>) {
+    setRules((current) =>
+      current.map((rule, ruleIndex) =>
+        ruleIndex === index ? { ...rule, ...update } : rule,
+      ),
+    );
+    if (index === 0) {
+      if (update.read !== undefined) setRead(update.read);
+      if (update.write !== undefined) setWrite(update.write);
+      if (update.move !== undefined) setMove(update.move);
+    }
+  }
+  function showMultipleRules() {
+    setRules((current) =>
+      current.map((rule, index) =>
+        index === 0 ? { ...rule, read, write, move } : rule,
+      ),
+    );
+    setMultipleRules((current) => !current);
+    setError('');
+  }
+  function addRule() {
+    setRules((current) => [
+      ...current,
+      {
+        key: crypto.randomUUID(),
+        read: '',
+        write: '',
+        move: 'R',
+      },
+    ]);
+    setError('');
+  }
+  function removeRule(index: number) {
+    const next = rules.filter((_, ruleIndex) => ruleIndex !== index);
+    setRules(next);
+    if (index === 0 && next[0]) {
+      setRead(next[0].read);
+      setWrite(next[0].write);
+      setMove(next[0].move);
+    }
+    setError('');
+  }
   function save(repeat = false) {
-    const updated: Transition = {
-      ...transition,
-      id: transition?.id ?? crypto.randomUUID(),
+    if (finite) {
+      try {
+        const labels = transitionLabels(read);
+        const additions = labels
+          .filter(
+            (label) =>
+              !machine.transitions.some(
+                (t) =>
+                  t.id !== transition?.id &&
+                  t.from === a &&
+                  t.to === b &&
+                  t.read === label,
+              ),
+          )
+          .map(
+            (label, index): Transition => ({
+              ...transition,
+              id:
+                index === 0 && transition ? transition.id : crypto.randomUUID(),
+              from: a,
+              to: b,
+              read: label,
+              write: '',
+              move: 'R',
+            }),
+          );
+        if (!additions.length) {
+          setError('Esta transición ya existe.');
+          return;
+        }
+        onSave(additions, repeat);
+        if (repeat) {
+          setRead('');
+          setError('');
+        }
+      } catch (error) {
+        setError((error as Error).message);
+      }
+      return;
+    }
+    const updates = rules.map((rule): Transition => ({
+      ...(rule.id === transition?.id ? transition : {}),
+      id: rule.id ?? crypto.randomUUID(),
       from: a,
       to: b,
-      read: finite ? read : normalizeRead(read),
-      write: finite ? '' : normalizeWrite(write),
-      move: finite ? 'R' : move,
-    };
-    const issue = finite ? null : validateTransition(updated, preferences);
-    if (issue) {
-      setError(issue);
-      return;
+      read: normalizeRead(rule.read),
+      write: normalizeWrite(rule.write),
+      move: rule.move,
+    }));
+    const signatures = new Set<string>();
+    for (const [index, updated] of updates.entries()) {
+      const issue = validateTransition(updated, preferences);
+      if (issue) {
+        setError(`Regla ${index + 1}: ${issue}`);
+        return;
+      }
+      const signature = JSON.stringify([
+        updated.from,
+        updated.to,
+        updated.read,
+        updated.write,
+        updated.move,
+      ]);
+      if (signatures.has(signature)) {
+        setError(`La regla ${index + 1} está repetida en la tabla.`);
+        return;
+      }
+      if (
+        machine.transitions.some(
+          (existing) =>
+            existing.id !== transition?.id &&
+            existing.from === updated.from &&
+            existing.to === updated.to &&
+            existing.read === updated.read &&
+            existing.write === updated.write &&
+            existing.move === updated.move,
+        )
+      ) {
+        setError(`La regla ${index + 1} ya existe.`);
+        return;
+      }
+      signatures.add(signature);
     }
-    if (
-      machine.transitions.some(
-        (t) =>
-          t.id !== updated.id &&
-          t.from === a &&
-          t.to === b &&
-          t.read === updated.read &&
-          t.write === updated.write &&
-          t.move === updated.move,
-      )
-    ) {
-      setError('Esta transición ya existe.');
-      return;
-    }
-    onSave(updated, repeat);
+    onSave(updates, repeat);
     if (repeat) {
       setRead('');
       setError('');
@@ -1329,69 +1598,215 @@ function TransitionProperties({
       }}
     >
       <div className="popover-heading">
-        <span>
-          {machine.states.find((s) => s.id === a)?.name} <FiArrowRight />{' '}
-          {machine.states.find((s) => s.id === b)?.name}
+        <span className="transition-endpoints">
+          <span className="transition-endpoint">
+            {machine.states.find((s) => s.id === a)?.name}
+          </span>
+          <FiArrowRight aria-hidden="true" />
+          <span className="transition-endpoint">
+            {machine.states.find((s) => s.id === b)?.name}
+          </span>
         </span>
-        <IconButton label="Cancelar transición" onClick={onClose}>
-          <FiX />
-        </IconButton>
-      </div>
-      {finite && (
-        <Field
-          label="Símbolo o cadena"
-          hint={`Vacío: ${emptySymbol}. También admite cadenas y rangos como [a-z]. Mayús+Intro guarda y añade otra.`}
-          autoFocus
-          value={read}
-          onChange={(e) => setRead(e.target.value)}
-          placeholder="Ej. a"
-          spellCheck={false}
-        />
-      )}
-      <div className="transition-expression">
-        {!finite && (
-          <>
-            <input
-              aria-label="Leer"
-              maxLength={1}
-              autoFocus
-              value={read}
-              placeholder="□"
-              onChange={(e) => setRead(e.target.value.slice(0, 1))}
-              spellCheck={false}
-            />
-            <span>;</span>
-            <input
-              aria-label="Escribir"
-              maxLength={1}
-              value={write}
-              placeholder="□"
-              onChange={(e) => setWrite(e.target.value.slice(0, 1))}
-              spellCheck={false}
-            />
-            <span>,</span>
-            <select
-              aria-label="Movimiento"
-              value={move}
-              onChange={(e) => setMove(e.target.value as Transition['move'])}
+        <div className="popover-heading-actions">
+          {transition && onViewRules && (
+            <IconButton
+              label="Ver transiciones (Ctrl+R)"
+              onClick={() => onViewRules(transition.id)}
             >
-              <option value="L">Izquierda</option>
-              <option value="R">Derecha</option>
-              {(preferences.allowStay || transition?.move === 'S') && (
-                <option value="S">Permanecer</option>
-              )}
-            </select>
-          </>
-        )}
-        <IconButton label="Guardar transición" onClick={() => save()}>
-          <FiCheck />
-        </IconButton>
-        {onDelete && (
-          <IconButton label="Eliminar transición" onClick={onDelete}>
-            <FiTrash2 />
+              <FiEye />
+            </IconButton>
+          )}
+          <IconButton label="Cancelar transición" onClick={onClose}>
+            <FiX />
           </IconButton>
-        )}
+        </div>
       </div>
+      {!multipleRules ? (
+        <>
+          <div className="transition-expression">
+            {finite ? (
+              <input
+                aria-label="Símbolos"
+                autoFocus
+                value={read}
+                onChange={(e) => setRead(e.target.value)}
+                spellCheck={false}
+              />
+            ) : (
+              <>
+                <input
+                  aria-label="Leer"
+                  maxLength={1}
+                  autoFocus
+                  value={read}
+                  placeholder="□"
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 1);
+                    setRead(value);
+                    changeRule(0, { read: value });
+                  }}
+                  spellCheck={false}
+                />
+                <span>;</span>
+                <input
+                  aria-label="Escribir"
+                  maxLength={1}
+                  value={write}
+                  placeholder="□"
+                  onChange={(e) => {
+                    const value = e.target.value.slice(0, 1);
+                    setWrite(value);
+                    changeRule(0, { write: value });
+                  }}
+                  spellCheck={false}
+                />
+                <span>,</span>
+                <select
+                  aria-label="Movimiento"
+                  value={move}
+                  onChange={(e) => {
+                    const value = e.target.value as Transition['move'];
+                    setMove(value);
+                    changeRule(0, { move: value });
+                  }}
+                >
+                  <option value="L">Izquierda</option>
+                  <option value="R">Derecha</option>
+                  {(preferences.allowStay || transition?.move === 'S') && (
+                    <option value="S">Permanecer</option>
+                  )}
+                </select>
+              </>
+            )}
+            <IconButton
+              label={rules.length > 1 ? `Guardar ${rules.length} transiciones` : 'Guardar transición'}
+              onClick={() => save()}
+            >
+              <FiCheck />
+            </IconButton>
+            {onDelete && (
+              <IconButton label="Eliminar transición" onClick={onDelete}>
+                <FiTrash2 />
+              </IconButton>
+            )}
+          </div>
+          {(!finite || hasCurvature) && (
+            <div className="transition-multiple-toggle">
+              {hasCurvature && onStraighten && (
+                <Button variant="subtle" onClick={onStraighten}>
+                  <FiMinus />
+                  Quitar curvatura
+                </Button>
+              )}
+              {!finite && (
+                <Button variant="subtle" onClick={showMultipleRules}>
+                  <FiList />
+                  {rules.length > 1 ? `Tabla · ${rules.length} reglas` : 'Varias reglas'}
+                </Button>
+              )}
+            </div>
+          )}
+        </>
+      ) : (
+        <>
+          <div className="transition-multiple-heading">
+            <strong>Reglas</strong>
+            <Button variant="subtle" onClick={addRule}>
+              <FiPlus />
+              Agregar fila
+            </Button>
+          </div>
+          <div className="transition-rules-scroll">
+            <table className="transition-rules-table">
+              <caption className="sr-only">Reglas de transición</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Lee</th>
+                  <th scope="col">Escribe</th>
+                  <th scope="col">Movimiento</th>
+                  <th scope="col"><span className="sr-only">Acción</span></th>
+                </tr>
+              </thead>
+              <tbody>
+                {rules.map((rule, index) => (
+                  <tr key={rule.key}>
+                    <td>
+                      <input
+                        aria-label={`Leer regla ${index + 1}`}
+                        maxLength={1}
+                        autoFocus={index === 0}
+                        value={rule.read}
+                        onChange={(e) =>
+                          changeRule(index, { read: e.target.value.slice(0, 1) })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <input
+                        aria-label={`Escribir regla ${index + 1}`}
+                        maxLength={1}
+                        value={rule.write}
+                        onChange={(e) =>
+                          changeRule(index, { write: e.target.value.slice(0, 1) })
+                        }
+                      />
+                    </td>
+                    <td>
+                      <select
+                        aria-label={`Movimiento regla ${index + 1}`}
+                        value={rule.move}
+                        onChange={(e) =>
+                          changeRule(index, {
+                            move: e.target.value as Transition['move'],
+                          })
+                        }
+                      >
+                        <option value="L">Izquierda</option>
+                        <option value="R">Derecha</option>
+                        {(preferences.allowStay || rule.move === 'S') && (
+                          <option value="S">Permanecer</option>
+                        )}
+                      </select>
+                    </td>
+                    <td>
+                      <IconButton
+                        label={`Eliminar regla ${index + 1}`}
+                        disabled={rules.length === 1}
+                        onClick={() => removeRule(index)}
+                      >
+                        <FiTrash2 />
+                      </IconButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="transition-multiple-actions">
+            {hasCurvature && onStraighten && (
+              <Button variant="subtle" onClick={onStraighten}>
+                <FiMinus />
+                Quitar curvatura
+              </Button>
+            )}
+            <Button variant="subtle" onClick={showMultipleRules}>
+              <FiList />
+              Una regla
+            </Button>
+            <IconButton
+              label={rules.length > 1 ? `Guardar ${rules.length} transiciones` : 'Guardar transición'}
+              onClick={() => save()}
+            >
+              <FiCheck />
+            </IconButton>
+            {onDelete && (
+              <IconButton label="Eliminar transición" onClick={onDelete}>
+                <FiTrash2 />
+              </IconButton>
+            )}
+          </div>
+        </>
+      )}
       {error && (
         <p role="alert" className="field-error">
           {error}

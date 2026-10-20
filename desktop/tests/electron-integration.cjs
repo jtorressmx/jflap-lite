@@ -322,7 +322,7 @@ async function run() {
   ];
   await fs.writeFile(
     example,
-    `<structure><type>turing</type><automaton>${Array.from({ length: 5 }, (_, i) => `<state id="${i}" name="q${i}"><x>${150 + i * 130}</x><y>${200 + (i % 2) * 130}</y><label>${i === 0 ? 'Buscar 0' : ''}</label>${i === 0 ? '<initial/>' : ''}${i === 4 ? '<final/>' : ''}</state>`).join('')}${rows.map(([a, b, r, w, m]) => `<transition><from>${a}</from><to>${b}</to><read>${r}</read><write>${w}</write><move>${m}</move></transition>`).join('')}</automaton></structure>`,
+    `<structure><type>turing</type><automaton>${Array.from({ length: 5 }, (_, i) => `<state id="${i}" name="q${i}"><x>${150 + i * 130}</x><y>${200 + (i % 2) * 130}</y><label>${i === 0 ? 'Buscar 0' : ''}</label>${i === 0 ? '<initial/>' : ''}${i === 4 ? '<final/>' : ''}</state>`).join('')}${rows.map(([a, b, r, w, m]) => `<transition><from>${a}</from><to>${b}</to><read>${r}</read><write>${w}</write><move>${m}</move>${a === 0 && b === 1 && r === '0' ? '<controlx>215</controlx><controly>180</controly>' : ''}</transition>`).join('')}</automaton></structure>`,
   );
   nextOpen = { canceled: false, filePaths: [example] };
   await menu('Archivo', 'Abrir archivo…');
@@ -330,8 +330,89 @@ async function run() {
     () => evaluate('document.querySelectorAll(".graph-state").length===5'),
     'fixture importada',
   );
+  assert.equal(
+    await evaluate(
+      '!!document.querySelector(".active-document > button[aria-label^=\\"Cerrar \\"]")',
+    ),
+    false,
+  );
+  assert.equal(
+    await evaluate(
+      '!!document.querySelector(".active-document > button[aria-label=\\"Nueva máquina\\"]")',
+    ),
+    true,
+  );
+  mark('barra del documento conserva «Nueva máquina» sin la X directa');
+  assert.match(
+    await evaluate('document.querySelector(".graph-edge .edge-line").getAttribute("d")'),
+    /Q 215 180 /,
+  );
+  await evaluate(
+    `document.querySelector('.edge-label').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`,
+  );
+  await wait(
+    () => evaluate('[...document.querySelectorAll(".transition-popover button")].some(button=>button.textContent.includes("Quitar curvatura"))'),
+    'acción para quitar la curvatura',
+  );
+  await click('button', 'Quitar curvatura');
+  await wait(
+    () => evaluate('document.querySelector(".graph-edge .edge-line").getAttribute("d").includes("Q 215 265 ")'),
+    'transición recta al quitar su control',
+  );
+  assert.equal(
+    await evaluate('[...document.querySelectorAll(".transition-popover button")].some(button=>button.textContent.includes("Quitar curvatura"))'),
+    false,
+  );
+  await click('button[aria-label]', 'Cancelar transición');
+  mark('Turing: la acción Quitar curvatura restablece la línea recta');
+  await evaluate(
+    `(()=>{const edge=[...document.querySelectorAll('.edge-label')].find(label=>label.getAttribute('aria-label')?.startsWith('Transición de q1 a q1:'));if(!edge)throw Error('No se encontró q1 → q1: '+JSON.stringify([...document.querySelectorAll('.edge-label')].map(label=>label.getAttribute('aria-label'))));edge.dispatchEvent(new MouseEvent('dblclick',{bubbles:true}));})()`,
+  );
+  await wait(
+    () => evaluate('[...document.querySelectorAll(".transition-popover button[aria-label]")].some(button=>button.getAttribute("aria-label")==="Ver transiciones (Ctrl+R)" )'),
+    'acción visual para ver las reglas',
+  );
+  assert.equal(
+    await evaluate('[...document.querySelectorAll(".transition-popover button[aria-label]")].find(button=>button.getAttribute("aria-label")==="Ver transiciones (Ctrl+R)").textContent.trim()'),
+    '',
+  );
+  await click('button[aria-label]', 'Ver transiciones (Ctrl+R)');
+  await wait(
+    () => evaluate('document.querySelector("dialog[open] h2")?.textContent==="Reglas de transición"'),
+    'modal con reglas de transición',
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".transition-view-row").length'),
+    2,
+  );
+  assert.deepEqual(
+    await evaluate('[...document.querySelectorAll(".transition-view-row code")].map(rule=>rule.textContent)'),
+    ['0; 0, →', 'Y; Y, →'],
+  );
+  await click('button[aria-label]', 'Cerrar diálogo');
+  await click('button[aria-label]', 'Cancelar transición');
+  await evaluate(
+    `(()=>{const edge=[...document.querySelectorAll('.edge-label')].find(label=>label.getAttribute('aria-label')?.startsWith('Transición de q1 a q1:'));edge.focus();edge.dispatchEvent(new KeyboardEvent('keydown',{key:' ',bubbles:true}));})()`,
+  );
+  await wait(
+    () => evaluate('[...document.querySelectorAll(".edge-label")].some(edge=>edge.classList.contains("is-selected")&&edge.getAttribute("aria-label")?.startsWith("Transición de q1 a q1:"))'),
+    'selección de una transición por teclado',
+  );
+  await evaluate(
+    'document.body.dispatchEvent(new KeyboardEvent("keydown",{key:"r",ctrlKey:true,bubbles:true,cancelable:true}))',
+  );
+  await wait(
+    () => evaluate('document.querySelector("dialog[open] h2")?.textContent==="Reglas de transición"'),
+    'atajo Ctrl+R para ver reglas',
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".transition-view-row").length'),
+    2,
+  );
+  await click('button[aria-label]', 'Cerrar diálogo');
+  mark('Turing: lista de reglas por icono y atajo Ctrl+R sobre una transición');
   await menu('Archivo de trabajo', 'Sin título.jff');
-  await click('button[aria-label]', 'Cerrar Sin título');
+  await menu('Archivo', 'Cerrar documento');
   await wait(
     () => evaluate('document.querySelectorAll(".graph-state").length===5'),
     'una pestaña con fixture',
@@ -339,6 +420,22 @@ async function run() {
   mark(
     'UI sin paneles laterales, simulación cerrada, menú nativo oculto y nuevo lienzo vacío',
   );
+  await click('button[aria-label]', 'Preferencias');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector("dialog[open] h2")?.textContent==="Preferencias"',
+      ),
+    'ventana de preferencias',
+  );
+  assert.ok(
+    await evaluate(
+      '(()=>{const dialog=document.querySelector("dialog[open]");const rect=dialog.getBoundingClientRect();return rect.width>=innerWidth-40&&rect.height>=innerHeight-40})()',
+    ),
+  );
+  await click('dialog[open] button', 'Cerrar diálogo');
+  await wait(() => evaluate('!document.querySelector("dialog[open]")'), 'cerrar preferencias');
+  mark('Preferencias ocupa la ventana y mantiene visible su barra inferior');
   const uiSaved = path.join(output, 'ui-ejemplo.jff');
   nextSave = { canceled: false, filePath: uiSaved };
   await menu('Archivo', 'Guardar como…');
@@ -346,8 +443,13 @@ async function run() {
   const exampleXml = await fs.readFile(uiSaved, 'utf8');
   assert.match(exampleXml, /<type>turing<\/type>/);
   assert.match(exampleXml, /Buscar 0/);
+  assert.match(exampleXml, /<structure name="ui-ejemplo">/);
   assert.equal((exampleXml.match(/<state\s/g) || []).length, 5);
   assert.ok((exampleXml.match(/<transition>/g) || []).length > 5);
+  assert.equal(
+    await evaluate('document.querySelector(".document-name")?.textContent'),
+    'ui-ejemplo.jff',
+  );
   mark(
     'UI Archivo > Guardar .jff serializa el ejemplo real con estados/etiquetas/transiciones',
   );
@@ -435,7 +537,7 @@ async function run() {
   );
 
   await editFirstState('primero-modificado');
-  await menu('Archivo de trabajo', 'fixture-cinco-estados.jff');
+  await menu('Archivo de trabajo', 'ui-ejemplo.jff');
   await wait(
     () => evaluate('document.querySelectorAll(".graph-state").length===5'),
     'primer documento activo',
@@ -482,6 +584,17 @@ async function run() {
   );
   if (await evaluate('!!document.querySelector("dialog[open]")'))
     await click('dialog[open] button', 'Guardar estado');
+  assert.equal(
+    await evaluate('document.querySelectorAll(".initial-arrow").length'),
+    0,
+  );
+  await evaluate(
+    'document.querySelector(".graph-state").dispatchEvent(new MouseEvent("dblclick", {bubbles:true}))',
+  );
+  await evaluate(
+    'document.querySelector(".state-popover input[type=checkbox]").click()',
+  );
+  await click('button[aria-label]', 'Cerrar propiedades');
   const mouse = async (type, x, y, button = 'left') => {
     window.webContents.sendInputEvent({
       type,
@@ -496,6 +609,46 @@ async function run() {
     evaluate(
       `(()=>{const r=document.querySelector(${JSON.stringify(selector)}).getBoundingClientRect();return {x:r.x+r.width/2,y:r.y+r.height/2};})()`,
     );
+  const assertTooltip = async (selector, description) => {
+    const point = await center(selector);
+    await mouse('mouseMove', point.x, point.y);
+    await wait(
+      () =>
+        evaluate(
+          `getComputedStyle(document.querySelector(${JSON.stringify(selector)}),'::after').visibility==="visible"&&Number(getComputedStyle(document.querySelector(${JSON.stringify(selector)}),'::after').opacity)>.9`,
+        ),
+      description,
+    );
+    assert.equal(
+      await evaluate(
+        `(()=>{const button=document.querySelector(${JSON.stringify(selector)});return button.dataset.tooltip===button.getAttribute('aria-label')&&!button.hasAttribute('title')})()`,
+      ),
+      true,
+    );
+  };
+  const selectTool = '.canvas-tools button[aria-label="Seleccionar (V)"]';
+  const selectCenter = await center(selectTool);
+  await mouse('mouseMove', selectCenter.x, selectCenter.y);
+  await wait(
+    () =>
+      evaluate(
+        `getComputedStyle(document.querySelector(${JSON.stringify(selectTool)}),'::after').visibility==="visible"&&Number(getComputedStyle(document.querySelector(${JSON.stringify(selectTool)}),'::after').opacity)>.9`,
+      ),
+    'tooltip visible al pasar por herramienta de Turing',
+  );
+  assert.equal(
+    await evaluate(
+      `(()=>{const button=document.querySelector(${JSON.stringify(selectTool)});return button.dataset.tooltip===button.getAttribute('aria-label')&&!button.hasAttribute('title')})()`,
+    ),
+    true,
+  );
+  assert.equal(
+    await evaluate(
+      `getComputedStyle(document.querySelector(${JSON.stringify(selectTool)}),'::after').content`,
+    ),
+    '"Seleccionar (V)"',
+  );
+  mark('Turing: tooltip visible al pasar el cursor sobre los iconos');
   const canvasRect = await evaluate(
     '(()=>{const r=document.querySelector(".graph-canvas").getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height};})()',
   );
@@ -645,10 +798,59 @@ async function run() {
   mark(
     'gestos reales: transición por arrastre y editor junto a línea, estado contextual, arrastre derecho y rueda sin zoom',
   );
+  await evaluate(
+    `document.querySelector('.edge-label').dispatchEvent(new MouseEvent('dblclick',{bubbles:true}))`,
+  );
+  await wait(
+    () => evaluate('!!document.querySelector(".transition-popover input[aria-label=Leer]")'),
+    'editar transición de Turing para abrir la tabla',
+  );
+  await click('button', 'Varias reglas');
+  assert.equal(
+    await evaluate('document.querySelectorAll(".transition-rules-table tbody tr").length'),
+    1,
+  );
+  await click('button', 'Agregar fila');
+  const setRuleField = (label, value) =>
+    evaluate(
+      `(()=>{const i=document.querySelector('.transition-rules-table [aria-label="${label}"]');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,${JSON.stringify(value)});i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+    );
+  await setRuleField('Leer regla 2', 'z');
+  await setRuleField('Escribir regla 2', 'c');
+  await evaluate(
+    `(()=>{const s=document.querySelector('.transition-rules-table [aria-label="Movimiento regla 2"]');s.value='L';s.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  await click('button', 'Agregar fila');
+  await setRuleField('Leer regla 3', 'z');
+  await setRuleField('Escribir regla 3', 'c');
+  await evaluate(
+    `(()=>{const s=document.querySelector('.transition-rules-table [aria-label="Movimiento regla 3"]');s.value='L';s.dispatchEvent(new Event('change',{bubbles:true}));})()`,
+  );
+  await click('button[aria-label]', 'Guardar 3 transiciones');
+  assert.match(
+    await evaluate('document.querySelector(".transition-popover [role=alert]")?.textContent || ""'),
+    /repetida/,
+  );
+  assert.equal(await evaluate('document.querySelectorAll(".edge-label").length'), 1);
+  await click('button[aria-label]', 'Eliminar regla 3');
+  await click('button[aria-label]', 'Guardar 2 transiciones');
+  await wait(
+    () => evaluate('document.querySelectorAll(".edge-label").length===2'),
+    'guardar varias reglas de Turing',
+  );
+  assert.deepEqual(
+    await evaluate('[...document.querySelectorAll(".edge-label")].map(e=>e.textContent.trim()).sort()'),
+    ['a; a, →', 'z; c, ←'],
+  );
+  mark('Turing: tabla agrega varias reglas y evita guardar filas duplicadas');
   await click('.commandbar button', 'Simulación');
   assert.equal(
     await evaluate('document.querySelector(".simulation-stack").hidden'),
     false,
+  );
+  await assertTooltip(
+    '.simulation-host:not([hidden]) button[aria-label="Ejecución rápida"]',
+    'tooltip del control rápido de Turing',
   );
   await evaluate(
     `(()=>{const i=document.querySelector('.simulation-host:not([hidden]) .simulation-input input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'a');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
@@ -669,6 +871,12 @@ async function run() {
   );
   assert.equal(
     await evaluate(
+      '!!document.querySelector(".simulation-host:not([hidden]) .configuration-list")',
+    ),
+    false,
+  );
+  assert.equal(
+    await evaluate(
       '!!document.querySelector(".simulation-host:not([hidden]) .tape-index")',
     ),
     false,
@@ -679,16 +887,100 @@ async function run() {
     ),
     'Aceptada',
   );
-  await click('.simulation-host:not([hidden]) button', 'Entradas múltiples');
   assert.equal(
     await evaluate(
-      'document.querySelector(".simulation-host:not([hidden]) .batch-entry textarea").placeholder',
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-tab-status").textContent.includes("pasos")',
     ),
-    '',
+    false,
   );
   assert.equal(
     await evaluate(
-      'document.querySelector(".simulation-host:not([hidden]) .batch-entry textarea").value',
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-follow-button").disabled',
+    ),
+    false,
+  );
+  await evaluate(
+    `(()=>{const i=document.querySelector('.simulation-host:not([hidden]) .simulation-speed input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'1500');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-follow-button").disabled',
+    ),
+    false,
+  );
+  await evaluate(
+    `(()=>{const button=document.querySelector('.zoom-control button[aria-label="Alejar"]');for(let i=0;i<20;i++)button.click();})()`,
+  );
+  await wait(
+    () => evaluate('document.querySelector(".zoom-control").textContent.includes("20%")'),
+    'reducir el zoom antes de dirigir',
+  );
+  await click('.simulation-host:not([hidden]) button', 'Dirigir');
+  await wait(
+    () =>
+      evaluate(
+        'Number.parseInt(document.querySelector(".zoom-control button[aria-label=\\"Restablecer zoom\\"]").textContent,10)>=100',
+      ),
+    'zoom guiado mínimo al 100%',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-speed input").max',
+    ),
+    '1100',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-speed").textContent.includes("2.0 pasos/s")',
+    ),
+    true,
+  );
+  await wait(
+    () => evaluate('!!document.querySelector(".graph-edge.is-followed")'),
+    'recorrido dirigido y resaltado',
+  );
+  await wait(
+    () =>
+      evaluate(
+        '(()=>{const canvas=document.querySelector(".graph-canvas"),world=document.querySelector(".graph-content").transform.baseVal.consolidate().matrix,state=[...document.querySelectorAll(".graph-state")].find(item=>item.getAttribute("aria-label").startsWith("q1"))?.transform.baseVal.consolidate().matrix;return !!state&&Math.abs(world.e+world.a*state.e-canvas.clientWidth/2)<2&&Math.abs(world.f+world.d*state.f-canvas.clientHeight/2)<2})()',
+      ),
+    'cámara siguiendo el avance hasta q1',
+  );
+  const guidedCenter = await evaluate(
+    '(()=>{const canvas=document.querySelector(".graph-canvas"),world=document.querySelector(".graph-content").transform.baseVal.consolidate().matrix,state=[...document.querySelectorAll(".graph-state")].find(item=>item.getAttribute("aria-label").startsWith("q1"))?.transform.baseVal.consolidate().matrix;return state?{x:world.e+world.a*state.e,y:world.f+world.d*state.f,cx:canvas.clientWidth/2,cy:canvas.clientHeight/2}:null})()',
+  );
+  assert.ok(guidedCenter);
+  assert.ok(Math.abs(guidedCenter.x - guidedCenter.cx) < 2);
+  assert.ok(Math.abs(guidedCenter.y - guidedCenter.cy) < 2);
+  assert.equal(
+    await evaluate('document.querySelector(".graph-editor").classList.contains("is-following")'),
+    true,
+  );
+  await click('.simulation-host:not([hidden]) button', 'Dirigiendo');
+  await wait(
+    () => evaluate('!document.querySelector(".graph-edge.is-followed")'),
+    'detener el seguimiento',
+  );
+  await evaluate(
+    `(()=>{const i=document.querySelector('.simulation-host:not([hidden]) .simulation-speed input');Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,'950');i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-follow-button").disabled',
+    ),
+    false,
+  );
+  mark('Turing: Dirigir sigue el hilo a máximo 2 pasos/s y reinicia una ejecución previa');
+  await click('.simulation-host:not([hidden]) button', 'Entradas múltiples');
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".simulation-host:not([hidden]) .batch-input-table tbody tr").length',
+    ),
+    1,
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .batch-input-table input").value',
     ),
     '',
   );
@@ -698,9 +990,61 @@ async function run() {
     ),
     false,
   );
+  const setBatchEntry = (index, value) =>
+    evaluate(
+      `(()=>{const i=document.querySelectorAll('.simulation-host:not([hidden]) .batch-input-table input')[${index - 1}];if(!i)throw Error('Entrada no encontrada: '+${index});Object.getOwnPropertyDescriptor(HTMLInputElement.prototype,'value').set.call(i,${JSON.stringify(value)});i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+    );
   await evaluate(
-    `(()=>{const i=document.querySelector('.simulation-host:not([hidden]) .batch-entry textarea');Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype,'value').set.call(i,[...Array(39).fill('a'),'b'].join('\\n'));i.dispatchEvent(new Event('input',{bubbles:true}));})()`,
+    `(()=>{const i=document.querySelector('.simulation-host:not([hidden]) .batch-input-table input');if(!i)throw Error('Entrada inicial no encontrada');i.dispatchEvent(new KeyboardEvent('keydown',{key:'Enter',bubbles:true}));})()`,
   );
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".simulation-host:not([hidden]) .batch-input-table input").length',
+    ),
+    2,
+  );
+  assert.equal(
+    await evaluate(
+      'document.activeElement?.getAttribute("aria-label")',
+    ),
+    'Cadena de entrada 2',
+  );
+  await click(
+    '.simulation-host:not([hidden]) button[aria-label="Eliminar entrada 2"]',
+    'Eliminar entrada 2',
+  );
+  await setBatchEntry(1, ' ');
+  await click('.simulation-host:not([hidden]) button', 'Probar todas');
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".simulation-host:not([hidden]) .batch-results tbody tr").length',
+    ),
+    0,
+  );
+  await click('.simulation-host:not([hidden]) button', 'Añadir cadena vacía');
+  await click('.simulation-host:not([hidden]) button', 'Probar todas');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelectorAll(".simulation-host:not([hidden]) .batch-results tbody tr").length===1',
+      ),
+    'entrada vacía explícita',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .batch-results tbody tr code").textContent',
+    ),
+    'ε',
+  );
+  await click(
+    '.simulation-host:not([hidden]) button[aria-label="Eliminar entrada 2"]',
+    'Eliminar entrada 2',
+  );
+  await setBatchEntry(1, 'a');
+  for (let index = 0; index < 39; index++)
+    await click('.simulation-host:not([hidden]) .batch-input-actions button', 'Añadir cadena');
+  for (let index = 2; index <= 40; index++)
+    await setBatchEntry(index, index === 40 ? 'b' : 'a');
   await click('.simulation-host:not([hidden]) button', 'Probar todas');
   await wait(
     () =>
@@ -766,11 +1110,73 @@ async function run() {
       exportedRows.rejectedPixels > 10,
     JSON.stringify(exportedRows),
   );
-  await click('.simulation-host:not([hidden]) button', 'Ocultar simulación');
+  const batchInputsFile = path.join(output, 'entradas.txt');
+  await fs.writeFile(batchInputsFile, 'a\nb\n', 'utf8');
+  nextOpen = { canceled: false, filePaths: [batchInputsFile] };
+  await click(
+    '.simulation-host:not([hidden]) button',
+    'Cargar entradas desde archivo de texto',
+  );
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector('.simulation-host:not([hidden]) .batch-text-file-editor')?.value===${JSON.stringify('a\nb\n')}`,
+      ),
+    'archivo de entradas conservado',
+  );
+  await click('.simulation-host:not([hidden]) button', 'Probar todas');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelectorAll(".simulation-host:not([hidden]) .batch-results tbody tr").length===3',
+      ),
+    'líneas de archivo, incluida la línea vacía final',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .batch-results tbody tr:nth-child(3) td:first-child code").textContent',
+    ),
+    'ε',
+  );
+  await click('.simulation-host:not([hidden]) button', 'Ocultar ventana');
   assert.equal(
     await evaluate('document.querySelector(".simulation-stack").hidden'),
     true,
   );
+  await click('.commandbar button', 'Simulación');
+  await wait(
+    () => evaluate('!document.querySelector(".simulation-stack").hidden'),
+    'volver a mostrar la ventana conservada',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".simulation-host:not([hidden]) .batch-results tbody tr").length',
+    ),
+    3,
+  );
+  await click('.simulation-host:not([hidden]) button', 'Cerrar simulación');
+  await wait(
+    () => evaluate('document.querySelector(".simulation-stack").hidden'),
+    'cerrar y quitar la simulación',
+  );
+  await click('.commandbar button', 'Simulación');
+  await wait(
+    () => evaluate('!document.querySelector(".simulation-stack").hidden'),
+    'abrir un simulador nuevo',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-input input").value',
+    ),
+    '',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) [role=tab][aria-selected=true]").textContent',
+    ),
+    'Simulación',
+  );
+  await click('.simulation-host:not([hidden]) button', 'Ocultar ventana');
   mark(
     'entradas compactas de una máquina: 40 filas, TXT y PNG completo con rechazo en la última fila fuera del scroll',
   );
@@ -785,8 +1191,20 @@ async function run() {
   );
   await click('button[aria-label]', 'Eliminar transición');
   await wait(
+    () => evaluate('document.querySelectorAll(".edge-label").length===1'),
+    'eliminar primera transición',
+  );
+  const remainingLabel = await center('.edge-label');
+  await mouse('mouseDown', remainingLabel.x, remainingLabel.y);
+  await mouse('mouseUp', remainingLabel.x, remainingLabel.y);
+  await wait(
+    () => evaluate('!!document.querySelector(".transition-popover")'),
+    'editar la transición restante',
+  );
+  await click('button[aria-label]', 'Eliminar transición');
+  await wait(
     () => evaluate('document.querySelectorAll(".edge-label").length===0'),
-    'eliminar transición',
+    'eliminar transición restante',
   );
   mark('edición con un clic y eliminación directa de transiciones');
   await click('.commandbar button', 'Simulación');
@@ -803,7 +1221,7 @@ async function run() {
     'Rechazada',
   );
   await click('dialog[open] button', 'Cerrar diálogo');
-  await click('.simulation-host:not([hidden]) button', 'Ocultar simulación');
+  await click('.simulation-host:not([hidden]) button', 'Ocultar ventana');
   mark(
     'Ctrl + rueda mantiene el punto bajo el cursor; caracteres únicos, flechas y cinta verde/roja sin índices',
   );
@@ -895,6 +1313,31 @@ async function run() {
     /^Cinta: =3\./,
   );
   await click('dialog[open] button', 'Cerrar diálogo');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".simulation-host:not([hidden]) .simulation-output-value")?.textContent==="=3"',
+      ),
+    'mostrar la salida de Turing debajo de la cinta',
+  );
+  await evaluate(
+    `(()=>{const output=document.querySelector('.simulation-host:not([hidden]) .simulation-output-value'),text=output.firstChild,range=document.createRange(),selection=window.getSelection();range.setStart(text,0);range.setEnd(text,2);selection.removeAllRanges();selection.addRange(range);})()`,
+  );
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".simulation-host:not([hidden]) .simulation-output-count")?.textContent.trim()==="2 caracteres"',
+      ),
+    'contar caracteres seleccionados en la salida',
+  );
+  await evaluate('window.getSelection().removeAllRanges()');
+  await wait(
+    () =>
+      evaluate(
+        '!document.querySelector(".simulation-host:not([hidden]) .simulation-output-count")',
+      ),
+    'ocultar el conteo al quitar la selección',
+  );
   const counterSaved = path.join(output, 'contador-reabierto.jff');
   nextSave = { canceled: false, filePath: counterSaved };
   await menu('Archivo', 'Guardar como…');
@@ -939,17 +1382,56 @@ async function run() {
       `(()=>{const strip=document.querySelector('.simulation-host:not([hidden]) .tape-strip'),a=strip.getAnimations()[0];if(!a)throw Error('Falta el desplazamiento animado');a.pause();const duration=a.effect.getTiming().duration;const offset=()=>{const cell=strip.querySelector('.is-head').getBoundingClientRect(),frame=strip.parentElement.querySelector('.tape-head-frame').getBoundingClientRect();return cell.x+cell.width/2-frame.x-frame.width/2;};a.currentTime=0;const start=offset();a.currentTime=duration/2;const middle=offset();a.currentTime=duration;const end=offset();a.finish();return {duration,start,middle,end,width:strip.firstElementChild.getBoundingClientRect().width};})()`,
     );
   await click('.simulation-host:not([hidden]) button', 'Paso');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".simulation-host:not([hidden]) .simulation-state-info strong")?.textContent==="q1"',
+      ),
+    'primer paso con el cabezal sobre una celda vacía',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-output-value").textContent',
+    ),
+    '',
+  );
   const rightGlide = await sampleGlide();
   assert.ok(rightGlide.duration >= 400, JSON.stringify(rightGlide));
   assert.ok(Math.abs(rightGlide.start - rightGlide.width) < 1);
   assert.ok(rightGlide.middle > 0 && rightGlide.middle < rightGlide.start);
   assert.ok(Math.abs(rightGlide.end) < 1);
   await click('.simulation-host:not([hidden]) button', 'Paso');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".simulation-host:not([hidden]) .simulation-state-info strong")?.textContent==="q2"',
+      ),
+    'segundo paso mantiene la ejecución activa',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".simulation-host:not([hidden]) .simulation-output-value").textContent',
+    ),
+    'a',
+  );
+  assert.equal(
+    await evaluate(
+      '!!document.querySelector(".simulation-host:not([hidden]) .execution-verdict")',
+    ),
+    false,
+  );
   const leftGlide = await sampleGlide();
   assert.ok(Math.abs(leftGlide.start + leftGlide.width) < 1);
   assert.ok(leftGlide.middle < 0 && leftGlide.middle > leftGlide.start);
   assert.ok(Math.abs(leftGlide.end) < 1);
   await click('.simulation-host:not([hidden]) button', 'Paso');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".simulation-host:not([hidden]) .execution-verdict")?.textContent==="Aceptada"&&document.querySelector(".simulation-host:not([hidden]) .simulation-output-value")?.textContent==="a"',
+      ),
+    'mostrar salida al finalizar la ejecución',
+  );
   assert.equal(
     await evaluate(
       'document.querySelector(".simulation-host:not([hidden]) .tape-strip").getAnimations().length',
@@ -1021,6 +1503,12 @@ async function run() {
 
   // Finite automata share the same native file, editing and persistence flows.
   await click('button', 'Inicio');
+  await wait(
+    async () =>
+      (await evaluate('!document.querySelector(".active-document")')) &&
+      window.getTitle() === 'JFLAP Lite',
+    'inicio sin documento en primer plano',
+  );
   assert.equal(
     await evaluate('document.querySelectorAll(".home-option").length'),
     2,
@@ -1029,9 +1517,21 @@ async function run() {
   await wait(
     () =>
       evaluate(
-        'document.querySelector(".workspace-model")?.textContent.includes("Autómata finito")',
+        'document.querySelector(".graph-canvas")?.getAttribute("aria-label").includes("autómata finito")',
       ),
     'nuevo autómata',
+  );
+  assert.equal(
+    await evaluate(
+      `(()=>{const buttons=[...document.querySelectorAll('.canvas-tools .icon-button[data-tooltip],.zoom-control .icon-button[data-tooltip]')];return buttons.length===8&&buttons.every(button=>button.dataset.tooltip===button.getAttribute('aria-label')&&!button.hasAttribute('title'))})()`,
+    ),
+    true,
+  );
+  await wait(
+    async () =>
+      (await evaluate('!!document.querySelector(".active-document")')) &&
+      window.getTitle() !== 'JFLAP Lite',
+    'editor con el documento en primer plano',
   );
   assert.equal(
     await evaluate('document.querySelectorAll(".graph-state").length'),
@@ -1042,7 +1542,7 @@ async function run() {
   await wait(
     () =>
       evaluate(
-        'document.querySelector(".workspace-model")?.textContent.includes("Turing")',
+        'document.querySelector(".graph-canvas")?.getAttribute("aria-label").includes("turing")',
       ),
     'nueva Turing',
   );
@@ -1058,7 +1558,7 @@ async function run() {
   await wait(
     () =>
       evaluate(
-        'document.querySelectorAll(".graph-state").length===4 && document.querySelector(".workspace-model")?.textContent.includes("AFN")',
+        'document.querySelectorAll(".graph-state").length===4 && document.querySelector(".document-name")?.textContent==="Autómata finito ε.jff"',
       ),
     'abrir AFN',
   );
@@ -1129,11 +1629,15 @@ async function run() {
     () => evaluate(`!!document.querySelector(${JSON.stringify(activeFinite)})`),
     'simulador AFN',
   );
+  await assertTooltip(
+    activeFinite + ' button[aria-label="Ejecutar sin interacción"]',
+    'tooltip del control rápido de autómata finito',
+  );
   const finiteFill = (selector, value) =>
     evaluate(
       `(()=>{const input=document.querySelector(${JSON.stringify(selector)});Object.getOwnPropertyDescriptor(input.tagName==='TEXTAREA'?HTMLTextAreaElement.prototype:HTMLInputElement.prototype,'value').set.call(input,${JSON.stringify(value)});input.dispatchEvent(new Event('input',{bubbles:true}));})()`,
     );
-  await finiteFill(activeFinite + ' input[placeholder="Ej. aabb"]', 'aab');
+  await finiteFill(activeFinite + ' .simulation-input input', 'aab');
   await click(activeFinite + ' button', 'Paso');
   assert.equal(
     await evaluate(
@@ -1183,31 +1687,69 @@ async function run() {
   mark('AFN real: cierre ε, ramas, congelar/descongelar, aceptación y traza');
 
   await click(activeFinite + ' [role="tab"]', 'Entradas múltiples');
-  await finiteFill(activeFinite + ' textarea', 'ab\taccept\na\treject\n');
-  await click(activeFinite + ' button', 'Probar entradas');
+  await finiteFill(
+    activeFinite + ' .batch-input-table input[aria-label="Cadena de entrada 1"]',
+    'ab\taccept',
+  );
+  await click(activeFinite + ' .batch-input-actions button', 'Añadir cadena');
+  await finiteFill(
+    activeFinite + ' .batch-input-table input[aria-label="Cadena de entrada 2"]',
+    'a\treject',
+  );
+  await click(activeFinite + ' .batch-input-actions button', 'Añadir cadena vacía');
+  await click(activeFinite + ' button', 'Probar todas');
   assert.equal(
     await evaluate(
-      `document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')}).length`,
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-results tbody tr')}).length`,
     ),
     3,
   );
   const finiteRows = await evaluate(
-    `[...document.querySelectorAll(${JSON.stringify(activeFinite + ' tbody tr')})].map(n=>n.textContent)`,
+    `[...document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-results tbody tr')})].map(n=>n.textContent)`,
   );
   assert.ok(finiteRows[0].includes('Aceptada'));
   assert.ok(finiteRows[1].includes('Rechazada'));
   assert.ok(finiteRows[2].includes('Rechazada'));
+  assert.deepEqual(
+    await evaluate(
+      `[...document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-results thead th')})].map(n=>n.textContent.trim())`,
+    ),
+    ['Entrada', 'Resultado', 'Salida', 'Pasos', 'Detalle'],
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector(${JSON.stringify(activeFinite + ' .finite-results tbody tr:first-child td:nth-child(3)')}).textContent.trim()`,
+    ),
+    '—',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' .batch-actions button[aria-label]')}).length`,
+    ),
+    3,
+  );
   const finiteResults = path.join(output, 'finite-results.txt');
   nextSave = { canceled: false, filePath: finiteResults };
-  await click(activeFinite + ' button', 'Exportar');
+  await click(
+    activeFinite + ' .batch-actions button',
+    'Exportar resultados como texto',
+  );
   await fileReady(finiteResults);
-  assert.ok((await fs.readFile(finiteResults, 'utf8')).includes('Aceptada'));
+  const finiteText = await fs.readFile(finiteResults, 'utf8');
+  assert.ok(finiteText.includes('Entrada\tResultado\tSalida\tPasos'));
+  assert.ok(finiteText.includes('ab\tAceptada\t—\t'));
   const finitePng = path.join(output, 'finite-results.png');
   nextSave = { canceled: false, filePath: finitePng };
-  await click(activeFinite + ' button', 'Exportar PNG');
+  await click(
+    activeFinite + ' .batch-actions button',
+    'Exportar resultados como imagen',
+  );
   await fileReady(finitePng);
   assert.equal((await fs.readFile(finitePng)).subarray(1, 4).toString(), 'PNG');
-  await click(activeFinite + ' button', 'Ver traza');
+  await click(
+    activeFinite + ' .finite-results tbody button',
+    'Ver traza de ab',
+  );
   assert.ok(
     (await evaluate('document.querySelector("dialog").textContent')).includes(
       'Aceptada',
@@ -1217,9 +1759,68 @@ async function run() {
     await evaluate('document.querySelectorAll("dialog tbody tr").length===3'),
   );
   await click('dialog button', 'Listo');
-  mark(
-    'AFN real: lote con cadena vacía, resultados esperados y exportación nativa',
+  const finiteBatchFileContent = 'ab\taccept\n\na\treject';
+  await evaluate(
+    `(()=>{const input=document.querySelector(${JSON.stringify(activeFinite + ' input[type="file"]')});const transfer=new DataTransfer();transfer.items.add(new File([${JSON.stringify(finiteBatchFileContent)}],'entradas-afd.txt',{type:'text/plain'}));input.files=transfer.files;input.dispatchEvent(new Event('change',{bubbles:true}));})()`,
   );
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelector(${JSON.stringify(activeFinite + ' .batch-text-file-editor')})?.value===${JSON.stringify(finiteBatchFileContent)}`,
+      ),
+    'archivo de entradas del autómata finito',
+  );
+  await click(activeFinite + ' button', 'Probar todas');
+  await wait(
+    () =>
+      evaluate(
+        `document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-results tbody tr')}).length===3`,
+      ),
+    'líneas de archivo del autómata finito, incluida una línea vacía',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector(${JSON.stringify(activeFinite + ' .finite-results tbody tr:nth-child(2) code')}).textContent`,
+    ),
+    'ε',
+  );
+  mark(
+    'AFN real: lote tabular, cadena vacía explícita, TXT y exportación nativa',
+  );
+  await click(activeFinite + ' button', 'Ocultar ventana');
+  await wait(
+    () => evaluate('document.querySelector(".simulation-stack").hidden'),
+    'ocultar el simulador finito',
+  );
+  await click('.commandbar button', 'Simulación');
+  await wait(
+    () => evaluate('!document.querySelector(".simulation-stack").hidden'),
+    'mostrar el simulador finito conservado',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelectorAll(${JSON.stringify(activeFinite + ' .finite-results tbody tr')}).length`,
+    ),
+    3,
+  );
+  await click(activeFinite + ' button', 'Cerrar simulación');
+  await wait(
+    () => evaluate('document.querySelector(".simulation-stack").hidden'),
+    'cerrar el simulador finito',
+  );
+  await click('.commandbar button', 'Simulación');
+  await wait(
+    () => evaluate('!document.querySelector(".simulation-stack").hidden'),
+    'abrir el simulador finito limpio',
+  );
+  assert.equal(
+    await evaluate(
+      `document.querySelector(${JSON.stringify(activeFinite + ' .simulation-input input')}).value`,
+    ),
+    '',
+  );
+  await click(activeFinite + ' button', 'Ocultar ventana');
+  mark('Turing y FA: ocultar conserva la simulación y cerrar la limpia');
 
   await menu('Convertir', 'Convertir AFN a AFD');
   await finiteFill('dialog input[placeholder="Ej. q0, q2"]', 'q999');
@@ -1241,7 +1842,7 @@ async function run() {
   await wait(
     () =>
       evaluate(
-        'document.querySelector(".workspace-model")?.textContent.endsWith("AFD")',
+        'document.querySelector(".document-name")?.textContent.endsWith("· AFD.jff")',
       ),
     'AFD convertido',
   );
@@ -1366,8 +1967,15 @@ async function run() {
   );
   nextOpen = { canceled: false, filePaths: [rangeFile] };
   await menu('Archivo', 'Abrir archivo…');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".document-name")?.textContent==="range.jff"',
+      ),
+    'archivo de rangos abierto antes de elegir el modo',
+  );
   await menu('Entrada', 'Paso por estado');
-  await finiteFill(activeFinite + ' input[placeholder="Ej. aabb"]', 'm');
+  await finiteFill(activeFinite + ' .simulation-input input', 'm');
   await click(activeFinite + ' button', 'Ejecutar sin interacción');
   await wait(
     () =>
@@ -1405,13 +2013,18 @@ async function run() {
     () => evaluate('!!document.querySelector(".home-page")'),
     'inicio tras recarga',
   );
-  await evaluate(
-    `(()=>{const b=[...document.querySelectorAll('.home-documents button')].find(b=>b.textContent.includes('Mínimo'));if(!b)throw Error('Documento finito no restaurado');b.click()})()`,
-  );
   await wait(
     () =>
       evaluate(
-        'document.querySelector(".workspace-model")?.textContent.includes("Autómata finito") && document.querySelectorAll(".graph-state").length===3',
+        '[...document.querySelectorAll(".home-recents button")].some(b=>b.textContent.includes("finite-saved.jff"))',
+      ),
+    'archivo finito en Recientes',
+  );
+  await click('.home-recents button', 'finite-saved.jff');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".graph-canvas")?.getAttribute("aria-label").includes("autómata finito") && document.querySelectorAll(".graph-state").length===3',
       ),
     'tipo finito restaurado',
   );
@@ -1450,12 +2063,600 @@ async function run() {
   await wait(
     () =>
       evaluate(
-        'document.querySelector(".active-document")?.textContent.includes("Prueba")',
+        'JSON.parse(localStorage.getItem("jflap-lite.workspace.v1"))?.documents.some(d=>d.id==="native-test" && d.machine.name==="Prueba")',
       ),
     'workspace restaurado en React',
   );
-  await pause(350);
+  assert.equal(
+    await evaluate('!!document.querySelector(".active-document")'),
+    false,
+  );
+  assert.equal(window.getTitle(), 'JFLAP Lite');
+  // Hidden Electron windows throttle the renderer's persistence timer to one second.
+  await pause(1100);
   mark('workspace JSON nativo persiste y se restaura tras recargar renderer');
+
+  const closeFixture = (id, name, dirty = false) => {
+    const machine = { name, states: [], transitions: [], notes: [] };
+    return {
+      id,
+      machine,
+      saved: JSON.stringify(dirty ? { ...machine, name: 'Anterior' } : machine),
+    };
+  };
+  const retainedDocument = closeFixture('keep-open', 'Conservar');
+  retainedDocument.machine.states.push({
+    id: 'q0',
+    name: 'q0',
+    x: 100,
+    y: 100,
+  });
+  retainedDocument.saved = JSON.stringify(retainedDocument.machine);
+  await invoke(
+    'writeWorkspace',
+    JSON.stringify({
+      version: 1,
+      activeId: 'keep-open',
+      documents: [
+        retainedDocument,
+        closeFixture('close-clean', 'Cerrar limpio'),
+        closeFixture('close-dirty', 'Cerrar modificado', true),
+        closeFixture('discard-dirty', 'Descartar modificado', true),
+      ],
+    }),
+  );
+  await evaluate('localStorage.clear()');
+  await window.reload();
+  await new Promise((resolve) =>
+    window.webContents.once('did-finish-load', resolve),
+  );
+  await wait(
+    () =>
+      evaluate(
+        '!!document.querySelector(".home-page")',
+      ),
+    'sesión para cerrar documentos',
+  );
+  await click('.home-documents button', 'Conservar');
+  await wait(
+    () =>
+      evaluate(
+        '!!document.querySelector(".active-document") && !document.querySelector(".home-page")',
+      ),
+    'retomar documento desde Inicio',
+  );
+  const openDocuments = () =>
+    evaluate(
+      'JSON.parse(localStorage.getItem("jflap-lite.workspace.v1")).documents.map(d=>d.machine.name)',
+    );
+  const closeFromList = async (name) => {
+    await click('.document-picker .menu-trigger', 'Archivo de trabajo');
+    await click('.document-picker [role="menuitem"]', `Cerrar ${name}`);
+  };
+  await closeFromList('Cerrar limpio');
+  await wait(
+    async () => !(await openDocuments()).includes('Cerrar limpio'),
+    'cierre de documento inactivo',
+  );
+  assert.ok(
+    (
+      await evaluate('document.querySelector(".active-document").textContent')
+    ).includes('Conservar'),
+  );
+  assert.equal(
+    await evaluate('!!document.querySelector("dialog[open]")'),
+    false,
+  );
+  await closeFromList('Cerrar modificado');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector("dialog[open] h2")?.textContent==="Cerrar documento"',
+      ),
+    'confirmar documento modificado',
+  );
+  assert.match(
+    await evaluate('document.querySelector("dialog[open]").textContent'),
+    /Cerrar modificado/,
+  );
+  await click('dialog[open] button', 'Cancelar');
+  assert.ok((await openDocuments()).includes('Cerrar modificado'));
+  await closeFromList('Cerrar modificado');
+  nextSave = { canceled: true };
+  await click('dialog[open] button', 'Guardar y cerrar');
+  await pause(100);
+  assert.ok((await openDocuments()).includes('Cerrar modificado'));
+  assert.equal(
+    await evaluate('!!document.querySelector("dialog[open]")'),
+    true,
+  );
+  const closedSaved = path.join(output, 'cerrado-desde-lista.jff');
+  nextSave = { canceled: false, filePath: closedSaved };
+  await click('dialog[open] button', 'Guardar y cerrar');
+  await fileReady(closedSaved);
+  await wait(
+    async () => !(await openDocuments()).includes('Cerrar modificado'),
+    'guardar y cerrar desde lista',
+  );
+  assert.match(
+    await fs.readFile(closedSaved, 'utf8'),
+    /<structure name="cerrado-desde-lista">/,
+  );
+  await closeFromList('Descartar modificado');
+  await click('dialog[open] button', 'Cerrar');
+  await wait(
+    async () => !(await openDocuments()).includes('Descartar modificado'),
+    'descartar documento desde lista',
+  );
+  await closeFromList('Conservar');
+  await wait(
+    () => evaluate('!!document.querySelector(".home-page")'),
+    'último documento vuelve al inicio',
+  );
+  await wait(async () => (await openDocuments()).length === 0, 'sesión vacía');
+  assert.equal(
+    await evaluate('!!document.querySelector(".active-document")'),
+    false,
+  );
+  assert.equal(
+    await evaluate('!!document.querySelector(".graph-editor")'),
+    false,
+  );
+  await wait(
+    async () =>
+      JSON.parse(await invoke('readWorkspace')).documents.length === 0,
+    'documentos cerrados fuera de la sesión persistida',
+  );
+  mark(
+    'cerrar desde la lista: documento inactivo, cancelar, guardar/cancelar selector, descartar, último documento y persistencia',
+  );
+  const reloadHome = async () => {
+    await evaluate('localStorage.clear()');
+    await window.reload();
+    await new Promise((resolve) =>
+      window.webContents.once('did-finish-load', resolve),
+    );
+    await wait(
+      () => evaluate('!!document.querySelector(".home-page")'),
+      'inicio sin documentos',
+    );
+    await wait(
+      () =>
+        evaluate(
+          'JSON.parse(localStorage.getItem("jflap-lite.workspace.v1"))?.documents.length === 0',
+        ),
+      'sesión vacía guardada tras iniciar',
+    );
+    assert.deepEqual(await openDocuments(), []);
+    assert.equal(
+      await evaluate('!!document.querySelector(".active-document")'),
+      false,
+    );
+    assert.equal(window.getTitle(), 'JFLAP Lite');
+  };
+  await reloadHome();
+  await click('button.menu-trigger', 'Archivo');
+  assert.deepEqual(
+    await evaluate(
+      '[...document.querySelectorAll(".menu-popover [role=menuitem]")].map(item=>item.textContent.trim())',
+    ),
+    [
+      'Nueva máquina de TuringCtrl+N',
+      'Nuevo autómata finito',
+      'Ir al inicio',
+      'Abrir archivo…Ctrl+O',
+    ],
+  );
+  await evaluate(
+    'document.body.dispatchEvent(new PointerEvent("pointerdown", {bubbles:true}))',
+  );
+  await evaluate(
+    'window.dispatchEvent(new KeyboardEvent("keydown", {key:"F5", bubbles:true}))',
+  );
+  assert.equal(await evaluate('!!document.querySelector(".home-page")'), true);
+  for (const kind of ['Nueva máquina de Turing', 'Nuevo autómata finito']) {
+    await menu('Archivo', kind);
+    await wait(
+      async () => (await openDocuments()).length === 1,
+      'único documento creado explícitamente',
+    );
+    if (kind === 'Nueva máquina de Turing') {
+      const directSave = path.join(output, 'guardado-directo.jff');
+      nextSave = { canceled: false, filePath: directSave };
+      await menu('Archivo', 'Guardar .jff');
+      await fileReady(directSave);
+      await wait(
+        () =>
+          evaluate(
+            'document.querySelector(".document-name")?.textContent==="guardado-directo.jff"',
+          ),
+        'nombre actualizado al guardar en una ruta nueva',
+      );
+      assert.match(
+        await fs.readFile(directSave, 'utf8'),
+        /<structure name="guardado-directo">/,
+      );
+      await wait(
+        async () => (await openDocuments())[0] === 'guardado-directo',
+        'nombre nuevo persistido en la sesión',
+      );
+    }
+    await menu('Archivo', 'Cerrar documento');
+    await wait(
+      async () => (await openDocuments()).length === 0,
+      'cierre del último documento nuevo',
+    );
+    assert.equal(
+      await evaluate('!!document.querySelector(".home-page")'),
+      true,
+    );
+  }
+  // A first launch, with neither native nor renderer storage, also starts empty.
+  await fs.rm(path.join(output, 'profile', 'workspace.json'));
+  await reloadHome();
+  mark(
+    'sin documentos por defecto: sesión vacía restaurada, inicio limpio, crear/cerrar Turing y autómata finito',
+  );
+  await wait(
+    () =>
+      evaluate(
+        '[...document.querySelectorAll(".home-recents .home-document-open")].some(button=>button.textContent.includes("ui-ejemplo.jff"))',
+      ),
+    'archivo disponible en Recientes para quitar',
+  );
+  const recentCountBeforeRemoval = await evaluate(
+    'document.querySelectorAll(".home-recents .home-document-row").length',
+  );
+  await click('button[aria-label]', 'Quitar ui-ejemplo.jff de recientes');
+  await wait(
+    () =>
+      evaluate(
+        '[...document.querySelectorAll(".home-recents .home-document-open")].every(button=>!button.textContent.includes("ui-ejemplo.jff"))',
+      ),
+    'quitar archivo de la lista reciente',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelectorAll(".home-recents .home-document-row").length',
+    ),
+    recentCountBeforeRemoval - 1,
+  );
+  assert.ok((await fs.stat(uiSaved)).isFile());
+  assert.equal(
+    (await invoke('getRecentFiles')).some((file) => file.path === uiSaved),
+    false,
+  );
+  mark('Recientes: se puede quitar un archivo sin borrar el .jff');
+  await wait(
+    () =>
+      evaluate(
+        '[...document.querySelectorAll(".home-recents button")].some(b=>b.textContent.includes("cerrado-desde-lista.jff"))',
+      ),
+    'archivo cerrado conservado en Recientes tras reiniciar',
+  );
+  const savedRecent = await fs.readFile(closedSaved, 'utf8');
+  await fs.writeFile(
+    closedSaved,
+    savedRecent.replace('Cerrar modificado', 'Actualizado en disco'),
+  );
+  await click('.home-recents button', 'cerrado-desde-lista.jff');
+  await wait(
+    async () => (await openDocuments()).length === 1,
+    'reabrir archivo cerrado desde Recientes',
+  );
+  await click('button', 'Inicio');
+  await click('.home-recents button', 'cerrado-desde-lista.jff');
+  assert.equal(
+    (await openDocuments()).length,
+    1,
+    'un archivo ya abierto no se duplica',
+  );
+  await click('button', 'Inicio');
+  await fs.rm(rangeFile);
+  await click('.home-recents button', 'range.jff');
+  await wait(
+    () =>
+      evaluate(
+        '[...document.querySelectorAll(".home-recents .home-document-open")].every(button=>!button.textContent.includes("range.jff"))',
+      ),
+    'quitar de Recientes un archivo que ya no existe',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".toast")?.textContent.includes("No se pudo abrir") ?? false',
+    ),
+    false,
+  );
+  assert.equal((await openDocuments()).length, 1);
+  mark(
+    'Recientes persiste con cero documentos, reabre tras reiniciar, reutiliza documentos abiertos y quita archivos ausentes sin error',
+  );
+  const bulkFile = path.join(output, 'atajo-alfabetos.jff');
+  await fs.writeFile(
+    bulkFile,
+    '<structure><type>fa</type><automaton><state id="0" name="q0"><x>160</x><y>180</y><initial/></state><state id="1" name="q1"><x>450</x><y>180</y><final/></state></automaton></structure>',
+  );
+  nextOpen = { canceled: false, filePaths: [bulkFile] };
+  await menu('Archivo', 'Abrir archivo…');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".document-name")?.textContent==="atajo-alfabetos.jff"',
+      ),
+    'autómata para atajos',
+  );
+  await click('button[aria-label]', 'Crear transición (T)');
+  const bulkSource = await center('.graph-state:first-of-type .state-body');
+  const bulkTarget = await center('.graph-state:last-of-type .state-body');
+  await mouse('mouseDown', bulkSource.x, bulkSource.y);
+  await mouse('mouseMove', bulkTarget.x, bulkTarget.y);
+  await mouse('mouseUp', bulkTarget.x, bulkTarget.y);
+  await wait(
+    () =>
+      evaluate(
+        '!!document.querySelector(".transition-popover input[aria-label=Símbolos]")',
+      ),
+    'entrada compacta de símbolos',
+  );
+  assert.equal(
+    await evaluate(
+      '!!document.querySelector(".transition-popover .field-hint")',
+    ),
+    false,
+  );
+  assert.ok(
+    await evaluate(
+      'document.querySelector(".transition-popover").getBoundingClientRect().height < 160',
+    ),
+  );
+  await finiteFill('.transition-popover input', 'a, [z-]');
+  await click('button', 'Guardar transición');
+  await wait(
+    () =>
+      evaluate('!!document.querySelector(".transition-popover [role=alert]")'),
+    'rango inválido sin cambios parciales',
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".edge-label").length'),
+    0,
+  );
+  await finiteFill('.transition-popover input', '[abz]');
+  await click('button', 'Guardar transición');
+  await wait(
+    () => evaluate('document.querySelectorAll(".edge-label").length===3'),
+    'atajo [abz] crea tres transiciones individuales',
+  );
+  const bulkLabels = () =>
+    evaluate(
+      '[...document.querySelectorAll(".edge-label")].map(label=>label.textContent.trim()).sort()',
+    );
+  assert.deepEqual(await bulkLabels(), ['a', 'b', 'z']);
+  const bulkSaved = path.join(output, 'alfabetos-individuales.jff');
+  nextSave = { canceled: false, filePath: bulkSaved };
+  await menu('Archivo', 'Guardar como…');
+  await fileReady(bulkSaved);
+  const bulkXml = await fs.readFile(bulkSaved, 'utf8');
+  assert.equal((bulkXml.match(/<transition>/g) || []).length, 3);
+  assert.ok(bulkXml.includes('<read>a</read>'));
+  assert.ok(bulkXml.includes('<read>b</read>'));
+  assert.ok(bulkXml.includes('<read>z</read>'));
+  nextOpen = { canceled: false, filePaths: [bulkSaved] };
+  await menu('Archivo', 'Abrir archivo…');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".document-name")?.textContent==="alfabetos-individuales.jff"',
+      ),
+    'reabrir transiciones individuales',
+  );
+  assert.deepEqual(await bulkLabels(), ['a', 'b', 'z']);
+  mark(
+    'editor FA compacto: [abz] crea tres transiciones individuales y se guarda/reabre como JFLAP',
+  );
+  for (const kind of ['Nueva máquina de Turing', 'Nuevo autómata finito']) {
+    await menu('Archivo', kind);
+    for (const method of ['pointerdown', 'dblclick']) {
+      await click(
+        'button[aria-label]',
+        method === 'pointerdown' ? 'Añadir estado (S)' : 'Seleccionar (V)',
+      );
+      await evaluate(
+        `document.querySelector('.graph-canvas').dispatchEvent(new ${method === 'pointerdown' ? 'PointerEvent' : 'MouseEvent'}('${method}', {bubbles:true,button:0,clientX:500,clientY:300,pointerId:1}))`,
+      );
+      await wait(
+        () => evaluate('document.querySelectorAll(".graph-state").length===1'),
+        'primer estado creado manualmente',
+      );
+      assert.equal(
+        await evaluate('document.querySelectorAll(".initial-arrow").length'),
+        0,
+        `${kind}: ${method} no asigna un estado inicial`,
+      );
+      await evaluate(
+        'document.querySelector(".graph-state").dispatchEvent(new MouseEvent("contextmenu", {bubbles:true}))',
+      );
+      await wait(
+        () => evaluate('!!document.querySelector(".state-popover")'),
+        'propiedades para elegir inicio',
+      );
+      assert.equal(
+        await evaluate(
+          'document.querySelector(".state-popover input[type=checkbox]").checked',
+        ),
+        false,
+      );
+      await evaluate(
+        'document.querySelector(".state-popover input[type=checkbox]").click()',
+      );
+      await wait(
+        () =>
+          evaluate('document.querySelectorAll(".initial-arrow").length===1'),
+        'inicio seleccionado por el usuario',
+      );
+      await evaluate(
+        'document.querySelector(".state-popover input[type=checkbox]").click()',
+      );
+      await wait(
+        () =>
+          evaluate('document.querySelectorAll(".initial-arrow").length===0'),
+        'quitar inicio manualmente',
+      );
+      await click('button[aria-label]', 'Eliminar estado');
+      await wait(
+        () => evaluate('document.querySelectorAll(".graph-state").length===0'),
+        'eliminar el último estado',
+      );
+    }
+  }
+  mark(
+    'Turing y autómatas: clic y doble clic crean estados sin inicio; el inicio solo se marca y desmarca manualmente, también tras eliminar todos los estados',
+  );
+  await pause(1100);
+  await click('button', 'Inicio');
+  const beforeCode = (await openDocuments()).length;
+  const openCode = async () => {
+    await menu('Ayuda', 'Más…');
+    await wait(
+      () =>
+        evaluate(
+          'document.querySelector("dialog[open] h2")?.textContent==="Funciones especiales"',
+        ),
+      'funciones especiales',
+    );
+    await click('dialog[open] button', 'Ingresar código manualmente');
+    await wait(
+      () =>
+        evaluate('!!document.querySelector(".manual-code-editor textarea")'),
+      'editor XML manual',
+    );
+  };
+  await openCode();
+  assert.equal(
+    await evaluate(
+      '[...document.querySelectorAll("dialog[open] button")].find(b=>b.textContent.includes("Generar máquina")).disabled',
+    ),
+    true,
+  );
+  await finiteFill(
+    '.manual-code-editor textarea',
+    '<structure><type>fa</type>',
+  );
+  await click('dialog[open] button', 'Generar máquina');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".manual-code-editor [role=alert]")?.textContent.includes("XML válido")',
+      ),
+    'XML mal formado rechazado',
+  );
+  assert.equal(
+    await evaluate(
+      'document.querySelector(".manual-code-editor textarea").value',
+    ),
+    '<structure><type>fa</type>',
+  );
+  await finiteFill(
+    '.manual-code-editor textarea',
+    '<structure><type>fa</type><automaton><state id="0" name="q0"><initial/></state><transition><from>0</from><to>9</to><read>a</read></transition></automaton></structure>',
+  );
+  await click('dialog[open] button', 'Generar máquina');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".manual-code-editor [role=alert]")?.textContent.includes("inexistente")',
+      ),
+    'referencia de estado inválida',
+  );
+  assert.equal((await openDocuments()).length, beforeCode);
+  await click('dialog[open] button', 'Cancelar');
+  assert.equal(await evaluate('!!document.querySelector(".home-page")'), true);
+  await openCode();
+  const manualTuring =
+    '<structure name="Turing desde XML"><type>turing</type><automaton><state id="0" name="q0"><x>100</x><y>150</y><initial/></state><state id="1" name="q1"><x>350</x><y>150</y><final/></state><transition><from>0</from><to>1</to><read>0</read><write>1</write><move>R</move></transition></automaton></structure>';
+  const dropCode = (text, fileNames = []) =>
+    evaluate(
+      `(() => { const transfer = new DataTransfer(); ${fileNames.length ? fileNames.map((name) => `transfer.items.add(new File([${JSON.stringify(text)}], ${JSON.stringify(name)}, {type:'application/xml'}));`).join('') : `transfer.setData('text/plain', ${JSON.stringify(text)});`} document.querySelector('.manual-code-body').dispatchEvent(new DragEvent('drop',{bubbles:true,cancelable:true,dataTransfer:transfer})); })()`,
+    );
+  await dropCode(manualTuring);
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".manual-code-editor textarea").value.includes("Turing desde XML")',
+      ),
+    'texto XML arrastrado',
+  );
+  await click('dialog[open] button', 'Generar máquina');
+  await wait(
+    () =>
+      evaluate(
+        '!document.querySelector("dialog[open]") && document.querySelector(".document-name")?.textContent==="Turing desde XML.jff"',
+      ),
+    'Turing generada desde texto',
+  );
+  await wait(
+    async () => (await openDocuments()).length === beforeCode + 1,
+    'nuevo documento generado',
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".graph-state").length'),
+    2,
+  );
+  assert.equal(
+    await evaluate('document.querySelectorAll(".initial-arrow").length'),
+    1,
+  );
+  assert.ok(
+    await evaluate('!!document.querySelector(".active-document .dirty-dot")'),
+  );
+  assert.equal(
+    await evaluate(
+      '(()=>{const w=JSON.parse(localStorage.getItem("jflap-lite.workspace.v1"));return w.documents.find(d=>d.id===w.activeId).path ?? null;})()',
+    ),
+    null,
+  );
+  const manualSaved = path.join(output, 'turing-codigo-manual.jff');
+  nextSave = { canceled: false, filePath: manualSaved };
+  await menu('Archivo', 'Guardar como…');
+  await fileReady(manualSaved);
+  assert.ok(
+    (await fs.readFile(manualSaved, 'utf8')).includes('<type>turing</type>'),
+  );
+  await openCode();
+  await dropCode(bulkXml, ['uno.jff', 'dos.jff']);
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".manual-code-editor [role=alert]")?.textContent.includes("un solo archivo")',
+      ),
+    'rechazar varios archivos en el editor',
+  );
+  await dropCode(bulkXml, ['ManualFA.jff']);
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".manual-code-editor textarea").value.includes("<type>fa</type>")',
+      ),
+    'archivo XML arrastrado',
+  );
+  await click('dialog[open] button', 'Generar máquina');
+  await wait(
+    () =>
+      evaluate(
+        'document.querySelector(".document-name")?.textContent==="ManualFA.jff" && !document.querySelector("dialog[open]")',
+      ),
+    'autómata generado desde archivo',
+  );
+  await wait(
+    async () => (await openDocuments()).length === beforeCode + 2,
+    'autómata generado en un documento independiente',
+  );
+  assert.deepEqual(await bulkLabels(), ['a', 'b', 'z']);
+  assert.ok(
+    await evaluate('!!document.querySelector(".active-document .dirty-dot")'),
+  );
+  mark(
+    'Ayuda > Más > Funciones especiales: XML pegado/arrastrado, errores sin perder código, cancelar, generar Turing/FA como documentos nuevos y guardar .jff',
+  );
 
   await fs.writeFile(
     path.join(output, 'results.json'),

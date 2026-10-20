@@ -4,6 +4,7 @@ import type {
   InputHTMLAttributes,
   ReactNode,
   SelectHTMLAttributes,
+  TextareaHTMLAttributes,
 } from 'react';
 import { FiCheck, FiChevronDown, FiX } from 'react-icons/fi';
 
@@ -28,18 +29,21 @@ export function Button({
 export function IconButton({
   label,
   active,
+  tooltip = false,
   className = '',
   children,
   ...props
 }: ButtonHTMLAttributes<HTMLButtonElement> & {
   label: string;
   active?: boolean;
+  tooltip?: boolean;
 }) {
   return (
     <button
       type="button"
       aria-label={label}
-      title={label}
+      title={tooltip ? undefined : label}
+      data-tooltip={tooltip ? label : undefined}
       aria-pressed={active}
       className={`icon-button ${active ? 'is-active' : ''} ${className}`}
       {...props}
@@ -80,6 +84,33 @@ export function Field({
         >
           {error || hint}
         </span>
+      )}
+    </div>
+  );
+}
+export function TextAreaField({
+  label,
+  error,
+  className = '',
+  ...props
+}: TextareaHTMLAttributes<HTMLTextAreaElement> & {
+  label: string;
+  error?: string;
+}) {
+  const id = useId();
+  return (
+    <div className={`field ${className}`}>
+      <label htmlFor={id}>{label}</label>
+      <textarea
+        id={id}
+        aria-invalid={!!error}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...props}
+      />
+      {error && (
+        <p id={`${id}-error`} className="field-error" role="alert">
+          {error}
+        </p>
       )}
     </div>
   );
@@ -143,12 +174,14 @@ export function Modal({
   children,
   onClose,
   wide = false,
+  fullscreen = false,
 }: {
   title: string;
   subtitle?: string;
   children: ReactNode;
   onClose: () => void;
   wide?: boolean;
+  fullscreen?: boolean;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const id = useId();
@@ -159,7 +192,7 @@ export function Modal({
   }, []);
   return (
     <dialog
-      className={`modal ${wide ? 'modal-wide' : ''}`}
+      className={`modal ${wide ? 'modal-wide' : ''} ${fullscreen ? 'modal-fullscreen' : ''}`}
       ref={ref}
       aria-labelledby={id}
       onCancel={onClose}
@@ -197,6 +230,7 @@ export type MenuEntry =
       onClick: () => void;
       disabled?: boolean;
       checked?: boolean;
+      action?: { label: string; icon: ReactNode; onClick: () => void };
     }
   | { separator: true };
 export function Menu({
@@ -277,21 +311,34 @@ export function Menu({
             'separator' in entry ? (
               <div key={i} className="menu-separator" role="separator" />
             ) : (
-              <button
-                key={i}
-                role="menuitem"
-                disabled={entry.disabled}
-                onClick={() => {
-                  setOpen(false);
-                  entry.onClick();
-                }}
-              >
-                <span className="menu-item-icon">
-                  {entry.checked ? <FiCheck /> : entry.icon}
-                </span>
-                <span>{entry.label}</span>
-                {entry.shortcut && <kbd>{entry.shortcut}</kbd>}
-              </button>
+              <div key={i} className="menu-entry" role="none">
+                <button
+                  role="menuitem"
+                  disabled={entry.disabled}
+                  onClick={() => {
+                    setOpen(false);
+                    entry.onClick();
+                  }}
+                >
+                  <span className="menu-item-icon">
+                    {entry.checked ? <FiCheck /> : entry.icon}
+                  </span>
+                  <span>{entry.label}</span>
+                  {entry.shortcut && <kbd>{entry.shortcut}</kbd>}
+                </button>
+                {entry.action && (
+                  <IconButton
+                    label={entry.action.label}
+                    role="menuitem"
+                    onClick={() => {
+                      setOpen(false);
+                      entry.action!.onClick();
+                    }}
+                  >
+                    {entry.action.icon}
+                  </IconButton>
+                )}
+              </div>
             ),
           )}
         </div>

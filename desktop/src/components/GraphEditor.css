@@ -18,6 +18,9 @@
   outline: var(--focus-ring);
   outline-offset: -3px;
 }
+.graph-editor.is-following .graph-content {
+  transition: transform var(--tape-motion-duration) var(--tape-motion-easing);
+}
 .canvas-dot {
   fill: var(--border);
 }
@@ -56,6 +59,14 @@
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
+.edge-line {
+  stroke-width: 1.4;
+}
+.graph-edge.is-followed .edge-line {
+  stroke: var(--graph-active-edge);
+  stroke-width: 2;
+  opacity: 0.45;
+}
 .edge-hit {
   fill: none;
   stroke: transparent;
@@ -65,7 +76,8 @@
 .graph-edge.is-selected .edge-line,
 .graph-edge.is-active .edge-line {
   stroke: var(--graph-active-edge);
-  stroke-width: 2.25;
+  stroke-width: 1.75;
+  opacity: 1;
 }
 .edge-label {
   cursor: pointer;
@@ -78,7 +90,7 @@
 .edge-label text {
   fill: var(--text);
   font-family: var(--font-mono);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   pointer-events: none;
 }
 .edge-label:hover text,
@@ -108,14 +120,14 @@
 .state-final {
   fill: none;
   stroke: var(--graph-stroke);
-  stroke-width: 2;
+  stroke-width: var(--graph-state-final-border-width);
   vector-effect: non-scaling-stroke;
   pointer-events: none;
 }
 .state-halo {
   fill: transparent;
   stroke: transparent;
-  stroke-width: 2;
+  stroke-width: var(--graph-state-border-width);
 }
 .state-name {
   fill: var(--graph-state-text);
@@ -127,7 +139,7 @@
 .state-label {
   fill: var(--text-secondary);
   font-family: var(--font-sans);
-  font-size: var(--font-size-sm);
+  font-size: var(--font-size-xs);
   pointer-events: none;
 }
 .graph-state:hover .state-body,
@@ -136,7 +148,7 @@
 .graph-state.is-transition-source .state-body {
   fill: var(--graph-state-highlight);
   stroke: var(--accent);
-  stroke-width: 2.75;
+  stroke-width: var(--graph-state-emphasis-border-width);
 }
 .graph-state.is-selected .state-final,
 .graph-state.is-transition-source .state-final {
@@ -151,7 +163,7 @@
 .graph-state.is-highlighted .state-body {
   fill: var(--graph-state-highlight);
   stroke: var(--graph-active-edge);
-  stroke-width: 2.5;
+  stroke-width: var(--graph-state-emphasis-border-width);
 }
 .graph-state.is-active .state-halo {
   fill: var(--accent-soft);
@@ -195,7 +207,7 @@
 .connection-preview {
   fill: none;
   stroke: var(--accent);
-  stroke-width: 2;
+  stroke-width: 1.5;
   stroke-dasharray: 6 4;
   pointer-events: none;
   vector-effect: non-scaling-stroke;

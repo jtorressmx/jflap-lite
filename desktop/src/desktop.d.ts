@@ -29,9 +29,13 @@ declare global {
     | 'bmp'
     | 'pdf';
   type DesktopFile = { path: string; name: string; content: string };
+  type DesktopRecentFile = { path: string; name: string };
   type DesktopSaveResult = { path?: string; canceled: boolean };
   interface DesktopBridge {
     readonly platform: string;
+    getRecentFiles(): Promise<DesktopRecentFile[]>;
+    removeRecentFile?(path: string): Promise<DesktopRecentFile[]>;
+    openRecentFile?(path: string): Promise<DesktopFile | null>;
     getInfo(): Promise<{
       version: string;
       platform: string;

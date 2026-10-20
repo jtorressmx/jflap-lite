@@ -237,8 +237,53 @@ const escapeXml = (value: string): string =>
 const tag = (name: string, value: string): string =>
   value ? `<${name}>${escapeXml(value)}</${name}>` : `<${name}/>`;
 
+type Position = { x: number; y: number };
+
+function jflapCoordinates(machine: Machine): (point: Position) => Position {
+  const points = [
+    ...machine.states,
+    ...machine.notes,
+    ...machine.transitions.flatMap((transition) =>
+      transition.control ? [transition.control] : [],
+    ),
+  ];
+  if (!points.length) return (point) => point;
+  const minX = Math.min(...points.map((point) => point.x));
+  const maxX = Math.max(...points.map((point) => point.x));
+  const minY = Math.min(...points.map((point) => point.y));
+  const maxY = Math.max(...points.map((point) => point.y));
+  // JFLAP's editor begins at 400 × 300 and scrolls at a 1:1 scale. Keep
+  // diagrams authored on larger desktop canvases within a 4:3 work area.
+  const width = 1400;
+  const height = 1050;
+  const padding = 60;
+  const innerWidth = width - 2 * padding;
+  const innerHeight = height - 2 * padding;
+  const spanX = maxX - minX;
+  const spanY = maxY - minY;
+  if (
+    spanX <= innerWidth + 1 &&
+    spanY <= innerHeight + 1 &&
+    minX >= -200 &&
+    minY >= -200 &&
+    maxX <= width &&
+    maxY <= height
+  )
+    return (point) => point;
+  const scale = Math.min(
+    1,
+    innerWidth / Math.max(spanX, 1),
+    innerHeight / Math.max(spanY, 1),
+  );
+  return (point) => ({
+    x: padding + (point.x - minX) * scale,
+    y: padding + (point.y - minY) * scale,
+  });
+}
+
 export function serializeJff(machine: Machine): string {
   const kind = machineKind(machine);
+  const coordinates = jflapCoordinates(machine);
   const ids = new Map<string, string>();
   const occupied = new Set(
     machine.states
@@ -264,10 +309,11 @@ export function serializeJff(machine: Machine): string {
     '  <automaton>',
   ];
   machine.states.forEach((state) => {
+    const position = coordinates(state);
     lines.push(
       `    <state id="${ids.get(state.id)}" name="${escapeXml(state.name)}">`,
-      `      ${tag('x', String(state.x))}`,
-      `      ${tag('y', String(state.y))}`,
+      `      ${tag('x', String(position.x))}`,
+      `      ${tag('y', String(position.y))}`,
     );
     if (state.label) lines.push(`      ${tag('label', state.label)}`);
     if (state.initial) lines.push('      <initial/>');
@@ -301,21 +347,25 @@ export function serializeJff(machine: Machine): string {
             `      ${tag('move', transition.move)}`,
           ]),
     );
-    if (transition.control)
+    // JFLAP reads curve controls with Integer.parseInt, unlike state positions.
+    if (transition.control) {
+      const control = coordinates(transition.control);
       lines.push(
-        `      ${tag('controlx', String(transition.control.x))}`,
-        `      ${tag('controly', String(transition.control.y))}`,
+        `      ${tag('controlx', String(Math.round(control.x)))}`,
+        `      ${tag('controly', String(Math.round(control.y)))}`,
       );
+    }
     lines.push('    </transition>');
   });
-  machine.notes.forEach((note) =>
+  machine.notes.forEach((note) => {
+    const position = coordinates(note);
     lines.push(
       '    <note>',
       `      ${tag('text', note.text)}`,
-      `      ${tag('x', String(note.x))}`,
-      `      ${tag('y', String(note.y))}`,
+      `      ${tag('x', String(position.x))}`,
+      `      ${tag('y', String(position.y))}`,
       '    </note>',
-    ),
-  );
+    );
+  });
   return [...lines, '  </automaton>', '</structure>', ''].join('\n');
 }

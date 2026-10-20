@@ -58,6 +58,15 @@ export function machineSvg(m: Machine): string {
   const text = color('--export-text'),
     accent = color('--export-accent'),
     border = color('--export-edge');
+  const radius = Number.parseFloat(color('--graph-state-radius')) || 20;
+  const stateBorder =
+    Number.parseFloat(color('--graph-state-border-width')) || 1.5;
+  const finalBorder =
+    Number.parseFloat(color('--graph-state-final-border-width')) || 1.25;
+  const stateNameSize =
+    Number.parseFloat(color('--graph-state-name-size')) || 14;
+  const smallTextSize = Number.parseFloat(color('--font-size-xs')) || 11;
+  const labelOffset = radius + (Number.parseFloat(color('--space-5')) || 20);
   const fill =
     document.documentElement.dataset.palette &&
     document.documentElement.dataset.palette !== 'fluent'
@@ -75,19 +84,19 @@ export function machineSvg(m: Machine): string {
       reverse = m.transitions.some((r) => r.from === t.to && r.to === t.from);
     const cx = t.control?.x ?? (a.x + b.x) / 2 - (dy / d) * (reverse ? 44 : 0),
       cy = t.control?.y ?? (a.y + b.y) / 2 + (dx / d) * (reverse ? 44 : 0);
-    const loop = t.control ?? { x: a.x, y: a.y - 88 };
+    const loop = t.control ?? { x: a.x, y: a.y - radius - 50 };
     const firstAngle = Math.atan2(cy - a.y, cx - a.x),
       lastAngle = Math.atan2(b.y - cy, b.x - cx);
-    const sx = a.x + Math.cos(firstAngle) * 29,
-      sy = a.y + Math.sin(firstAngle) * 29,
-      ex = b.x - Math.cos(lastAngle) * 35,
-      ey = b.y - Math.sin(lastAngle) * 35;
+    const sx = a.x + Math.cos(firstAngle) * (radius + 1),
+      sy = a.y + Math.sin(firstAngle) * (radius + 1),
+      ex = b.x - Math.cos(lastAngle) * (radius + 2),
+      ey = b.y - Math.sin(lastAngle) * (radius + 2);
     const path =
       a.id === b.id
         ? 'M ' +
-          (a.x - 20) +
+          (a.x - radius * Math.SQRT1_2) +
           ' ' +
-          (a.y - 20) +
+          (a.y - radius * Math.SQRT1_2) +
           ' C ' +
           (loop.x - 48) +
           ' ' +
@@ -97,9 +106,9 @@ export function machineSvg(m: Machine): string {
           ' ' +
           (loop.y - 28) +
           ',' +
-          (a.x + 20) +
+          (a.x + radius * Math.SQRT1_2) +
           ' ' +
-          (a.y - 20)
+          (a.y - radius * Math.SQRT1_2)
         : 'M ' + sx + ' ' + sy + ' Q ' + cx + ' ' + cy + ' ' + ex + ' ' + ey;
     const lx = a.id === b.id ? loop.x : (sx + 2 * cx + ex) / 4,
       ly = a.id === b.id ? loop.y - 12 : (sy + 2 * cy + ey) / 4 - 12;
@@ -135,7 +144,9 @@ export function machineSvg(m: Machine): string {
         lx +
         '" y="' +
         y +
-        '" text-anchor="middle" font-family="Consolas,monospace" font-size="12" fill="' +
+        '" text-anchor="middle" font-family="Consolas,monospace" font-size="' +
+        smallTextSize +
+        '" fill="' +
         text +
         '">' +
         escapeXml(label) +
@@ -146,11 +157,11 @@ export function machineSvg(m: Machine): string {
     content +=
       (s.initial
         ? '<path d="M ' +
-          (s.x - 68) +
+          (s.x - radius - 40) +
           ' ' +
           s.y +
           ' H ' +
-          (s.x - 33) +
+          (s.x - radius - 5) +
           '" stroke="' +
           border +
           '" stroke-width="1.5" marker-end="url(#arrow)"/>'
@@ -159,19 +170,27 @@ export function machineSvg(m: Machine): string {
       s.x +
       '" cy="' +
       s.y +
-      '" r="28" fill="' +
+      '" r="' +
+      radius +
+      '" fill="' +
       fill +
       '" stroke="' +
       accent +
-      '" stroke-width="1.7"/>' +
+      '" stroke-width="' +
+      stateBorder +
+      '"/>' +
       (s.final
         ? '<circle cx="' +
           s.x +
           '" cy="' +
           s.y +
-          '" r="23" fill="none" stroke="' +
+          '" r="' +
+          (radius - 3) +
+          '" fill="none" stroke="' +
           accent +
-          '" stroke-width="1.5"/>'
+          '" stroke-width="' +
+          finalBorder +
+          '"/>'
         : '') +
       '<text x="' +
       s.x +
@@ -179,17 +198,21 @@ export function machineSvg(m: Machine): string {
       (s.y + 5) +
       '" text-anchor="middle" fill="' +
       text +
-      '" font-size="15">' +
+      '" font-size="' +
+      stateNameSize +
+      '">' +
       escapeXml(s.name) +
       '</text>' +
       (s.label
         ? '<text x="' +
           s.x +
           '" y="' +
-          (s.y + 49) +
+          (s.y + labelOffset) +
           '" text-anchor="middle" fill="' +
           text +
-          '" font-size="12">' +
+          '" font-size="' +
+          smallTextSize +
+          '">' +
           escapeXml(s.label) +
           '</text>'
         : '');

@@ -122,6 +122,74 @@ describe('JFLAP XML compatibility', () => {
       move: 'R',
     });
   });
+  it.each(['turing', 'fa'] as const)(
+    'exports integer curve controls for the original JFLAP reader (%s)',
+    (kind) => {
+      const tm = structuredClone(testMachines[0]);
+      tm.kind = kind;
+      tm.transitions[0].control = { x: 265.8028652536149, y: 139.8952894059299 };
+      const xml = serializeJff(tm);
+      expect(xml).toContain('<controlx>266</controlx>');
+      expect(xml).toContain('<controly>140</controly>');
+      expect(parseJff(xml).transitions[0].control).toEqual({ x: 266, y: 140 });
+      expect(tm.transitions[0].control).toEqual({
+        x: 265.8028652536149,
+        y: 139.8952894059299,
+      });
+    },
+  );
+  it('repairs decimal curve controls in files saved by older Lite versions', () => {
+    const oldXml = wrap(
+      `${state}<transition><from>0</from><to>0</to><read>0</read><write>1</write><move>R</move><controlx>370.8286930627146</controlx><controly>-111.64574050203527</controly></transition>`,
+    );
+    const tm = parseJff(oldXml);
+    expect(tm.transitions[0].control).toEqual({
+      x: 370.8286930627146,
+      y: -111.64574050203527,
+    });
+    const saved = parseJff(serializeJff(tm));
+    expect(saved.transitions[0]).toEqual({
+      ...tm.transitions[0],
+      control: { x: 371, y: -112 },
+    });
+    expect(saved.states).toEqual(tm.states);
+  });
+  it.each(['turing', 'fa'] as const)(
+    'fits large %s diagrams to JFLAP proportions without distorting their layout',
+    (kind) => {
+      const machine = structuredClone(testMachines[0]);
+      machine.kind = kind;
+      machine.states[0].x = -565;
+      machine.states[0].y = -300;
+      machine.states[1].x = 2192;
+      machine.states[1].y = 563;
+      machine.transitions[0].control = { x: 1000, y: -640 };
+      machine.notes = [{ id: 'n0', text: 'Nota', x: 2000, y: 800 }];
+      const original = structuredClone(machine);
+      const decoded = parseJff(serializeJff(machine));
+      const points = [
+        ...decoded.states,
+        ...decoded.notes,
+        ...decoded.transitions.flatMap((transition) =>
+          transition.control ? [transition.control] : [],
+        ),
+      ];
+      expect(Math.min(...points.map((point) => point.x))).toBeGreaterThanOrEqual(60);
+      expect(Math.max(...points.map((point) => point.x))).toBeLessThanOrEqual(1340);
+      expect(Math.min(...points.map((point) => point.y))).toBeGreaterThanOrEqual(60);
+      expect(Math.max(...points.map((point) => point.y))).toBeLessThanOrEqual(990);
+      const from = machine.states[0],
+        to = machine.states[1],
+        exportedFrom = decoded.states.find((state) => state.name === from.name)!,
+        exportedTo = decoded.states.find((state) => state.name === to.name)!;
+      const horizontalScale = (exportedTo.x - exportedFrom.x) / (to.x - from.x);
+      const verticalScale = (exportedTo.y - exportedFrom.y) / (to.y - from.y);
+      expect(horizontalScale).toBeCloseTo(verticalScale, 8);
+      expect(decoded.transitions).toHaveLength(machine.transitions.length);
+      expect(machine).toEqual(original);
+      expect(parseJff(serializeJff(decoded)).states).toEqual(decoded.states);
+    },
+  );
   it('imports stay transitions independent of editor preferences', () => {
     expect(
       parseJff(

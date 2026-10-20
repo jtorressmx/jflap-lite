@@ -15,6 +15,11 @@ contextBridge.exposeInMainWorld(
     platform: process.platform,
     getInfo: () => ipcRenderer.invoke('desktop:info'),
     openFiles: (options) => ipcRenderer.invoke('desktop:open-files', options),
+    getRecentFiles: () => ipcRenderer.invoke('desktop:recent-files'),
+    removeRecentFile: (path) =>
+      ipcRenderer.invoke('desktop:remove-recent-file', path),
+    openRecentFile: (path) =>
+      ipcRenderer.invoke('desktop:open-recent-file', path),
     saveFile: (request) => ipcRenderer.invoke('desktop:save-file', request),
     exportFile: (request) => ipcRenderer.invoke('desktop:export-file', request),
     exportPdf: (svg, name) =>

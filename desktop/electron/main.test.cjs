@@ -103,6 +103,7 @@ async function setup() {
       return files.get(value);
     },
     writeFile: async (file, value) => files.set(file, value),
+    unlink: async (file) => files.delete(file),
     mkdir: async () => {},
     rename: async (from, to) => {
       files.set(to, files.get(from));
@@ -139,7 +140,16 @@ async function setup() {
       ...args,
     );
   }
-  return { window, files, sent, dialogs, handlers, invoke, applicationMenu };
+  return {
+    window,
+    files,
+    sent,
+    dialogs,
+    handlers,
+    invoke,
+    applicationMenu,
+    disk,
+  };
 }
 
 test('removes the native menu and keeps save shortcuts without intercepting text editing', async () => {
@@ -218,6 +228,31 @@ test('restore does not authorize arbitrary path writes; explicit Save As authori
   assert.equal(files.get(saved.path), '<second/>');
 });
 
+test('failed JFF writes keep the previous file and remove the temporary copy', async () => {
+  const { invoke, disk, files, dialogs } = await setup();
+  const file = dialogs.save.filePath;
+  files.set(file, '<previous/>');
+  const originalWrite = disk.writeFile;
+  disk.writeFile = async (destination, content, options) => {
+    if (destination.endsWith('.tmp')) {
+      files.set(destination, '');
+      throw Object.assign(new Error('disk full'), { code: 'ENOSPC' });
+    }
+    return originalWrite(destination, content, options);
+  };
+  await assert.rejects(
+    invoke('save-file', { content: '<new/>', name: 'chosen.jff' }),
+    /disk full/,
+  );
+  assert.equal(files.get(file), '<previous/>');
+  assert.deepEqual([...files.keys()], [file]);
+  await assert.rejects(
+    invoke('save-file', { content: '', name: 'chosen.jff' }),
+    /vacío/,
+  );
+  assert.equal(files.get(file), '<previous/>');
+});
+
 test('every file selected by the native opener is tracked for normal Save', async () => {
   const { invoke, dialogs, files } = await setup();
   const one = path.resolve('one.jff'),
@@ -235,6 +270,125 @@ test('every file selected by the native opener is tracked for normal Save', asyn
     });
   assert.equal(files.get(one), '<changed/>');
   assert.equal(files.get(two), '<changed/>');
+});
+
+test('recent files survive closure, deduplicate by path and reopen the latest disk contents', async () => {
+  const { invoke, files, dialogs } = await setup();
+  const first = path.resolve('first.jff');
+  const second = path.resolve('second.xml');
+  files.set(first, '<first/>');
+  files.set(second, '<second/>');
+  dialogs.open = { canceled: false, filePaths: [first, second] };
+  await invoke('open-files');
+  assert.deepEqual(
+    Array.from(await invoke('recent-files'), (file) => file.path),
+    [second, first],
+  );
+  files.set(first, '<changed-on-disk/>');
+  const reopened = await invoke('open-recent-file', first);
+  assert.equal(reopened.content, '<changed-on-disk/>');
+  assert.deepEqual(
+    Array.from(await invoke('recent-files'), (file) => file.path),
+    [first, second],
+  );
+  await invoke(
+    'write-workspace',
+    JSON.stringify({ version: 1, activeId: '', documents: [] }),
+  );
+  assert.equal((await invoke('recent-files')).length, 2);
+  assert.equal(
+    JSON.parse(files.get(path.resolve('mock-user-data/recent-files.json')))
+      .length,
+    2,
+  );
+  const unselected = path.resolve('unselected.jff');
+  files.set(unselected, '<unselected/>');
+  await assert.rejects(invoke('open-recent-file', unselected), /Recientes/);
+  files.delete(first);
+  assert.equal(await invoke('open-recent-file', first), null);
+  assert.deepEqual(
+    Array.from(await invoke('recent-files'), (file) => file.path),
+    [second],
+  );
+  assert.deepEqual(
+    JSON.parse(files.get(path.resolve('mock-user-data/recent-files.json'))).map(
+      (file) => file.path,
+    ),
+    [second],
+  );
+});
+
+test('recent files can be removed from history without deleting the machine file', async () => {
+  const { invoke, files, dialogs } = await setup();
+  const first = path.resolve('keep-on-disk.jff');
+  const second = path.resolve('still-recent.xml');
+  files.set(first, '<first/>');
+  files.set(second, '<second/>');
+  dialogs.open = { canceled: false, filePaths: [first, second] };
+  await invoke('open-files');
+
+  const recent = await invoke('remove-recent-file', first);
+  assert.deepEqual(Array.from(recent, (file) => file.path), [second]);
+  assert.equal(files.get(first), '<first/>');
+  assert.deepEqual(
+    JSON.parse(files.get(path.resolve('mock-user-data/recent-files.json'))).map(
+      (file) => file.path,
+    ),
+    [second],
+  );
+  await assert.rejects(invoke('remove-recent-file', 'relative.jff'), /ruta/);
+});
+
+test('persistent history and workspace retry temporary Windows file locks', async () => {
+  const { invoke, disk, files, dialogs } = await setup();
+  const rename = disk.rename;
+  let locks = 2;
+  disk.rename = async (...args) => {
+    if (locks-- > 0)
+      throw Object.assign(new Error('locked'), { code: 'EPERM' });
+    return rename(...args);
+  };
+  await invoke('write-workspace', '{"version":1,"documents":[]}');
+  assert.equal(
+    files.get(path.resolve('mock-user-data/workspace.json')),
+    '{"version":1,"documents":[]}',
+  );
+  locks = 2;
+  dialogs.save = { canceled: false, filePath: path.resolve('retry.jff') };
+  await invoke('save-file', {
+    name: 'retry',
+    kind: 'jff',
+    content: '<machine/>',
+  });
+  assert.equal((await invoke('recent-files'))[0].name, 'retry.jff');
+});
+
+test('recent history is bounded, ignores text inputs and records saved machines', async () => {
+  const { invoke, files, dialogs } = await setup();
+  const paths = Array.from({ length: 15 }, (_, i) =>
+    path.resolve(`machine-${i}.jff`),
+  );
+  for (const file of paths) files.set(file, '<machine/>');
+  dialogs.open = { canceled: false, filePaths: paths };
+  await invoke('open-files');
+  const text = path.resolve('inputs.txt');
+  files.set(text, '000');
+  dialogs.open = { canceled: false, filePaths: [text] };
+  await invoke('open-files', { kind: 'text' });
+  const recent = await invoke('recent-files');
+  assert.equal(recent.length, 12);
+  assert.equal(recent[0].path, paths[14]);
+  assert.ok(recent.every((file) => file.path !== text));
+  dialogs.save = { canceled: false, filePath: path.resolve('saved.jff') };
+  await invoke('save-file', {
+    name: 'saved',
+    content: '<saved/>',
+    kind: 'jff',
+  });
+  assert.equal(
+    (await invoke('recent-files'))[0].path,
+    path.resolve('saved.jff'),
+  );
 });
 
 test('native close saves all modified tabs and requires an explicit aggregate-clean acknowledgement', async () => {

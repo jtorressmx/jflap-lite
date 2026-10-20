@@ -1,19 +1,31 @@
 import { useEffect, useId, useRef, useState } from 'react';
 import {
+  FiArrowRight,
   FiArrowLeft,
   FiDownload,
-  FiFolder,
+  FiFileText,
+  FiMinus,
+  FiImage,
+  FiList,
   FiPause,
   FiPlay,
   FiRotateCcw,
   FiSkipForward,
+  FiUpload,
   FiX,
   FiZap,
   FiTrash2,
 } from 'react-icons/fi';
-import { Badge, Button, Field, IconButton, Select, Modal } from './ui';
+import {
+  Badge,
+  Button,
+  EmptyState,
+  Field,
+  IconButton,
+  Select,
+  Modal,
+} from './ui';
 import type { Machine } from '../domain/model';
-import { machineKind } from '../domain/model';
 import {
   createFiniteSession,
   canStepFinite,
@@ -25,9 +37,15 @@ import {
   stepFinite,
 } from '../domain/finite';
 import type { FiniteSession } from '../domain/finite';
-import { parseJff } from '../domain/jff';
 import { download } from '../lib/files';
 import { exportTablePng } from '../lib/tableImage';
+import {
+  BatchInputTable,
+  BatchTextFileNotice,
+  createBatchInputItem,
+  manualBatchInputs,
+} from './BatchInputTable';
+import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
 import './SimulationPanel.css';
 import './FiniteSimulationPanel.css';
 
@@ -47,20 +65,20 @@ const names = {
   limit: 'Límite alcanzado',
 };
 type BatchRow = {
-  name: string;
   input: string;
-  expected?: string;
   status: FiniteSession['status'];
   session: FiniteSession;
   machine: Machine;
 };
-function expectedResult(row: BatchRow): string {
-  if (!row.expected) return '—';
-  if (row.status === 'limit') return `${row.expected} · Inconclusa`;
-  const expected = row.expected.toLowerCase();
-  if (!['accept', 'reject', 'aceptada', 'rechazada'].includes(expected))
-    return row.expected;
-  return `${row.expected} ${['accept', 'aceptada'].includes(expected) === (row.status === 'accepted') ? '✓' : '≠'}`;
+function parseBatchLine(line: string) {
+  if (line.includes('\t')) {
+    return { input: line.split('\t')[0] };
+  }
+  const tokens = line.split(' ');
+  const verdict = tokens.at(-1)?.toLowerCase();
+  if (tokens.length > 1 && (verdict === 'accept' || verdict === 'reject'))
+    return { input: tokens[0] };
+  return { input: line };
 }
 export default function FiniteSimulationPanel({
   machine,
@@ -82,12 +100,13 @@ export default function FiniteSimulationPanel({
     [speed, setSpeed] = useState(650);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [configurationLimit, setConfigurationLimit] = useState(50000);
-  const [batch, setBatch] = useState(''),
-    [results, setResults] = useState<BatchRow[]>([]);
+  const [batchItems, setBatchItems] = useState<BatchInputItem[]>(() => [
+    createBatchInputItem(),
+  ]);
+  const [batchFile, setBatchFile] = useState<BatchTextFile | null>(null);
+  const [results, setResults] = useState<BatchRow[]>([]);
   const [result, setResult] = useState<BatchRow | null>(null);
-  const textInput = useRef<HTMLInputElement>(null),
-    machineInput = useRef<HTMLInputElement>(null);
-  const [batchMachines, setBatchMachines] = useState<Machine[]>([]);
+  const textInput = useRef<HTMLInputElement>(null);
   const handled = useRef<number | undefined>(undefined);
   const signature = JSON.stringify([machine.states, machine.transitions]);
   useEffect(() => {
@@ -125,6 +144,20 @@ export default function FiniteSimulationPanel({
     setSelectedId(undefined);
     setSelectedIds([]);
     return next;
+  }
+  function closeSimulation() {
+    setSession(null);
+    setSelectedId(undefined);
+    setSelectedIds([]);
+    setPlaying(false);
+    setInput('');
+    setResults([]);
+    setResult(null);
+    setBatchItems([createBatchInputItem()]);
+    setBatchFile(null);
+    setTab('simulation');
+    onActivity([], undefined);
+    onClose?.();
   }
   function perform(action: string) {
     try {
@@ -225,47 +258,73 @@ export default function FiniteSimulationPanel({
   }
   function runBatch() {
     try {
-      const rows: BatchRow[] = [];
-      for (const target of [machine, ...batchMachines])
-        for (const line of batch.split(/\r?\n/)) {
-          const [value, expected] = line.split('\t');
-          const result = runFinite(target, value, closure, configurationLimit);
-          rows.push({
-            name: target.name,
-            input: value,
-            expected,
-            status: result.status,
-            session: result,
-            machine: target,
-          });
-        }
+      const lines = batchFile
+        ? batchFile.content.replace(/\r/g, '').split('\n')
+        : manualBatchInputs(batchItems);
+      const rows = lines.map((line) => {
+        const parsed = parseBatchLine(line);
+        const result = runFinite(
+          machine,
+          parsed.input,
+          closure,
+          configurationLimit,
+        );
+        return {
+          ...parsed,
+          status: result.status,
+          session: result,
+          machine,
+        };
+      });
       setResults(rows);
     } catch (error) {
       onMessage((error as Error).message);
     }
   }
+  function exportBatchText() {
+    void download(
+      [
+        'Entrada\tResultado\tSalida\tPasos',
+        ...results.map((row) =>
+          [
+            row.input || emptySymbol,
+            names[row.status],
+            '—',
+            String(row.session.steps),
+          ].join('\t'),
+        ),
+      ].join('\n'),
+      'resultados.txt',
+    ).catch((error) => onMessage((error as Error).message));
+  }
+  function exportBatchImage() {
+    void exportTablePng(
+      'Resultados · ' + machine.name,
+      ['Entrada', 'Resultado', 'Salida', 'Pasos'],
+      results.map((row) => [
+        { text: row.input || emptySymbol, mono: true },
+        {
+          text: names[row.status],
+          tone:
+            row.status === 'accepted'
+              ? 'success'
+              : row.status === 'rejected'
+                ? 'danger'
+                : 'warning',
+        },
+        { text: '—' },
+        { text: String(row.session.steps) },
+      ]),
+    ).catch((error) => onMessage((error as Error).message));
+  }
   async function importText(files: FileList | null) {
     try {
-      if (files?.[0]) setBatch(await files[0].text());
+      if (!files?.[0]) return;
+      setBatchFile({ name: files[0].name, content: await files[0].text() });
+      setResults([]);
     } catch (error) {
       onMessage((error as Error).message);
     }
-  }
-  async function importMachines(files: FileList | null) {
-    if (!files) return;
-    const imported: Machine[] = [];
-    for (const file of Array.from(files)) {
-      try {
-        const m = parseJff(await file.text());
-        if (machineKind(m) !== 'fa')
-          throw new Error('Selecciona un autómata finito.');
-        m.name = file.name;
-        imported.push(m);
-      } catch (error) {
-        onMessage((error as Error).message);
-      }
-    }
-    setBatchMachines((current) => [...current, ...imported]);
   }
   const trace = session ? finiteTrace(session, chosen?.id) : [];
   const batchTrace = result
@@ -330,25 +389,15 @@ export default function FiniteSimulationPanel({
         </div>
         <div className="simulation-tab-status">
           <Badge>{finiteNondeterminism(machine).length ? 'AFN' : 'AFD'}</Badge>
-          {session && (
-            <Badge
-              tone={
-                session.status === 'accepted'
-                  ? 'success'
-                  : session.status === 'rejected'
-                    ? 'danger'
-                    : 'neutral'
-              }
-            >
-              {names[session.status]}
-            </Badge>
-          )}
-          {onClose && (
-            <IconButton label="Cerrar simulación" onClick={onClose}>
-              <FiX />
-            </IconButton>
-          )}
         </div>
+        {onClose && (
+          <IconButton label="Ocultar ventana" tooltip onClick={onClose}>
+            <FiMinus />
+          </IconButton>
+        )}
+        <IconButton label="Cerrar simulación" tooltip onClick={closeSimulation}>
+          <FiX />
+        </IconButton>
       </div>
       {tab === 'simulation' && (
         <div
@@ -361,7 +410,6 @@ export default function FiniteSimulationPanel({
             <Field
               className="simulation-input"
               label="Cadena de entrada"
-              placeholder="Ej. aabb"
               value={input}
               onChange={(e) => {
                 setInput(e.target.value);
@@ -404,6 +452,7 @@ export default function FiniteSimulationPanel({
               </Button>
               <IconButton
                 label="Retroceder un paso"
+                tooltip
                 onClick={back}
                 disabled={!session || session.history.length < 2}
               >
@@ -411,6 +460,7 @@ export default function FiniteSimulationPanel({
               </IconButton>
               <IconButton
                 label="Reiniciar simulación"
+                tooltip
                 onClick={() => {
                   setPlaying(false);
                   setSession(null);
@@ -421,6 +471,7 @@ export default function FiniteSimulationPanel({
               </IconButton>
               <IconButton
                 label="Ejecutar sin interacción"
+                tooltip
                 onClick={() => perform('fast')}
               >
                 <FiZap />
@@ -439,7 +490,7 @@ export default function FiniteSimulationPanel({
               />
             </label>
           </div>
-          {session && chosen ? (
+          {session && chosen && (
             <>
               <div
                 className="finite-progress"
@@ -454,151 +505,159 @@ export default function FiniteSimulationPanel({
                   <mark>
                     {session.input.slice(chosen.offset, chosen.offset + 1)}
                   </mark>
-                  {session.input.slice(chosen.offset + 1) ||
-                    (!session.input ? emptySymbol : '')}
+                  {session.input.slice(chosen.offset + 1)}
                 </code>
+                {(session.status === 'accepted' ||
+                  session.status === 'rejected') && (
+                  <Badge
+                    tone={session.status === 'accepted' ? 'success' : 'danger'}
+                  >
+                    {names[session.status]}
+                  </Badge>
+                )}
                 <span>
-                  {chosen.offset} de {session.input.length} símbolos leídos ·
-                  Paso {session.steps}
+                  {chosen.offset} de {session.input.length} símbolos leídos
+                </span>
+                <span className="finite-progress-state">
+                  Estado: <strong>{label(chosen.state)}</strong>
                 </span>
               </div>
-              <div
-                className="configuration-list"
-                role="group"
-                aria-label="Configuraciones activas"
-              >
-                {frontier.map((c) => (
-                  <Button
-                    key={c.id}
-                    aria-pressed={selectedIds.includes(c.id)}
-                    className={
-                      selectedIds.includes(c.id)
-                        ? 'finite-configuration is-selected'
-                        : 'finite-configuration'
-                    }
-                    onClick={(e) => {
-                      setSelectedId(c.id);
-                      setSelectedIds((ids) =>
-                        e.ctrlKey || e.metaKey || e.shiftKey
-                          ? ids.includes(c.id)
-                            ? ids.filter((id) => id !== c.id)
-                            : [...ids, c.id]
-                          : [c.id],
-                      );
-                    }}
+              {frontier.length > 1 && (
+                <details className="finite-configurations">
+                  <summary>Ver configuraciones ({frontier.length})</summary>
+                  <div
+                    className="configuration-list"
+                    role="group"
+                    aria-label="Configuraciones activas"
                   >
-                    <strong>{label(c.state)}</strong>
-                    <span>
-                      <code>
-                        <span className="finite-consumed">
-                          {session.input.slice(0, c.offset)}
+                    {frontier.map((c) => (
+                      <Button
+                        key={c.id}
+                        aria-pressed={selectedIds.includes(c.id)}
+                        className={
+                          selectedIds.includes(c.id)
+                            ? 'finite-configuration is-selected'
+                            : 'finite-configuration'
+                        }
+                        onClick={(e) => {
+                          setSelectedId(c.id);
+                          setSelectedIds((ids) =>
+                            e.ctrlKey || e.metaKey || e.shiftKey
+                              ? ids.includes(c.id)
+                                ? ids.filter((id) => id !== c.id)
+                                : [...ids, c.id]
+                              : [c.id],
+                          );
+                        }}
+                      >
+                        <strong>{label(c.state)}</strong>
+                        <span>
+                          <code>
+                            <span className="finite-consumed">
+                              {session.input.slice(0, c.offset)}
+                            </span>
+                            <mark>{session.input.slice(c.offset)}</mark>
+                          </code>
+                          {session.frozenIds?.includes(c.id)
+                            ? ' · Congelada'
+                            : ''}
                         </span>
-                        <mark>
-                          {session.input.slice(c.offset) || emptySymbol}
-                        </mark>
-                      </code>
-                      {session.frozenIds?.includes(c.id) ? ' · Congelada' : ''}
-                    </span>
-                    {finiteAccepts(machine, c, session.input) && (
-                      <Badge tone="success">Aceptada</Badge>
-                    )}
-                    {c.rejected && <Badge tone="danger">Rechazada</Badge>}
-                  </Button>
-                ))}
-              </div>
-              <div className="finite-batch-actions">
-                <Button
-                  disabled={!selectionFrozen && !selectionNormal}
-                  onClick={() => {
-                    setPlaying(false);
-                    setSession((current) =>
-                      current
-                        ? {
-                            ...current,
-                            frozenIds: selectionFrozen
-                              ? (current.frozenIds ?? []).filter(
-                                  (id) =>
-                                    !(
-                                      selectedIds.length
-                                        ? selectedIds
-                                        : [chosen.id]
-                                    ).includes(id),
-                                )
-                              : [
-                                  ...new Set([
-                                    ...(current.frozenIds ?? []),
-                                    ...current.configurations
-                                      .filter(
-                                        (c) =>
-                                          (selectedIds.length
+                        {finiteAccepts(machine, c, session.input) && (
+                          <Badge tone="success">Aceptada</Badge>
+                        )}
+                        {c.rejected && <Badge tone="danger">Rechazada</Badge>}
+                      </Button>
+                    ))}
+                  </div>
+                  <div className="batch-actions">
+                    <Button
+                      disabled={!selectionFrozen && !selectionNormal}
+                      onClick={() => {
+                        setPlaying(false);
+                        setSession((current) =>
+                          current
+                            ? {
+                                ...current,
+                                frozenIds: selectionFrozen
+                                  ? (current.frozenIds ?? []).filter(
+                                      (id) =>
+                                        !(
+                                          selectedIds.length
                                             ? selectedIds
                                             : [chosen.id]
-                                          ).includes(c.id) &&
-                                          !c.rejected &&
-                                          !finiteAccepts(
-                                            machine,
-                                            c,
-                                            current.input,
-                                          ),
-                                      )
-                                      .map((c) => c.id),
-                                  ]),
-                                ],
-                          }
-                        : null,
-                    );
-                  }}
-                >
-                  {selectionFrozen
-                    ? 'Descongelar configuración'
-                    : 'Congelar configuración'}
-                </Button>
-                <Button
-                  onClick={() => {
-                    setPlaying(false);
-                    setSession((current) => {
-                      if (!current) return null;
-                      const configurations = current.configurations.filter(
-                        (c) =>
-                          !(
-                            selectedIds.length ? selectedIds : [chosen.id]
-                          ).includes(c.id),
-                      );
-                      return {
-                        ...current,
-                        configurations,
-                        status: finiteStatus(machine, {
-                          input: current.input,
-                          configurations,
-                        }),
-                      };
-                    });
-                    setSelectedId(undefined);
-                    setSelectedIds([]);
-                  }}
-                >
-                  <FiTrash2 />
-                  Quitar configuración
-                </Button>
-                <Button
-                  onClick={() => setSelectedIds(frontier.map((c) => c.id))}
-                >
-                  Seleccionar todas
-                </Button>
-                <Button
-                  onClick={() => {
-                    setPlaying(false);
-                    setTab('trace');
-                  }}
-                >
-                  Ver trazas seleccionadas
-                </Button>
-              </div>
-              {session.status === 'rejected' && (
-                <p className="simulation-notice">
-                  Ninguna configuración consumió toda la entrada en un estado
-                  final.
-                </p>
+                                        ).includes(id),
+                                    )
+                                  : [
+                                      ...new Set([
+                                        ...(current.frozenIds ?? []),
+                                        ...current.configurations
+                                          .filter(
+                                            (c) =>
+                                              (selectedIds.length
+                                                ? selectedIds
+                                                : [chosen.id]
+                                              ).includes(c.id) &&
+                                              !c.rejected &&
+                                              !finiteAccepts(
+                                                machine,
+                                                c,
+                                                current.input,
+                                              ),
+                                          )
+                                          .map((c) => c.id),
+                                      ]),
+                                    ],
+                              }
+                            : null,
+                        );
+                      }}
+                    >
+                      {selectionFrozen
+                        ? 'Descongelar configuración'
+                        : 'Congelar configuración'}
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setPlaying(false);
+                        setSession((current) => {
+                          if (!current) return null;
+                          const configurations = current.configurations.filter(
+                            (c) =>
+                              !(
+                                selectedIds.length ? selectedIds : [chosen.id]
+                              ).includes(c.id),
+                          );
+                          return {
+                            ...current,
+                            configurations,
+                            status: finiteStatus(machine, {
+                              input: current.input,
+                              configurations,
+                            }),
+                          };
+                        });
+                        setSelectedId(undefined);
+                        setSelectedIds([]);
+                      }}
+                    >
+                      <FiTrash2 />
+                      Quitar configuración
+                    </Button>
+                    <Button
+                      onClick={() => setSelectedIds(frontier.map((c) => c.id))}
+                    >
+                      Seleccionar todas
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setPlaying(false);
+                        setTab('trace');
+                      }}
+                    >
+                      Ver trazas seleccionadas
+                    </Button>
+                  </div>
+                </details>
               )}
               {session.status === 'limit' && (
                 <p className="simulation-notice">
@@ -607,12 +666,6 @@ export default function FiniteSimulationPanel({
                 </p>
               )}
             </>
-          ) : (
-            <p className="simulation-notice">
-              Escribe una cadena o deja la entrada vacía para probar{' '}
-              {emptySymbol}. Se acepta al consumir toda la entrada en un estado
-              final.
-            </p>
           )}
         </div>
       )}
@@ -624,44 +677,65 @@ export default function FiniteSimulationPanel({
           aria-labelledby={`${panelId}-batch-tab`}
         >
           <div className="batch-entry">
-            <label className="field">
-              <span>Cadenas de entrada</span>
-              <textarea
-                aria-label="Cadenas de entrada"
-                value={batch}
-                onChange={(e) => setBatch(e.target.value)}
-                placeholder={'a\naab\nab\taccept'}
+            {batchFile ? (
+              <>
+                <BatchTextFileNotice
+                  fileName={batchFile.name}
+                  onClear={() => setBatchFile(null)}
+                />
+                <textarea
+                  aria-label="Entradas del archivo de texto"
+                  className="batch-text-file-editor"
+                  value={batchFile.content}
+                  onChange={(event) => {
+                    setBatchFile({
+                      ...batchFile,
+                      content: event.target.value,
+                    });
+                    setResults([]);
+                  }}
+                  spellCheck={false}
+                />
+              </>
+            ) : (
+              <BatchInputTable
+                items={batchItems}
+                onChange={(items) => {
+                  setBatchItems(items);
+                  setBatchFile(null);
+                  setResults([]);
+                }}
               />
-              <span className="field-hint">
-                Una cadena por línea. Una línea vacía prueba {emptySymbol}.
-                Puedes añadir accept o reject separado por tabulador.
-              </span>
-            </label>
-            <div className="finite-batch-actions">
+            )}
+            <div className="batch-actions">
               <Button onClick={runBatch} variant="primary">
                 <FiPlay />
-                Probar entradas
+                Probar todas
               </Button>
-              <Button onClick={() => textInput.current?.click()}>
-                <FiFolder />
-                Cargar texto
-              </Button>
-              <Button onClick={() => machineInput.current?.click()}>
-                Añadir autómatas .jff
-              </Button>
-            </div>
-            {batchMachines.map((m, i) => (
-              <Button
-                key={i}
-                variant="subtle"
-                onClick={() =>
-                  setBatchMachines((all) => all.filter((_, j) => j !== i))
-                }
+              <IconButton
+                label="Cargar entradas desde archivo de texto"
+                tooltip
+                onClick={() => textInput.current?.click()}
               >
-                {m.name}
-                <FiX />
-              </Button>
-            ))}
+                <FiUpload />
+              </IconButton>
+              <IconButton
+                label="Exportar resultados como texto"
+                tooltip
+                disabled={!results.length}
+                onClick={exportBatchText}
+              >
+                <FiFileText />
+              </IconButton>
+              <IconButton
+                label="Exportar resultados como imagen"
+                tooltip
+                disabled={!results.length}
+                onClick={exportBatchImage}
+              >
+                <FiImage />
+              </IconButton>
+            </div>
             <input
               hidden
               ref={textInput}
@@ -672,110 +746,60 @@ export default function FiniteSimulationPanel({
                 e.target.value = '';
               }}
             />
-            <input
-              hidden
-              ref={machineInput}
-              type="file"
-              accept=".jff,.xml"
-              multiple
-              onChange={(e) => {
-                void importMachines(e.target.files);
-                e.target.value = '';
-              }}
-            />
           </div>
-          <div className="finite-results">
-            <div className="finite-results-heading">
-              <span>{results.length} resultados</span>
-              <Button
-                disabled={!results.length}
-                onClick={() => {
-                  void exportTablePng(
-                    'Resultados · ' + machine.name,
-                    ['Autómata', 'Entrada', 'Resultado', 'Esperado'],
-                    results.map((r) => [
-                      { text: r.name },
-                      { text: r.input || emptySymbol, mono: true },
-                      {
-                        text: names[r.status],
-                        tone:
-                          r.status === 'accepted'
-                            ? 'success'
-                            : r.status === 'rejected'
-                              ? 'danger'
-                              : 'warning',
-                      },
-                      { text: expectedResult(r) },
-                    ]),
-                  ).catch((e) => onMessage(e.message));
-                }}
-              >
-                <FiDownload />
-                Exportar PNG
-              </Button>
-              <Button
-                disabled={!results.length}
-                onClick={() => {
-                  void download(
-                    [
-                      'Autómata\tEntrada\tResultado\tEsperado',
-                      ...results.map((r) =>
-                        [
-                          r.name,
-                          r.input,
-                          names[r.status],
-                          r.expected ?? '',
-                        ].join('\t'),
-                      ),
-                    ].join('\n'),
-                    'resultados.txt',
-                  ).catch((e) => onMessage(e.message));
-                }}
-              >
-                <FiDownload />
-                Exportar
-              </Button>
-            </div>
-            <table>
-              <thead>
-                <tr>
-                  <th>Autómata</th>
-                  <th>Entrada</th>
-                  <th>Resultado</th>
-                  <th>Esperado</th>
-                  <th>Detalle</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((r, i) => (
-                  <tr key={i}>
-                    <td>{r.name}</td>
-                    <td>
-                      <code>{r.input || emptySymbol}</code>
-                    </td>
-                    <td>
-                      <Badge
-                        tone={
-                          r.status === 'accepted'
-                            ? 'success'
-                            : r.status === 'rejected'
-                              ? 'danger'
-                              : 'warning'
-                        }
-                      >
-                        {names[r.status]}
-                      </Badge>
-                    </td>
-                    <td>{expectedResult(r)}</td>
-                    <td>
-                      <Button variant="subtle" onClick={() => setResult(r)}>
-                        Ver traza
-                      </Button>
-                    </td>
+          <div className="finite-results batch-results">
+            {!results.length ? (
+              <EmptyState icon={<FiList />} title="Sin resultados" />
+            ) : (
+              <table>
+                <thead>
+                  <tr>
+                    <th>Entrada</th>
+                    <th>Resultado</th>
+                    <th>Salida</th>
+                    <th>Pasos</th>
+                    <th>
+                      <span className="sr-only">Detalle</span>
+                    </th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {results.map((r, i) => (
+                    <tr key={i}>
+                      <td>
+                        <code>{r.input || emptySymbol}</code>
+                      </td>
+                      <td>
+                        <Badge
+                          tone={
+                            r.status === 'accepted'
+                              ? 'success'
+                              : r.status === 'rejected'
+                                ? 'danger'
+                                : 'warning'
+                          }
+                        >
+                          {names[r.status]}
+                        </Badge>
+                      </td>
+                      <td>
+                        <code>—</code>
+                      </td>
+                      <td>{r.session.steps}</td>
+                      <td>
+                        <IconButton
+                          label={`Ver traza de ${r.input || 'entrada vacía'}`}
+                          tooltip
+                          onClick={() => setResult(r)}
+                        >
+                          <FiArrowRight />
+                        </IconButton>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
         </div>
       )}
@@ -797,7 +821,7 @@ export default function FiniteSimulationPanel({
                   trace
                     .map(
                       (c) =>
-                        `${c.depth}\t${label(c.state)}\t${session!.input.slice(c.offset) || emptySymbol}`,
+                        `${c.depth}\t${label(c.state)}\t${session!.input.slice(c.offset)}`,
                     )
                     .join('\n'),
                   'traza.txt',
@@ -818,8 +842,11 @@ export default function FiniteSimulationPanel({
                 .filter((c) => selectedIds.includes(c.id))
                 .map((c) => (
                   <option key={c.id} value={c.id}>
-                    {label(c.state)} ·{' '}
-                    {session!.input.slice(c.offset) || emptySymbol} · {c.id}
+                    {label(c.state)}
+                    {session!.input.slice(c.offset) &&
+                      ` · ${session!.input.slice(c.offset)}`}
+                    {' · '}
+                    {c.id}
                   </option>
                 ))}
             </Select>
@@ -839,7 +866,7 @@ export default function FiniteSimulationPanel({
                   <td>{c.depth}</td>
                   <td>{label(c.state)}</td>
                   <td>
-                    <code>{session!.input.slice(c.offset) || emptySymbol}</code>
+                    <code>{session!.input.slice(c.offset)}</code>
                   </td>
                   <td>
                     {c.transitionId
@@ -860,7 +887,7 @@ export default function FiniteSimulationPanel({
       )}
       {result && (
         <Modal
-          title={`Traza · ${result.name}`}
+          title={`Traza · ${machine.name}`}
           subtitle={`Entrada: ${result.input || emptySymbol} · ${names[result.status]}`}
           onClose={() => setResult(null)}
         >
@@ -884,7 +911,7 @@ export default function FiniteSimulationPanel({
                       }
                     </td>
                     <td>
-                      <code>{result.input.slice(c.offset) || emptySymbol}</code>
+                      <code>{result.input.slice(c.offset)}</code>
                     </td>
                   </tr>
                 ))}

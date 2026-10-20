@@ -1,4 +1,3 @@
-import { emptyMachine } from '../domain/model';
 import { useEffect, useRef, useState } from 'react';
 import type { Machine } from '../domain/model';
 import { settingsChanged, storedSettings } from '../lib/settings';
@@ -48,7 +47,7 @@ function makeDocument(machine: Machine, path?: string): WorkspaceDocument {
     path,
   };
 }
-export function useWorkspace(initial: Machine) {
+export function useWorkspace() {
   const [state, setState] = useState<{
     documents: WorkspaceDocument[];
     activeId: string;
@@ -57,7 +56,7 @@ export function useWorkspace(initial: Machine) {
       const parsed = JSON.parse(localStorage.getItem(KEY) || 'null');
       if (
         parsed?.version === 1 &&
-        parsed.documents?.length &&
+        Array.isArray(parsed.documents) &&
         parsed.documents.every(
           (d: WorkspaceDocument) =>
             typeof d.id === 'string' && validMachine(d.machine),
@@ -73,13 +72,12 @@ export function useWorkspace(initial: Machine) {
             (d: WorkspaceDocument) => d.id === parsed.activeId,
           )
             ? parsed.activeId
-            : parsed.documents[0].id,
+            : (parsed.documents[0]?.id ?? ''),
         };
     } catch {
       /* Start a clean workspace when storage is unavailable or invalid. */
     }
-    const doc = makeDocument(initial);
-    return { documents: [doc], activeId: doc.id };
+    return { documents: [], activeId: '' };
   });
   const [storageError, setStorageError] = useState(false);
   const [settingsVersion, setSettingsVersion] = useState(0);
@@ -123,8 +121,9 @@ export function useWorkspace(initial: Machine) {
     }, 250);
     return () => clearTimeout(timer);
   }, [state, settingsVersion]);
-  const active = state.documents.find((d) => d.id === state.activeId)!;
+  const active = state.documents.find((d) => d.id === state.activeId);
   function change(machine: Machine, commit = true) {
+    if (!active) return;
     const before = pending.current || active.machine;
     if (!commit) pending.current ??= active.machine;
     else pending.current = null;
@@ -178,9 +177,14 @@ export function useWorkspace(initial: Machine) {
       ),
     }));
   }
-  function open(machine: Machine, path?: string) {
+  function open(
+    machine: Machine,
+    path?: string,
+    options?: { unsaved?: boolean },
+  ) {
     pending.current = null;
     const doc = makeDocument(machine, path);
+    if (options?.unsaved) doc.saved = '';
     setState((s) => ({ documents: [...s.documents, doc], activeId: doc.id }));
     return doc.id;
   }
@@ -189,8 +193,7 @@ export function useWorkspace(initial: Machine) {
     setState((s) => {
       const documents = s.documents.filter((d) => d.id !== id);
       if (!documents.length) {
-        const doc = makeDocument(emptyMachine('Sin título.jff'));
-        return { documents: [doc], activeId: doc.id };
+        return { documents: [], activeId: '' };
       }
       return {
         documents,
@@ -210,6 +213,10 @@ export function useWorkspace(initial: Machine) {
         d.id === (id || s.activeId)
           ? {
               ...d,
+              machine:
+                snapshot && d.machine.name !== snapshot.name
+                  ? { ...d.machine, name: snapshot.name }
+                  : d.machine,
               path: path || d.path,
               saved: JSON.stringify(snapshot || d.machine),
             }
@@ -219,7 +226,9 @@ export function useWorkspace(initial: Machine) {
   }
   function setActiveId(id: string) {
     pending.current = null;
-    setState((s) => ({ ...s, activeId: id }));
+    setState((s) =>
+      s.documents.some((d) => d.id === id) ? { ...s, activeId: id } : s,
+    );
   }
   return {
     ...state,

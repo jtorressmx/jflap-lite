@@ -26,6 +26,8 @@ The domain implementation was reconstructed from the selected Java source tree. 
 - XML DTD and entity declarations are rejected. Standard JFLAP exports do not require them.
 - Legacy `<block>` states with a unique, explicitly empty referenced `<MachineN/>` definition are imported as ordinary states. The supplied `contadorOs.jff` exercises this format with 21 states and 77 transitions. Missing/ambiguous references and executable submachine contents are rejected rather than silently discarded. Saving emits standard states; Java differential tests verify that normalized machine's complete execution traces, not nested-block execution.
 - The optional root `name` attribute preserves the document title. Java ignores that extension. Generated state identifiers are normalized to numeric JFLAP identifiers where necessary.
+- Transition curve controls are rounded to integers on export: original JFLAP reads `controlx`/`controly` with `Integer.parseInt`, unlike state coordinates. Import still accepts decimal controls from earlier Lite files so saving repairs them.
+- JFLAP draws states at a 20-pixel radius. Lite uses the same base radius and a thinner tokenized outline. When an authored diagram exceeds our 4:3 JFF export area (1400 × 1050), export applies one uniform scale and translation to states, notes, and transition controls. Smaller original files retain their coordinates, and the in-memory editor is not changed by export.
 
 ## Validation
 

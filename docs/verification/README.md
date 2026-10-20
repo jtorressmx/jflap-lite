@@ -1,5 +1,15 @@
 # Verificación diferencial
 
+## Archivos guardados y JFLAP original
+
+Desde `desktop`, ejecuta `npm run test:jff:original -- "C:\ruta\JFLAP.jar"` con el JAR original que quieras comprobar. Requiere Java y `javac`. `JffCompatibilityOracle.java` se compila y ejecuta únicamente contra ese JAR, sin las clases Java modificadas de Lite.
+
+La prueba guarda dos máquinas de Turing y un autómata finito, los abre mediante `XMLCodec.decode`, los vuelve a guardar con JFLAP y compara estados y transiciones. Incluye movimientos L/R/S, blancos, nombres con caracteres XML, posiciones negativas y curvas de transición con decimales en el editor. Esas curvas se exportan como enteros porque el lector original usa `Integer.parseInt` para `controlx` y `controly`. Las posiciones de los estados siguen admitiendo decimales.
+
+Los diagramas más amplios que el área de exportación elegida para JFLAP se reducen con una sola escala para ambos ejes y se desplazan juntos al guardar. Esto conserva la proporción entre estados, notas y curvas; los archivos originales que ya caben mantienen sus coordenadas.
+
+Los `.jff` guardados por versiones anteriores de Lite con controles decimales se reparan al abrirlos y guardarlos de nuevo. En `npm test` estas tres pruebas se omiten si no se proporciona `JFLAP_ORIGINAL_JAR`; las pruebas unitarias del formato se ejecutan siempre.
+
 ## Autómatas finitos
 
 Desde `desktop`, ejecuta `npm run test:finite:original`. El comando compila las clases FA extraídas sin modificar del commit original `ae447cb`, compila `FiniteOracle.java` y ejecuta 38 comparaciones. Incluye los frentes completos y ancestros de cada configuración en ambos modos, rangos, ciclos, cierres, cadenas, ramas convergentes, aceptación temprana, conversión a AFD y minimización. La suite falla si se exige el oráculo y no está disponible. En `npm test` se omite explícitamente cuando falta la compilación original.

@@ -47,13 +47,16 @@ import {
 } from './components/ui';
 import type { MenuEntry } from './components/ui';
 import GraphEditor from './components/GraphEditor';
-import SimulationPanel from './components/SimulationPanel';
+import SimulationPanel, {
+  type SimulationGuide,
+} from './components/SimulationPanel';
 import FiniteSimulationPanel from './components/FiniteSimulationPanel';
 import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
 import type { FiniteTool } from './components/FiniteTools';
 import { finiteLayouts, layoutFinite } from './domain/finite/layout';
 import type { FiniteLayout } from './domain/finite/layout';
 import HomePage from './components/HomePage';
+import ManualCodeDialog from './components/ManualCodeDialog';
 import {
   emptyFinite,
   equivalentFinite,
@@ -61,17 +64,19 @@ import {
   normalizeFinite,
 } from './domain/finite';
 import {
+  BLANK,
   defaultPreferences,
   emptyMachine,
+  movementSymbol,
   nextStateId,
   machineKind,
-  machineTitle,
 } from './domain/model';
 import type { Machine, MachineKind, Preferences } from './domain/model';
 import { nondeterministicStates } from './domain/turing';
 import { parseJff, serializeJff } from './domain/jff';
 import license from './license.txt?raw';
 import { useWorkspace } from './hooks/useWorkspace';
+import type { WorkspaceDocument } from './hooks/useWorkspace';
 import { download, exportImage, exportPdf, printMachine } from './lib/files';
 import {
   readUiSettings,
@@ -83,11 +88,14 @@ type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type Dialog =
   | { type: 'state'; id: string }
   | { type: 'transition'; id?: string; from?: string; to?: string }
+  | { type: 'transition-rules'; id: string }
   | { type: 'note'; id: string }
   | {
       type:
         | 'settings'
         | 'help'
+        | 'special-functions'
+        | 'manual-code'
         | 'about'
         | 'equivalence'
         | 'combine'
@@ -96,6 +104,55 @@ type Dialog =
         | 'license';
     };
 let initialDesktopFiles: Promise<DesktopFile[]> | undefined;
+// Defaults for settings and menus while the workspace has no document.
+const inactiveDocument: WorkspaceDocument = {
+  id: '',
+  machine: emptyMachine(''),
+  past: [],
+  future: [],
+  saved: JSON.stringify(emptyMachine('')),
+};
+function documentNameFromPath(filePath: string) {
+  return filePath
+    .split(/[\\/]/)
+    .pop()
+    ?.replace(/\.(?:jff|xml)$/i, '') || '';
+}
+const dismissedRecentsStorageKey = 'jflap-lite.dismissed-recents.v1';
+function recentPathKey(filePath: string) {
+  return filePath.replace(/\\/g, '/').toLowerCase();
+}
+function readDismissedRecents() {
+  try {
+    const paths: unknown = JSON.parse(
+      localStorage.getItem(dismissedRecentsStorageKey) || '[]',
+    );
+    return new Set(
+      Array.isArray(paths)
+        ? paths.filter((value): value is string => typeof value === 'string')
+        : [],
+    );
+  } catch {
+    return new Set<string>();
+  }
+}
+function writeDismissedRecents(paths: Set<string>) {
+  try {
+    localStorage.setItem(dismissedRecentsStorageKey, JSON.stringify([...paths]));
+  } catch {
+    // Hiding the item in the current view still works when storage is unavailable.
+  }
+}
+function dismissRecentPath(filePath: string) {
+  const dismissed = readDismissedRecents();
+  dismissed.add(recentPathKey(filePath));
+  writeDismissedRecents(dismissed);
+}
+function restoreRecentPath(filePath: string) {
+  const dismissed = readDismissedRecents();
+  dismissed.delete(recentPathKey(filePath));
+  writeDismissedRecents(dismissed);
+}
 function readPreferences(): Preferences {
   try {
     return {
@@ -109,12 +166,14 @@ function readPreferences(): Preferences {
 }
 
 export default function App() {
-  const workspace = useWorkspace(emptyMachine('Sin título'));
-  const { active, change, undo, redo } = workspace;
+  const workspace = useWorkspace();
+  const { change, undo, redo } = workspace;
+  const active = workspace.active ?? inactiveDocument;
   const machine = active.machine;
   const finite = machineKind(machine) === 'fa';
   const [home, setHome] = useState(true);
   const [comparison, setComparison] = useState('');
+  const [recentFiles, setRecentFiles] = useState<DesktopRecentFile[]>([]);
   function createDocument(kind: MachineKind) {
     workspace.open(kind === 'fa' ? emptyFinite() : emptyMachine('Sin título'));
     setHome(false);
@@ -186,6 +245,8 @@ export default function App() {
   const [fitKey, setFitKey] = useState(0);
   const [activeStates, setActiveStates] = useState<string[]>([]);
   const [activeTransition, setActiveTransition] = useState<string>();
+  const [simulationGuide, setSimulationGuide] =
+    useState<SimulationGuide | null>(null);
   const [highlights, setHighlights] = useState<string[]>([]);
   const [request, setRequest] = useState<{
     id: number;
@@ -214,16 +275,109 @@ export default function App() {
     (d) => JSON.stringify(d.machine) !== d.saved,
   ).length;
   const notify = useCallback((text: string) => setMessage(text), []);
+  const refreshRecentFiles = useCallback(async () => {
+    if (!window.desktop) return;
+    try {
+      let files = await window.desktop.getRecentFiles();
+      let dismissed = readDismissedRecents();
+      if (typeof window.desktop.removeRecentFile === 'function') {
+        for (const file of files.filter((item) =>
+          dismissed.has(recentPathKey(item.path)),
+        )) {
+          try {
+            files = await window.desktop.removeRecentFile(file.path);
+            dismissed.delete(recentPathKey(file.path));
+            writeDismissedRecents(dismissed);
+          } catch {
+            // Keep the local dismissal if this window has an older native bridge.
+          }
+        }
+      }
+      dismissed = readDismissedRecents();
+      setRecentFiles(
+        files.filter((file) => !dismissed.has(recentPathKey(file.path))),
+      );
+    } catch (error) {
+      notify(
+        'No se pudieron cargar los archivos recientes: ' +
+          (error as Error).message,
+      );
+    }
+  }, [notify]);
+  useEffect(() => {
+    void refreshRecentFiles();
+  }, [refreshRecentFiles]);
+  async function openRecentFile(file: DesktopRecentFile) {
+    const document = workspace.documents.find(
+      (doc) => doc.path?.toLowerCase() === file.path.toLowerCase(),
+    );
+    if (document) {
+      resumeDocument(document.id);
+      return;
+    }
+    try {
+      const opened = await window.desktop?.openRecentFile?.(file.path);
+      if (opened) receiveNativeFiles([opened]);
+      else {
+        dismissRecentPath(file.path);
+        setRecentFiles((current) =>
+          current.filter(
+            (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
+          ),
+        );
+        void refreshRecentFiles();
+      }
+    } catch {
+      dismissRecentPath(file.path);
+      setRecentFiles((current) =>
+        current.filter(
+          (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
+        ),
+      );
+      void refreshRecentFiles();
+    }
+  }
+  async function removeRecentFile(file: DesktopRecentFile) {
+    if (!window.desktop) return;
+    dismissRecentPath(file.path);
+    setRecentFiles((current) =>
+      current.filter(
+        (recent) => recentPathKey(recent.path) !== recentPathKey(file.path),
+      ),
+    );
+    try {
+      const updated = await window.desktop.removeRecentFile?.(file.path);
+      if (updated) {
+        restoreRecentPath(file.path);
+        const dismissed = readDismissedRecents();
+        setRecentFiles(
+          updated.filter(
+            (recent) => !dismissed.has(recentPathKey(recent.path)),
+          ),
+        );
+      }
+    } catch {
+      // Preserve the local dismissal so an older native bridge cannot restore it.
+    }
+  }
   useEffect(() => {
     if (workspace.storageError)
       notify(
         'No se pudo recuperar la sesión local. Guarda tu máquina en un archivo.',
       );
   }, [workspace.storageError, notify]);
-  const onActivity = useCallback((states: string[], transition?: string) => {
-    setActiveStates(states);
-    setActiveTransition(transition);
-  }, []);
+  const onActivity = useCallback(
+    (
+      states: string[],
+      transition?: string,
+      guide?: SimulationGuide,
+    ) => {
+      setActiveStates(states);
+      setActiveTransition(transition);
+      setSimulationGuide(guide ?? null);
+    },
+    [],
+  );
   useEffect(() => {
     if (!message) return;
     const timer = setTimeout(() => setMessage(''), 6000);
@@ -269,6 +423,7 @@ export default function App() {
       | 'closure'
       | 'state',
   ) {
+    if (!workspace.active) return;
     setHome(false);
     setSimulationOpen(true);
     setRequest({ id: Date.now(), docId: active.id, action });
@@ -325,11 +480,14 @@ export default function App() {
     setSelected([...ids.values()]);
   }
   async function save(asCopy = false, overrideName?: string) {
-    const snapshot = overrideName
+    if (!workspace.active) return false;
+    let snapshot = overrideName
       ? { ...machine, name: overrideName }
       : machine;
+    let savedFileName = snapshot.name;
     try {
       if (window.desktop) {
+        let savesToChosenPath = asCopy || !active.path;
         let result;
         try {
           result = await window.desktop.saveFile({
@@ -340,6 +498,7 @@ export default function App() {
           });
         } catch (error) {
           if (!active.path || asCopy) throw error;
+          savesToChosenPath = true;
           result = await window.desktop.saveFile({
             content: serializeJff(snapshot),
             name: snapshot.name,
@@ -347,9 +506,24 @@ export default function App() {
           });
         }
         if (result.canceled) return false;
-        if (overrideName) change(snapshot);
+        if (savesToChosenPath && result.path) {
+          const chosenName = documentNameFromPath(result.path);
+          if (chosenName && chosenName !== snapshot.name) {
+            snapshot = { ...snapshot, name: chosenName };
+            result = await window.desktop.saveFile({
+              content: serializeJff(snapshot),
+              name: snapshot.name,
+              path: result.path,
+              kind: 'jff',
+            });
+            if (result.canceled) return false;
+          }
+        }
+        savedFileName = result.path?.split(/[\\/]/).pop() || snapshot.name;
+        if (overrideName || snapshot.name !== machine.name) change(snapshot);
         workspace.markSaved(result.path, active.id, snapshot);
       } else {
+        savedFileName = snapshot.name;
         await download(
           serializeJff(snapshot),
           snapshot.name.endsWith('.jff')
@@ -360,7 +534,9 @@ export default function App() {
         if (overrideName) change(snapshot);
         workspace.markSaved(undefined, active.id, snapshot);
       }
-      notify('Archivo .jff guardado.');
+      if (!/\.jff$/i.test(savedFileName)) savedFileName += '.jff';
+      notify(`${savedFileName} guardado.`);
+      void refreshRecentFiles();
       return true;
     } catch (error) {
       notify((error as Error).message);
@@ -395,6 +571,7 @@ export default function App() {
       try {
         const parsed = parseJff(file.content);
         parsed.name = file.name.replace(/\.jff$/i, '');
+        restoreRecentPath(file.path);
         if (combineMode) {
           setImportedCombine(parsed);
           setDialog({ type: 'combine' });
@@ -406,6 +583,7 @@ export default function App() {
         notify(file.name + ': ' + (error as Error).message);
       }
     }
+    void refreshRecentFiles();
   }
   async function saveAll() {
     const desktop = window.desktop;
@@ -415,19 +593,22 @@ export default function App() {
       for (let index = 0; index < savedDocuments.length; index++) {
         const doc = savedDocuments[index];
         if (JSON.stringify(doc.machine) === doc.saved) continue;
+        let snapshot = doc.machine;
+        let savesToChosenPath = !doc.path;
         let result;
         try {
           result = await desktop.saveFile({
-            content: serializeJff(doc.machine),
-            name: doc.machine.name,
+            content: serializeJff(snapshot),
+            name: snapshot.name,
             path: doc.path,
             kind: 'jff',
           });
         } catch (error) {
           if (!doc.path) throw error;
+          savesToChosenPath = true;
           result = await desktop.saveFile({
-            content: serializeJff(doc.machine),
-            name: doc.machine.name,
+            content: serializeJff(snapshot),
+            name: snapshot.name,
             kind: 'jff',
           });
         }
@@ -435,11 +616,29 @@ export default function App() {
           await desktop.completeClose({ saved: false });
           return;
         }
-        workspace.markSaved(result.path, doc.id, doc.machine);
+        if (savesToChosenPath && result.path) {
+          const chosenName = documentNameFromPath(result.path);
+          if (chosenName && chosenName !== snapshot.name) {
+            snapshot = { ...snapshot, name: chosenName };
+            result = await desktop.saveFile({
+              content: serializeJff(snapshot),
+              name: snapshot.name,
+              path: result.path,
+              kind: 'jff',
+            });
+            if (result.canceled) {
+              await desktop.completeClose({ saved: false });
+              return;
+            }
+          }
+        }
+        workspace.markSaved(result.path, doc.id, snapshot);
+        void refreshRecentFiles();
         savedDocuments[index] = {
           ...doc,
+          machine: snapshot,
           path: result.path,
-          saved: JSON.stringify(doc.machine),
+          saved: JSON.stringify(snapshot),
         };
       }
       await desktop.writeWorkspace(
@@ -490,13 +689,13 @@ export default function App() {
     if (!desktop) return;
     void desktop
       .setDocumentState({
-        name: machine.name,
+        name: home ? '' : machine.name,
         dirty: dirtyCount > 0,
         dirtyCount,
         path: active.path,
       })
       .catch((e) => notify(e.message));
-  }, [machine.name, dirtyCount, active.path, notify]);
+  }, [home, machine.name, dirtyCount, active.path, notify]);
   useEffect(() => {
     const desktop = window.desktop;
     if (!desktop) return;
@@ -538,7 +737,8 @@ export default function App() {
           closeDocument(active.id);
           break;
         case 'print':
-          void printMachine(machine).catch((e) => notify(e.message));
+          if (workspace.active)
+            void printMachine(machine).catch((e) => notify(e.message));
           break;
         case 'start':
           simulate('start');
@@ -565,15 +765,10 @@ export default function App() {
     });
   });
   function closeDocument(id: string) {
-    if (id !== active.id) {
-      workspace.setActiveId(id);
-      const d = workspace.documents.find((d) => d.id === id)!;
-      if (JSON.stringify(d.machine) !== d.saved) {
-        setDialog({ type: 'close' });
-        return;
-      }
-    }
-    if (id === active.id && dirty) {
+    const document = workspace.documents.find((doc) => doc.id === id);
+    if (!document) return;
+    if (JSON.stringify(document.machine) !== document.saved) {
+      if (id !== active.id) workspace.setActiveId(id);
       setDialog({ type: 'close' });
       return;
     }
@@ -657,11 +852,22 @@ export default function App() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
+      const ctrl = e.ctrlKey || e.metaKey;
+      if (ctrl && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        if (!target.closest('dialog')) {
+          const selectedTransition = machine.transitions.find((transition) =>
+            selected.includes(transition.id),
+          );
+          if (selectedTransition)
+            setDialog({ type: 'transition-rules', id: selectedTransition.id });
+        }
+        return;
+      }
       if (
         target.closest('input,textarea,select,[contenteditable="true"],dialog')
       )
         return;
-      const ctrl = e.ctrlKey || e.metaKey;
       if (ctrl) {
         const k = e.key.toLowerCase();
         if (['s', 'o', 'n', 'z', 'y', 'a', 'd', 'p'].includes(k))
@@ -676,7 +882,7 @@ export default function App() {
         if (k === 'y') redo();
         if (k === 'a') setSelected(machine.states.map((s) => s.id));
         if (k === 'd') duplicateSelected();
-        if (k === 'p') printMachine(machine);
+        if (k === 'p' && workspace.active) printMachine(machine);
         return;
       }
       if (e.key === 'Delete' || e.key === 'Backspace') {
@@ -710,6 +916,40 @@ export default function App() {
     return () => window.removeEventListener('keydown', key);
   });
 
+  const documentFileActions: MenuEntry[] = workspace.active
+    ? [
+        { separator: true },
+        {
+          label: 'Guardar .jff',
+          icon: <FiSave />,
+          shortcut: 'Ctrl+S',
+          onClick: () => void save(),
+        },
+        {
+          label: 'Guardar como…',
+          icon: <FiEdit2 />,
+          shortcut: 'Ctrl+Mayús+S',
+          onClick: () => void save(true),
+        },
+        {
+          label: 'Exportar imagen…',
+          icon: <FiDownload />,
+          onClick: () => setDialog({ type: 'export' }),
+        },
+        {
+          label: 'Imprimir / guardar PDF',
+          icon: <FiPrinter />,
+          shortcut: 'Ctrl+P',
+          onClick: () => printMachine(machine),
+        },
+        { separator: true },
+        {
+          label: 'Cerrar documento',
+          icon: <FiX />,
+          onClick: () => closeDocument(active.id),
+        },
+      ]
+    : [];
   const fileMenu: MenuEntry[] = [
     {
       label: 'Nueva máquina de Turing',
@@ -729,36 +969,7 @@ export default function App() {
       shortcut: 'Ctrl+O',
       onClick: () => void openDialog(),
     },
-    { separator: true },
-    {
-      label: 'Guardar .jff',
-      icon: <FiSave />,
-      shortcut: 'Ctrl+S',
-      onClick: () => void save(),
-    },
-    {
-      label: 'Guardar como…',
-      icon: <FiEdit2 />,
-      shortcut: 'Ctrl+Mayús+S',
-      onClick: () => void save(true),
-    },
-    {
-      label: 'Exportar imagen…',
-      icon: <FiDownload />,
-      onClick: () => setDialog({ type: 'export' }),
-    },
-    {
-      label: 'Imprimir / guardar PDF',
-      icon: <FiPrinter />,
-      shortcut: 'Ctrl+P',
-      onClick: () => printMachine(machine),
-    },
-    { separator: true },
-    {
-      label: 'Cerrar documento',
-      icon: <FiX />,
-      onClick: () => closeDocument(active.id),
-    },
+    ...documentFileActions,
   ];
   const editMenu: MenuEntry[] = [
     {
@@ -924,6 +1135,17 @@ export default function App() {
     { id: 'note' as Tool, icon: <FiType />, label: 'Añadir nota (N)' },
     { id: 'delete' as Tool, icon: <FiTrash2 />, label: 'Eliminar (D)' },
   ];
+  const transitionRulesTarget =
+    dialog?.type === 'transition-rules'
+      ? machine.transitions.find((transition) => transition.id === dialog.id)
+      : undefined;
+  const transitionRules = transitionRulesTarget
+    ? machine.transitions.filter(
+        (transition) =>
+          transition.from === transitionRulesTarget.from &&
+          transition.to === transitionRulesTarget.to,
+      )
+    : [];
 
   return (
     <div className={`app-shell ${grid ? '' : 'no-grid'}`}>
@@ -1086,65 +1308,74 @@ export default function App() {
                 },
               ]}
             />
-            <Menu
-              label="Ayuda"
-              entries={[
-                {
-                  label: finite
-                    ? 'Guía de autómatas finitos'
-                    : 'Guía de máquinas de Turing',
-                  icon: <FiBookOpen />,
-                  onClick: () => setDialog({ type: 'help' }),
-                },
-                {
-                  label: 'Acerca de JFLAP Lite',
-                  icon: <FiInfo />,
-                  onClick: () => setDialog({ type: 'about' }),
-                },
-              ]}
-            />
           </>
         )}
+        <Menu
+          label="Ayuda"
+          entries={[
+            {
+              label: finite
+                ? 'Guía de autómatas finitos'
+                : 'Guía de máquinas de Turing',
+              icon: <FiBookOpen />,
+              onClick: () => setDialog({ type: 'help' }),
+            },
+            {
+              label: 'Más…',
+              icon: <FiCode />,
+              onClick: () => setDialog({ type: 'special-functions' }),
+            },
+            {
+              label: 'Acerca de JFLAP Lite',
+              icon: <FiInfo />,
+              onClick: () => setDialog({ type: 'about' }),
+            },
+          ]}
+        />
         <div className="menubar-spacer" />
-        <div
-          className="active-document"
-          role="navigation"
-          aria-label="Documentos abiertos"
-        >
-          <Menu
-            className="document-picker"
-            label="Archivo de trabajo"
-            entries={workspace.documents.map((doc) => ({
-              label:
-                doc.machine.name.replace(/\.jff$/i, '') +
-                '.jff' +
-                (JSON.stringify(doc.machine) !== doc.saved ? ' •' : ''),
-              icon: <FiFile />,
-              checked: doc.id === active.id,
-              onClick: () => resumeDocument(doc.id),
-            }))}
+        {!home && workspace.active && (
+          <div
+            className="active-document"
+            role="navigation"
+            aria-label="Documentos abiertos"
           >
-            <FiFile />
-            <span className="document-name" title={active.path || machine.name}>
-              {machine.name.replace(/\.jff$/i, '')}.jff
-            </span>
-            {dirty && (
-              <span className="dirty-dot" aria-label="Cambios sin guardar" />
-            )}
-          </Menu>
-          <IconButton
-            label={`Cerrar ${machine.name}`}
-            onClick={() => closeDocument(active.id)}
-          >
-            <FiX />
-          </IconButton>
-          <IconButton
-            label="Nueva máquina"
-            onClick={() => createDocument(machineKind(machine))}
-          >
-            <FiPlus />
-          </IconButton>
-        </div>
+            <Menu
+              className="document-picker"
+              label="Archivo de trabajo"
+              entries={workspace.documents.map((doc) => ({
+                label:
+                  doc.machine.name.replace(/\.jff$/i, '') +
+                  '.jff' +
+                  (JSON.stringify(doc.machine) !== doc.saved ? ' •' : ''),
+                icon: <FiFile />,
+                checked: doc.id === active.id,
+                onClick: () => resumeDocument(doc.id),
+                action: {
+                  label: `Cerrar ${doc.machine.name}`,
+                  icon: <FiX />,
+                  onClick: () => closeDocument(doc.id),
+                },
+              }))}
+            >
+              <FiFile />
+              <span
+                className="document-name"
+                title={active.path || machine.name}
+              >
+                {machine.name.replace(/\.jff$/i, '')}.jff
+              </span>
+              {dirty && (
+                <span className="dirty-dot" aria-label="Cambios sin guardar" />
+              )}
+            </Menu>
+            <IconButton
+              label="Nueva máquina"
+              onClick={() => createDocument(machineKind(machine))}
+            >
+              <FiPlus />
+            </IconButton>
+          </div>
+        )}
         <IconButton
           label={theme === 'dark' ? 'Usar tema claro' : 'Usar tema oscuro'}
           onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
@@ -1245,13 +1476,21 @@ export default function App() {
           onCreate={createDocument}
           onOpen={() => void openDialog()}
           onResume={resumeDocument}
+          onCloseDocument={closeDocument}
+          recentFiles={recentFiles}
+          onRecent={(file) => void openRecentFile(file)}
+          onRemoveRecent={(file) => void removeRecentFile(file)}
           documents={workspace.documents
             .filter(
               (d) =>
-                d.machine.states.length ||
-                d.machine.notes.length ||
-                d.path ||
-                JSON.stringify(d.machine) !== d.saved,
+                (!d.path ||
+                  !recentFiles.some(
+                    (file) => file.path.toLowerCase() === d.path!.toLowerCase(),
+                  )) &&
+                (d.machine.states.length ||
+                  d.machine.notes.length ||
+                  d.path ||
+                  JSON.stringify(d.machine) !== d.saved),
             )
             .map((d) => ({
               id: d.id,
@@ -1260,169 +1499,178 @@ export default function App() {
             }))}
         />
       )}
-      <div className="app-body" hidden={home}>
-        <main className="main-workspace">
-          <>
-            <div className="commandbar">
-              <div className="command-group">
-                <Button
-                  variant="subtle"
-                  aria-label="Abrir"
-                  onClick={() => void openDialog()}
-                >
-                  <FiFolder />
-                  <span>Abrir</span>
-                </Button>
-                <Button
-                  variant="subtle"
-                  aria-label="Guardar"
-                  onClick={() => void save()}
-                >
-                  <FiSave />
-                  <span>Guardar</span>
-                </Button>
-              </div>
-              <span className="command-divider" />
-              <div className="command-group">
-                <IconButton
-                  label="Deshacer (Ctrl+Z)"
-                  disabled={!active.past.length}
-                  onClick={undo}
-                >
-                  <FiRotateCcw />
-                </IconButton>
-                <IconButton
-                  label="Rehacer (Ctrl+Y)"
-                  disabled={!active.future.length}
-                  onClick={redo}
-                >
-                  <FiRotateCw />
-                </IconButton>
-              </div>
-              <div className="command-spacer" />
-              <span className="workspace-model">
-                <FiGitBranch />
-                {machineTitle(machine)}
-                {finite ? ` · ${nd.length ? 'AFN' : 'AFD'}` : ''}
-              </span>
-              <Button
-                variant="primary"
-                aria-expanded={simulationOpen}
-                aria-controls="simulation-tools"
-                onClick={() => setSimulationOpen((open) => !open)}
-              >
-                <FiPlay /> Simulación
-              </Button>
-            </div>
-            <div className="editor-row">
-              <section
-                className="canvas-section"
-                aria-label="Editor de la máquina"
-              >
-                <div className="canvas-content">
-                  <GraphEditor
-                    key={active.id}
-                    emptySymbol={emptySymbol}
-                    machine={machine}
-                    preferences={preferences}
-                    editRequest={
-                      dialog?.type === 'state' || dialog?.type === 'transition'
-                        ? dialog
-                        : null
-                    }
-                    onEditComplete={() => setDialog(null)}
-                    tool={tool}
-                    selected={selected}
-                    onSelect={setSelected}
-                    onChange={(m, commit) => {
-                      change(m, commit);
-                      if (autoZoom && commit !== false) setFitKey((k) => k + 1);
-                    }}
-                    onEditState={(id) => setDialog({ type: 'state', id })}
-                    onEditTransition={(id) =>
-                      setDialog({ type: 'transition', id })
-                    }
-                    onCreateTransition={(from, to) =>
-                      setDialog({ type: 'transition', from, to })
-                    }
-                    onEditNote={(id) => setDialog({ type: 'note', id })}
-                    activeStates={activeStates}
-                    activeTransition={activeTransition}
-                    highlightStates={highlights}
-                    showLabels={showLabels}
-                    stateScale={stateScale}
-                    zoom={zoom}
-                    onZoom={setZoom}
-                    fitKey={fitKey}
-                  />
-                  <div
-                    className="canvas-tools"
-                    role="toolbar"
-                    aria-label="Herramientas del editor"
+      {workspace.active && (
+        <div className="app-body" hidden={home}>
+          <main className="main-workspace">
+            <>
+              <div className="commandbar">
+                <div className="command-group">
+                  <Button
+                    variant="subtle"
+                    aria-label="Abrir"
+                    onClick={() => void openDialog()}
                   >
-                    {toolsList.map((t) => (
-                      <IconButton
-                        key={t.id}
-                        label={t.label}
-                        active={tool === t.id}
-                        onClick={() => setTool(t.id)}
-                      >
-                        {t.icon}
-                      </IconButton>
-                    ))}
-                  </div>
-                  <div className="zoom-control">
-                    <IconButton
-                      label="Alejar"
-                      onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))}
-                    >
-                      <FiMinus />
-                    </IconButton>
-                    <button
-                      onClick={() => setZoom(1)}
-                      aria-label="Restablecer zoom"
-                    >
-                      {Math.round(zoom * 100)}%
-                    </button>
-                    <IconButton
-                      label="Acercar"
-                      onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
-                    >
-                      <FiPlus />
-                    </IconButton>
-                    <span />
-                    <IconButton
-                      label="Ajustar grafo al lienzo"
-                      onClick={() => setFitKey((k) => k + 1)}
-                    >
-                      <FiMaximize />
-                    </IconButton>
-                  </div>
+                    <FiFolder />
+                    <span>Abrir</span>
+                  </Button>
+                  <Button
+                    variant="subtle"
+                    aria-label="Guardar"
+                    onClick={() => void save()}
+                  >
+                    <FiSave />
+                    <span>Guardar</span>
+                  </Button>
                 </div>
-              </section>
-            </div>
-            <div
-              id="simulation-tools"
-              className="simulation-stack"
-              hidden={!simulationOpen}
-            >
-              {workspace.documents.map((doc) => (
-                <SimulationHost
-                  key={doc.id}
-                  enabled={doc.id === active.id}
-                  machine={doc.machine}
-                  preferences={preferences}
-                  onClose={() => setSimulationOpen(false)}
-                  emptySymbol={emptySymbol}
-                  request={request?.docId === doc.id ? request : undefined}
-                  onActivity={onActivity}
-                  onMessage={notify}
-                />
-              ))}
-            </div>
-          </>
-        </main>
-      </div>
+                <span className="command-divider" />
+                <div className="command-group">
+                  <IconButton
+                    label="Deshacer (Ctrl+Z)"
+                    disabled={!active.past.length}
+                    onClick={undo}
+                  >
+                    <FiRotateCcw />
+                  </IconButton>
+                  <IconButton
+                    label="Rehacer (Ctrl+Y)"
+                    disabled={!active.future.length}
+                    onClick={redo}
+                  >
+                    <FiRotateCw />
+                  </IconButton>
+                </div>
+                <div className="command-spacer" />
+                <Button
+                  variant="primary"
+                  aria-expanded={simulationOpen}
+                  aria-controls="simulation-tools"
+                  onClick={() => setSimulationOpen((open) => !open)}
+                >
+                  <FiPlay /> Simulación
+                </Button>
+              </div>
+              <div className="editor-row">
+                <section
+                  className="canvas-section"
+                  aria-label="Editor de la máquina"
+                >
+                  <div className="canvas-content">
+                    <GraphEditor
+                      key={active.id}
+                      emptySymbol={emptySymbol}
+                      machine={machine}
+                      preferences={preferences}
+                      editRequest={
+                        dialog?.type === 'state' ||
+                        dialog?.type === 'transition'
+                          ? dialog
+                          : null
+                      }
+                      onEditComplete={() => setDialog(null)}
+                      tool={tool}
+                      selected={selected}
+                      onSelect={setSelected}
+                      onChange={(m, commit) => {
+                        change(m, commit);
+                        if (autoZoom && commit !== false)
+                          setFitKey((k) => k + 1);
+                      }}
+                      onEditState={(id) => setDialog({ type: 'state', id })}
+                      onEditTransition={(id) =>
+                        setDialog({ type: 'transition', id })
+                      }
+                      onCreateTransition={(from, to) =>
+                        setDialog({ type: 'transition', from, to })
+                      }
+                      onViewTransitionRules={(id) =>
+                        setDialog({ type: 'transition-rules', id })
+                      }
+                      onEditNote={(id) => setDialog({ type: 'note', id })}
+                      activeStates={activeStates}
+                      activeTransition={activeTransition}
+                      followCamera={simulationGuide !== null}
+                      followState={simulationGuide?.state}
+                      followedTransitions={simulationGuide?.transitions}
+                      highlightStates={highlights}
+                      showLabels={showLabels}
+                      stateScale={stateScale}
+                      zoom={zoom}
+                      onZoom={setZoom}
+                      fitKey={fitKey}
+                    />
+                    <div
+                      className="canvas-tools"
+                      role="toolbar"
+                      aria-label="Herramientas del editor"
+                    >
+                      {toolsList.map((t) => (
+                        <IconButton
+                          key={t.id}
+                          label={t.label}
+                          active={tool === t.id}
+                          tooltip
+                          onClick={() => setTool(t.id)}
+                        >
+                          {t.icon}
+                        </IconButton>
+                      ))}
+                    </div>
+                    <div className="zoom-control">
+                      <IconButton
+                        label="Alejar"
+                        tooltip
+                        onClick={() => setZoom((z) => Math.max(0.2, z - 0.1))}
+                      >
+                        <FiMinus />
+                      </IconButton>
+                      <button
+                        onClick={() => setZoom(1)}
+                        aria-label="Restablecer zoom"
+                      >
+                        {Math.round(zoom * 100)}%
+                      </button>
+                      <IconButton
+                        label="Acercar"
+                        tooltip
+                        onClick={() => setZoom((z) => Math.min(3, z + 0.1))}
+                      >
+                        <FiPlus />
+                      </IconButton>
+                      <span />
+                      <IconButton
+                        label="Ajustar grafo al lienzo"
+                        tooltip
+                        onClick={() => setFitKey((k) => k + 1)}
+                      >
+                        <FiMaximize />
+                      </IconButton>
+                    </div>
+                  </div>
+                </section>
+              </div>
+              <div
+                id="simulation-tools"
+                className="simulation-stack"
+                hidden={!simulationOpen}
+              >
+                {workspace.documents.map((doc) => (
+                  <SimulationHost
+                    key={doc.id}
+                    enabled={doc.id === active.id}
+                    machine={doc.machine}
+                    preferences={preferences}
+                    onClose={() => setSimulationOpen(false)}
+                    emptySymbol={emptySymbol}
+                    request={request?.docId === doc.id ? request : undefined}
+                    onActivity={onActivity}
+                    onMessage={notify}
+                  />
+                ))}
+              </div>
+            </>
+          </main>
+        </div>
+      )}
       {message && (
         <div className="toast" role="status">
           <FiInfo />
@@ -1454,135 +1702,163 @@ export default function App() {
           }}
         />
       )}
+      {dialog?.type === 'transition-rules' && transitionRulesTarget && (
+        <Modal
+          title="Reglas de transición"
+          subtitle={`${machine.states.find((state) => state.id === transitionRulesTarget.from)?.name ?? ''} → ${machine.states.find((state) => state.id === transitionRulesTarget.to)?.name ?? ''}`}
+          onClose={() => setDialog(null)}
+        >
+          <div className="modal-body transition-view-body">
+            <ol className="transition-view-list">
+              {transitionRules.map((transition, index) => {
+                const label =
+                  machineKind(machine) === 'fa'
+                    ? transition.read || emptySymbol
+                    : `${transition.read || BLANK}; ${transition.write || BLANK}, ${movementSymbol(transition.move)}`;
+                return (
+                  <li key={transition.id} className="transition-view-row">
+                    <span className="transition-view-index">{index + 1}</span>
+                    <code>{label}</code>
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+          <div className="modal-footer">
+            <Button onClick={() => setDialog(null)}>Listo</Button>
+          </div>
+        </Modal>
+      )}
       {dialog?.type === 'settings' && (
         <Modal
           title="Preferencias"
           subtitle="Ajusta la apariencia y la simulación."
           onClose={() => setDialog(null)}
+          fullscreen
         >
           <div className="modal-body settings-body">
             {!finite && (
-              <>
-                {' '}
+              <section className="settings-section">
                 <h3>Máquina de Turing</h3>
-                <Toggle
-                  label="Aceptar por estado final"
-                  description="Acepta al alcanzar un estado final."
-                  checked={preferences.acceptFinal}
-                  onChange={(v) =>
-                    setPreferences((p) => ({ ...p, acceptFinal: v }))
-                  }
-                />
-                <Toggle
-                  label="Aceptar por parada"
-                  description="Acepta cuando no hay una transición aplicable en el simulador determinista."
-                  checked={preferences.acceptHalt}
-                  onChange={(v) =>
-                    setPreferences((p) => ({ ...p, acceptHalt: v }))
-                  }
-                />
-                <Toggle
-                  label="Permitir permanecer"
-                  description="Habilita S para escribir sin mover el cabezal."
-                  checked={preferences.allowStay}
-                  onChange={(v) =>
-                    setPreferences((p) => ({ ...p, allowStay: v }))
-                  }
-                />
-              </>
+                <div className="settings-options">
+                  <Toggle
+                    label="Aceptar por estado final"
+                    description="Acepta al alcanzar un estado final."
+                    checked={preferences.acceptFinal}
+                    onChange={(v) =>
+                      setPreferences((p) => ({ ...p, acceptFinal: v }))
+                    }
+                  />
+                  <Toggle
+                    label="Aceptar por parada"
+                    description="Acepta cuando no hay una transición aplicable en el simulador determinista."
+                    checked={preferences.acceptHalt}
+                    onChange={(v) =>
+                      setPreferences((p) => ({ ...p, acceptHalt: v }))
+                    }
+                  />
+                  <Toggle
+                    label="Permitir permanecer"
+                    description="Habilita S para escribir sin mover el cabezal."
+                    checked={preferences.allowStay}
+                    onChange={(v) =>
+                      setPreferences((p) => ({ ...p, allowStay: v }))
+                    }
+                  />
+                </div>
+              </section>
             )}
-            <h3>Apariencia</h3>
-            <div className="form-row">
-              <Select
-                label="Tema"
-                value={theme}
-                onChange={(e) => setTheme(e.target.value)}
-              >
-                <option value="light">Claro</option>
-                <option value="dark">Oscuro</option>
-                <option value="system">Usar tema del sistema</option>
-              </Select>
-              <Select
-                label="Color de énfasis"
-                value={accent}
-                onChange={(e) => setAccent(e.target.value)}
-              >
-                <option value="blue">Azul Windows</option>
-                <option value="teal">Verde azulado</option>
-                <option value="purple">Violeta</option>
-                <option value="green">Verde bosque</option>
-              </Select>
-            </div>
-            <Toggle
-              label="Mostrar etiquetas de estados"
-              checked={showLabels}
-              onChange={setShowLabels}
-            />
-            <Toggle
-              label="Mostrar cuadrícula"
-              checked={grid}
-              onChange={setGrid}
-            />
-            <Toggle
-              label="Ajuste automático del grafo"
-              description="Ajusta la vista al terminar de mover o crear elementos."
-              checked={autoZoom}
-              onChange={setAutoZoom}
-            />
-            <Select
-              label="Paleta del grafo"
-              value={palette}
-              onChange={(e) => setPalette(e.target.value)}
+            <section
+              className={`settings-section ${finite ? 'settings-section-wide' : ''}`}
             >
-              <option value="fluent">Fluent</option>
-              <option value="original">JFLAP original</option>
-              <option value="blue">Azul</option>
-              <option value="green">Verde</option>
-              <option value="orange">Naranja</option>
-              <option value="purple">Violeta</option>
-              <option value="pink">Rosa</option>
-            </Select>
-            <div className="form-row">
-              <Select
-                label="Símbolo de cadena vacía"
-                value={emptySymbol}
-                onChange={(e) => setEmptySymbol(e.target.value as 'ε' | 'λ')}
-              >
-                <option value="ε">ε · Épsilon</option>
-                <option value="λ">λ · Lambda</option>
-              </Select>
-              <Field
-                label="Acciones de deshacer"
-                type="number"
-                min={0}
-                max={1000}
-                value={workspace.historyLimit}
-                onChange={(e) =>
-                  workspace.setHistoryLimit(
-                    Math.max(0, Math.min(1000, Number(e.target.value) || 0)),
-                  )
-                }
-              />
-            </div>
-            <label className="field">
-              <span>Tamaño de los estados</span>
-              <input
-                aria-label="Tamaño de los estados"
-                type="range"
-                min="0.7"
-                max="1.5"
-                step="0.1"
-                value={stateScale}
-                onChange={(e) => setStateScale(Number(e.target.value))}
-              />
-            </label>
-            {!finite && (
-              <p className="info-note">
-                <FiInfo />
-                Como JFLAP 7.1, el modo no determinista utiliza lecturas
-                literales. La aceptación respeta estas preferencias.
-              </p>
-            )}
+              <h3>Apariencia</h3>
+              <div className="settings-controls">
+                <div className="form-row">
+                  <Select
+                    label="Tema"
+                    value={theme}
+                    onChange={(e) => setTheme(e.target.value)}
+                  >
+                    <option value="light">Claro</option>
+                    <option value="dark">Oscuro</option>
+                    <option value="system">Usar tema del sistema</option>
+                  </Select>
+                  <Select
+                    label="Color de énfasis"
+                    value={accent}
+                    onChange={(e) => setAccent(e.target.value)}
+                  >
+                    <option value="blue">Azul Windows</option>
+                    <option value="teal">Verde azulado</option>
+                    <option value="purple">Violeta</option>
+                    <option value="green">Verde bosque</option>
+                  </Select>
+                </div>
+                <Toggle
+                  label="Mostrar etiquetas de estados"
+                  checked={showLabels}
+                  onChange={setShowLabels}
+                />
+                <Toggle
+                  label="Mostrar cuadrícula"
+                  checked={grid}
+                  onChange={setGrid}
+                />
+                <Toggle
+                  label="Ajuste automático del grafo"
+                  description="Ajusta la vista al terminar de mover o crear elementos."
+                  checked={autoZoom}
+                  onChange={setAutoZoom}
+                />
+                <Select
+                  label="Paleta del grafo"
+                  value={palette}
+                  onChange={(e) => setPalette(e.target.value)}
+                >
+                  <option value="fluent">Fluent</option>
+                  <option value="original">JFLAP original</option>
+                  <option value="blue">Azul</option>
+                  <option value="green">Verde</option>
+                  <option value="orange">Naranja</option>
+                  <option value="purple">Violeta</option>
+                  <option value="pink">Rosa</option>
+                </Select>
+                <div className="form-row">
+                  <Select
+                    label="Símbolo de cadena vacía"
+                    value={emptySymbol}
+                    onChange={(e) => setEmptySymbol(e.target.value as 'ε' | 'λ')}
+                  >
+                    <option value="ε">ε · Épsilon</option>
+                    <option value="λ">λ · Lambda</option>
+                  </Select>
+                  <Field
+                    label="Acciones de deshacer"
+                    type="number"
+                    min={0}
+                    max={1000}
+                    value={workspace.historyLimit}
+                    onChange={(e) =>
+                      workspace.setHistoryLimit(
+                        Math.max(0, Math.min(1000, Number(e.target.value) || 0)),
+                      )
+                    }
+                  />
+                </div>
+                <label className="field settings-scale-field">
+                  <span>Tamaño de los estados</span>
+                  <input
+                    aria-label="Tamaño de los estados"
+                    type="range"
+                    min="0.7"
+                    max="1.5"
+                    step="0.1"
+                    value={stateScale}
+                    onChange={(e) => setStateScale(Number(e.target.value))}
+                  />
+                </label>
+              </div>
+            </section>
           </div>
           <div className="modal-footer">
             <Button onClick={() => setPreferences(defaultPreferences)}>
@@ -1766,6 +2042,26 @@ export default function App() {
           </div>
         </Modal>
       )}
+      {dialog?.type === 'special-functions' && (
+        <Modal title="Funciones especiales" onClose={() => setDialog(null)}>
+          <div className="modal-body">
+            <Button onClick={() => setDialog({ type: 'manual-code' })}>
+              <FiCode /> Ingresar código manualmente
+            </Button>
+          </div>
+        </Modal>
+      )}
+      {dialog?.type === 'manual-code' && (
+        <ManualCodeDialog
+          onClose={() => setDialog(null)}
+          onGenerate={(machine) => {
+            workspace.open(machine, undefined, { unsaved: true });
+            setHome(false);
+            setSimulationOpen(false);
+            setDialog(null);
+          }}
+        />
+      )}
       {dialog?.type === 'help' && (
         <HelpDialog
           finite={finite}
@@ -1832,8 +2128,12 @@ function SimulationHost({
   };
 }) {
   const report = useCallback(
-    (states: string[], transition?: string) => {
-      if (enabled) props.onActivity(states, transition);
+    (
+      states: string[],
+      transition?: string,
+      guide?: SimulationGuide,
+    ) => {
+      if (enabled) props.onActivity(states, transition, guide);
     },
     [enabled, props.onActivity],
   );
@@ -1953,8 +2253,9 @@ function HelpDialog({
               </p>
               <p>
                 Paso por estado muestra cada transición. Paso con cierre{' '}
-                {emptySymbol} agrupa los saltos vacíos. Las etiquetas admiten
-                cadenas completas y rangos como [a-z]. Selecciona varias
+                {emptySymbol} agrupa los saltos vacíos. En una etiqueta, [abz]
+                añade a, b y z; solo las expresiones con guion, como [a-z], son
+                rangos. También se admiten cadenas completas. Selecciona varias
                 configuraciones con Ctrl para congelarlas, quitarlas o consultar
                 sus trazas.
               </p>

@@ -8,6 +8,7 @@ const {
 } = require('electron');
 const fs = require('node:fs/promises');
 const { existsSync } = require('node:fs');
+const { randomUUID } = require('node:crypto');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const policy = require('./policy.cjs');
@@ -22,11 +23,126 @@ if (!hasLock) app.quit();
 let mainWindow = null;
 let rendererReady = false;
 let initialFiles = [];
-let documentState = { name: 'Sin título.jff', dirty: false, dirtyCount: 0 };
+let documentState = { name: '', dirty: false, dirtyCount: 0 };
 let closePrompt = false;
 let pendingClose = false;
 let workspaceWrite = Promise.resolve();
 const selectedPaths = new Map();
+let recentWrite = Promise.resolve();
+async function replaceStoredFile(temporary, destination) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await fs.rename(temporary, destination);
+      return;
+    } catch (error) {
+      if (attempt >= 4 || !['EPERM', 'EACCES', 'EBUSY'].includes(error.code))
+        throw error;
+      await new Promise((resolve) => setTimeout(resolve, 40 * (attempt + 1)));
+    }
+  }
+}
+async function saveMachineFile(destination, content) {
+  const temporary = path.join(
+    path.dirname(destination),
+    `.${path.basename(destination)}.${randomUUID()}.tmp`,
+  );
+  try {
+    await fs.writeFile(temporary, content, { encoding: 'utf8', flag: 'wx' });
+    await replaceStoredFile(temporary, destination);
+  } catch (error) {
+    await fs.unlink(temporary).catch(() => {});
+    throw error;
+  }
+}
+const recentFile = () =>
+  path.join(app.getPath('userData'), 'recent-files.json');
+async function readRecentFiles() {
+  try {
+    const entries = JSON.parse(await fs.readFile(recentFile(), 'utf8'));
+    return Array.isArray(entries)
+      ? entries
+          .filter(
+            (entry) =>
+              typeof entry?.path === 'string' &&
+              path.isAbsolute(entry.path) &&
+              /\.(jff|xml)$/i.test(entry.path),
+          )
+          .map((entry) => ({
+            path: entry.path,
+            name: path.basename(entry.path),
+          }))
+      : [];
+  } catch (error) {
+    if (error.code === 'ENOENT' || error instanceof SyntaxError) return [];
+    throw error;
+  }
+}
+function isMissingPathError(error) {
+  return error?.code === 'ENOENT' || error?.code === 'ENOTDIR';
+}
+async function writeRecentFiles(entries) {
+  await fs.mkdir(app.getPath('userData'), { recursive: true });
+  await fs.writeFile(
+    `${recentFile()}.tmp`,
+    JSON.stringify(entries),
+    'utf8',
+  );
+  await replaceStoredFile(`${recentFile()}.tmp`, recentFile());
+}
+function pruneRecentFiles() {
+  recentWrite = recentWrite
+    .catch(() => {})
+    .then(async () => {
+      const previous = await readRecentFiles();
+      const entries = [];
+      for (const entry of previous) {
+        try {
+          const stat = await fs.stat(entry.path);
+          if (stat.isFile()) entries.push(entry);
+        } catch (error) {
+          if (!isMissingPathError(error)) throw error;
+        }
+      }
+      const recent = entries.slice(0, 12);
+      if (recent.length !== previous.length) await writeRecentFiles(recent);
+      return recent;
+    });
+  return recentWrite;
+}
+function rememberFile(file) {
+  if (!/\.(jff|xml)$/i.test(file)) return Promise.resolve();
+  recentWrite = recentWrite
+    .catch(() => {})
+    .then(async () => {
+      const previous = await readRecentFiles();
+      const entries = [
+        { path: file, name: path.basename(file) },
+        ...previous.filter(
+          (entry) =>
+            policy.canonicalKey(entry.path) !== policy.canonicalKey(file),
+        ),
+      ].slice(0, 12);
+      await writeRecentFiles(entries);
+    });
+  return recentWrite.catch((error) =>
+    console.error('No se pudo actualizar Recientes:', error),
+  );
+}
+function removeRecentFile(file) {
+  if (typeof file !== 'string' || !path.isAbsolute(file))
+    throw new Error('La ruta del archivo reciente no es válida.');
+  const key = policy.canonicalKey(file);
+  recentWrite = recentWrite
+    .catch(() => {})
+    .then(async () => {
+      const previous = await readRecentFiles();
+      const entries = previous.filter(
+        (entry) => policy.canonicalKey(entry.path) !== key,
+      );
+      if (entries.length !== previous.length) await writeRecentFiles(entries);
+    });
+  return recentWrite;
+}
 const cliServer = process.argv
   .find((argument) => argument.startsWith('--dev-server='))
   ?.slice(13);
@@ -77,6 +193,7 @@ async function readSelected(files) {
     const content = await fs.readFile(real, 'utf8');
     selectedPaths.set(policy.canonicalKey(real), real);
     opened.push({ path: real, name: path.basename(real), content });
+    await rememberFile(real);
   }
   return opened;
 }
@@ -161,6 +278,41 @@ async function createPrintWindow(svg, name) {
 }
 
 function registerBridge() {
+  handle('desktop:recent-files', async () => {
+    return pruneRecentFiles();
+  });
+  handle('desktop:remove-recent-file', async (file) => {
+    await removeRecentFile(file);
+    return pruneRecentFiles();
+  });
+  handle('desktop:open-recent-file', async (file) => {
+    const entries = await pruneRecentFiles();
+    const entry = entries.find(
+      (item) =>
+        typeof file === 'string' &&
+        policy.canonicalKey(item.path) === policy.canonicalKey(file),
+    );
+    if (!entry) {
+      if (typeof file === 'string' && path.isAbsolute(file)) {
+        try {
+          if (!(await fs.stat(file)).isFile()) return null;
+        } catch (error) {
+          if (isMissingPathError(error)) return null;
+          throw error;
+        }
+      }
+      throw new Error(
+        'El archivo no está en Recientes. Utiliza Abrir archivo.',
+      );
+    }
+    try {
+      return (await readSelected([entry.path]))[0];
+    } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+      await removeRecentFile(entry.path);
+      return null;
+    }
+  });
   handle('desktop:info', () => ({
     version: app.getVersion(),
     platform: process.platform,
@@ -188,6 +340,8 @@ function registerBridge() {
     const content = policy.text(request?.content);
     const kind = request?.kind || 'jff';
     policy.format(kind);
+    if ((kind === 'jff' || kind === 'xml') && !content.trim())
+      throw new Error('No se puede guardar un archivo de máquina vacío.');
     let file;
     if (request?.path) {
       if (typeof request.path !== 'string')
@@ -199,9 +353,12 @@ function registerBridge() {
         );
     } else file = await chooseSave(request?.name, kind);
     if (!file) return { canceled: true };
-    await fs.writeFile(file, content, 'utf8');
+    if (kind === 'jff' || kind === 'xml')
+      await saveMachineFile(file, content);
+    else await fs.writeFile(file, content, 'utf8');
     const real = await fs.realpath(file);
     selectedPaths.set(policy.canonicalKey(real), real);
+    if (kind === 'jff' || kind === 'xml') await rememberFile(real);
     return { path: real, canceled: false };
   });
   handle('desktop:export-file', (request) =>
@@ -250,12 +407,14 @@ function registerBridge() {
           ? 1
           : 0;
     documentState = {
-      name: policy.text(state?.name || 'Sin título.jff', 1000),
+      name: policy.text(state?.name ?? '', 1000),
       dirty: state?.dirty === true || count > 0,
       dirtyCount: count,
     };
     mainWindow.setTitle(
-      `${documentState.dirty ? '● ' : ''}${documentState.name} — JFLAP Lite`,
+      documentState.name
+        ? `${documentState.dirty ? '● ' : ''}${documentState.name} — JFLAP Lite`
+        : 'JFLAP Lite',
     );
     mainWindow.setDocumentEdited(documentState.dirty);
   });
@@ -294,7 +453,7 @@ function registerBridge() {
         await fs.mkdir(app.getPath('userData'), { recursive: true });
         const destination = workspaceFile();
         await fs.writeFile(`${destination}.tmp`, content, 'utf8');
-        await fs.rename(`${destination}.tmp`, destination);
+        await replaceStoredFile(`${destination}.tmp`, destination);
       });
     workspaceWrite = write;
     return write;

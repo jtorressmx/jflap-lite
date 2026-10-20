@@ -11,7 +11,8 @@
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && node scripts/package.mjs",
     "test:native": "node scripts/test-native.mjs",
-    "test:finite:original": "node scripts/verify-finite-original.mjs"
+    "test:finite:original": "node scripts/verify-finite-original.mjs",
+    "test:jff:original": "node scripts/verify-jff-original.mjs"
   },
   "dependencies": {
     "gifenc": "^1.0.3",
