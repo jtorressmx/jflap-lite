@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import license from '../LICENSE?raw';
+import type { FiniteTool } from './components/FiniteTools';
+import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
+import GraphEditor from './components/GraphEditor';
+import { HelpDialog } from './components/HelpDialog';
+import HomePage from './components/HomePage';
 import {
   FiActivity,
-  FiHome,
-  FiGitBranch,
   FiArrowRight,
   FiBookOpen,
   FiCircle,
@@ -14,6 +18,8 @@ import {
   FiFile,
   FiFilePlus,
   FiFolder,
+  FiGitBranch,
+  FiHome,
   FiInfo,
   FiLayers,
   FiList,
@@ -35,49 +41,43 @@ import {
   FiType,
   FiX,
   FiZap,
-} from 'react-icons/fi';
-import {
-  Button,
-  Field,
-  IconButton,
-  Menu,
-  Modal,
-  Select,
-  Toggle,
-  shortcutLabel,
-} from './components/ui';
-import type { MenuEntry } from './components/ui';
-import GraphEditor from './components/GraphEditor';
-import SimulationPanel, {
-  type SimulationGuide,
-} from './components/SimulationPanel';
-import FiniteSimulationPanel from './components/FiniteSimulationPanel';
-import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
-import type { FiniteTool } from './components/FiniteTools';
-import { finiteLayouts, layoutFinite } from './domain/finite/layout';
-import type { FiniteLayout } from './domain/finite/layout';
-import HomePage from './components/HomePage';
+} from './components/icons';
 import ManualCodeDialog from './components/ManualCodeDialog';
+import { NoteDialog } from './components/NoteDialog';
+import { SimulationHost } from './components/SimulationHost';
+import { type SimulationGuide } from './components/SimulationPanel';
+import { Button } from './components/ui/Button';
+import { Field } from './components/ui/Field';
+import { FormRow } from './components/ui/FormRow';
+import { IconButton } from './components/ui/IconButton';
+import type { MenuEntry } from './components/ui/Menu';
+import { Menu } from './components/ui/Menu';
+import { Modal } from './components/ui/Modal';
+import { ModalBody } from './components/ui/ModalBody';
+import { ModalFooter } from './components/ui/ModalFooter';
+import { Select } from './components/ui/Select';
+import { Toggle } from './components/ui/Toggle';
 import {
   emptyFinite,
   equivalentFinite,
   finiteNondeterminism,
   normalizeFinite,
 } from './domain/finite';
+import type { FiniteLayout } from './domain/finite/layout';
+import { finiteLayouts, layoutFinite } from './domain/finite/layout';
+import { parseJff, serializeJff } from './domain/jff';
+import type { Machine, MachineKind, Preferences } from './domain/model';
 import {
   BLANK,
   defaultPreferences,
   emptyMachine,
+  machineKind,
   movementSymbol,
   nextStateId,
-  machineKind,
 } from './domain/model';
-import type { Machine, MachineKind, Preferences } from './domain/model';
 import { nondeterministicStates } from './domain/turing';
-import { parseJff, serializeJff } from './domain/jff';
-import license from '../LICENSE?raw';
-import { useWorkspace } from './hooks/useWorkspace';
 import type { WorkspaceDocument } from './hooks/useWorkspace';
+import { useWorkspace } from './hooks/useWorkspace';
 import { exportImage, exportPdf, printMachine } from './lib/files';
 import {
   readUiSettings,
@@ -114,10 +114,12 @@ const inactiveDocument: WorkspaceDocument = {
   saved: JSON.stringify(emptyMachine('')),
 };
 function documentNameFromPath(filePath: string) {
-  return filePath
-    .split(/[\\/]/)
-    .pop()
-    ?.replace(/\.(?:jff|xml)$/i, '') || '';
+  return (
+    filePath
+      .split(/[\\/]/)
+      .pop()
+      ?.replace(/\.(?:jff|xml)$/i, '') || ''
+  );
 }
 function readPreferences(): Preferences {
   try {
@@ -131,6 +133,11 @@ function readPreferences(): Preferences {
   }
 }
 
+/**
+ * Coordinates application documents and tools.
+ * Takes no input.
+ * @returns The main application interface.
+ */
 export default function App() {
   const workspace = useWorkspace();
   const { change, undo, redo } = workspace;
@@ -283,11 +290,7 @@ export default function App() {
       );
   }, [workspace.storageError, notify]);
   const onActivity = useCallback(
-    (
-      states: string[],
-      transition?: string,
-      guide?: SimulationGuide,
-    ) => {
+    (states: string[], transition?: string, guide?: SimulationGuide) => {
       setActiveStates(states);
       setActiveTransition(transition);
       setSimulationGuide(guide ?? null);
@@ -722,7 +725,10 @@ export default function App() {
             selected.includes(transition.id),
           );
           if (selectedTransition)
-            setDialog({ type: 'transition-rules', id: selectedTransition.id });
+            setDialog({
+              type: 'transition-rules',
+              id: selectedTransition.id,
+            });
         }
         return;
       }
@@ -966,6 +972,7 @@ export default function App() {
       onClick: () => setGrid((v) => !v),
     },
   ];
+
   const toolsList = [
     {
       id: 'select' as Tool,
@@ -1217,7 +1224,7 @@ export default function App() {
           title="Distribución del autómata"
           onClose={() => setLayoutOpen(false)}
         >
-          <div className="modal-body">
+          <ModalBody>
             <Select
               label="Distribución o transformación"
               value={layout}
@@ -1237,7 +1244,7 @@ export default function App() {
                 onChange={(e) => setAngle(e.target.value)}
               />
             )}
-            <div className="modal-footer">
+            <ModalFooter>
               <Button
                 onClick={() => {
                   const choices: FiniteLayout[] = [
@@ -1276,8 +1283,8 @@ export default function App() {
               >
                 Aplicar
               </Button>
-            </div>
-          </div>
+            </ModalFooter>
+          </ModalBody>
         </Modal>
       )}
       {home && (
@@ -1517,7 +1524,7 @@ export default function App() {
           subtitle={`${machine.states.find((state) => state.id === transitionRulesTarget.from)?.name ?? ''} → ${machine.states.find((state) => state.id === transitionRulesTarget.to)?.name ?? ''}`}
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body transition-view-body">
+          <ModalBody className="transition-view-body">
             <ol className="transition-view-list">
               {transitionRules.map((transition, index) => {
                 const label =
@@ -1532,10 +1539,10 @@ export default function App() {
                 );
               })}
             </ol>
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setDialog(null)}>Listo</Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {dialog?.type === 'settings' && (
@@ -1543,9 +1550,9 @@ export default function App() {
           title="Preferencias"
           subtitle="Ajusta la apariencia y la simulación."
           onClose={() => setDialog(null)}
-          fullscreen
+          size="fullscreen"
         >
-          <div className="modal-body settings-body">
+          <ModalBody className="settings-body">
             {!finite && (
               <section className="settings-section">
                 <h3>Máquina de Turing</h3>
@@ -1555,7 +1562,10 @@ export default function App() {
                     description="Acepta al alcanzar un estado final."
                     checked={preferences.acceptFinal}
                     onChange={(v) =>
-                      setPreferences((p) => ({ ...p, acceptFinal: v }))
+                      setPreferences((p) => ({
+                        ...p,
+                        acceptFinal: v,
+                      }))
                     }
                   />
                   <Toggle
@@ -1563,7 +1573,10 @@ export default function App() {
                     description="Acepta cuando no hay una transición aplicable en el simulador determinista."
                     checked={preferences.acceptHalt}
                     onChange={(v) =>
-                      setPreferences((p) => ({ ...p, acceptHalt: v }))
+                      setPreferences((p) => ({
+                        ...p,
+                        acceptHalt: v,
+                      }))
                     }
                   />
                   <Toggle
@@ -1582,7 +1595,7 @@ export default function App() {
             >
               <h3>Apariencia</h3>
               <div className="settings-controls">
-                <div className="form-row">
+                <FormRow>
                   <Select
                     label="Tema"
                     value={theme}
@@ -1602,7 +1615,7 @@ export default function App() {
                     <option value="purple">Violeta</option>
                     <option value="green">Verde bosque</option>
                   </Select>
-                </div>
+                </FormRow>
                 <Toggle
                   label="Mostrar etiquetas de estados"
                   checked={showLabels}
@@ -1632,11 +1645,13 @@ export default function App() {
                   <option value="purple">Violeta</option>
                   <option value="pink">Rosa</option>
                 </Select>
-                <div className="form-row">
+                <FormRow>
                   <Select
                     label="Símbolo de cadena vacía"
                     value={emptySymbol}
-                    onChange={(e) => setEmptySymbol(e.target.value as 'ε' | 'λ')}
+                    onChange={(e) =>
+                      setEmptySymbol(e.target.value as 'ε' | 'λ')
+                    }
                   >
                     <option value="ε">ε · Épsilon</option>
                     <option value="λ">λ · Lambda</option>
@@ -1649,11 +1664,14 @@ export default function App() {
                     value={workspace.historyLimit}
                     onChange={(e) =>
                       workspace.setHistoryLimit(
-                        Math.max(0, Math.min(1000, Number(e.target.value) || 0)),
+                        Math.max(
+                          0,
+                          Math.min(1000, Number(e.target.value) || 0),
+                        ),
                       )
                     }
                   />
-                </div>
+                </FormRow>
                 <label className="field settings-scale-field">
                   <span>Tamaño de los estados</span>
                   <input
@@ -1668,15 +1686,15 @@ export default function App() {
                 </label>
               </div>
             </section>
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setPreferences(defaultPreferences)}>
               Restablecer preferencias
             </Button>
             <Button variant="primary" onClick={() => setDialog(null)}>
               Listo
             </Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {dialog?.type === 'close' && (
@@ -1685,13 +1703,13 @@ export default function App() {
           subtitle={`«${machine.name}» tiene cambios sin exportar a .jff.`}
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body">
+          <ModalBody>
             <p>
               El espacio de trabajo se guarda en este dispositivo. Guarda un
               archivo .jff para conservar tus cambios.
             </p>
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setDialog(null)}>Cancelar</Button>
             <Button
               onClick={() => {
@@ -1716,7 +1734,7 @@ export default function App() {
             >
               Guardar y cerrar
             </Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {dialog?.type === 'equivalence' && (
@@ -1725,7 +1743,7 @@ export default function App() {
           subtitle="Compara los lenguajes reconocidos por dos autómatas finitos."
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body">
+          <ModalBody>
             <div className="combine-list">
               {workspace.documents
                 .filter(
@@ -1743,10 +1761,10 @@ export default function App() {
               Abrir autómata .jff
             </Button>
             {comparison && <p role="status">{comparison}</p>}
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setDialog(null)}>Listo</Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {dialog?.type === 'combine' && (
@@ -1755,7 +1773,7 @@ export default function App() {
           subtitle="Crea una máquina nueva con los estados y transiciones de ambas."
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body">
+          <ModalBody>
             <p>
               Se conserva el estado inicial de la primera máquina. Los estados
               finales de ambas permanecen.
@@ -1786,10 +1804,10 @@ export default function App() {
               <FiFolder />
               Abrir otra máquina .jff
             </Button>
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setDialog(null)}>Cancelar</Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
       {dialog?.type === 'export' && (
@@ -1798,7 +1816,7 @@ export default function App() {
           subtitle="Elige un formato para compartir tu máquina."
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body export-options">
+          <ModalBody className="export-options">
             {(['svg', 'png', 'jpeg', 'gif', 'bmp'] as const).map((format) => (
               <Button
                 key={format}
@@ -1837,27 +1855,27 @@ export default function App() {
               <span>PDF</span>
               <span className="muted">Usar el diálogo de impresión</span>
             </Button>
-          </div>
+          </ModalBody>
         </Modal>
       )}
       {dialog?.type === 'license' && (
         <Modal
           title="Licencia de JFLAP 7.1"
           onClose={() => setDialog(null)}
-          wide
+          size="wide"
         >
-          <div className="modal-body">
+          <ModalBody>
             <pre className="license-text">{license}</pre>
-          </div>
+          </ModalBody>
         </Modal>
       )}
       {dialog?.type === 'special-functions' && (
         <Modal title="Funciones especiales" onClose={() => setDialog(null)}>
-          <div className="modal-body">
+          <ModalBody>
             <Button onClick={() => setDialog({ type: 'manual-code' })}>
               <FiCode /> Ingresar código manualmente
             </Button>
-          </div>
+          </ModalBody>
         </Modal>
       )}
       {dialog?.type === 'manual-code' && (
@@ -1884,7 +1902,7 @@ export default function App() {
           subtitle="Autómatas finitos y máquinas de Turing · Fluent"
           onClose={() => setDialog(null)}
         >
-          <div className="modal-body about-body">
+          <ModalBody className="about-body">
             <span className="about-logo">
               <FiShare2 />
             </span>
@@ -1906,239 +1924,14 @@ export default function App() {
               Compatibilidad con autómatas finitos y máquinas de Turing de una
               cinta, disponibles en esta aplicación de escritorio.
             </p>
-          </div>
-          <div className="modal-footer">
+          </ModalBody>
+          <ModalFooter>
             <Button variant="primary" onClick={() => setDialog(null)}>
               Entendido
             </Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
     </div>
-  );
-}
-
-function SimulationHost({
-  enabled,
-  ...props
-}: Omit<React.ComponentProps<typeof SimulationPanel>, 'request'> & {
-  enabled: boolean;
-  request?: {
-    id: number;
-    action:
-      | 'start'
-      | 'step'
-      | 'fast'
-      | 'batch'
-      | 'output'
-      | 'trace'
-      | 'closure'
-      | 'state';
-  };
-}) {
-  const report = useCallback(
-    (
-      states: string[],
-      transition?: string,
-      guide?: SimulationGuide,
-    ) => {
-      if (enabled) props.onActivity(states, transition, guide);
-    },
-    [enabled, props.onActivity],
-  );
-  return (
-    <div className="simulation-host" hidden={!enabled}>
-      {machineKind(props.machine) === 'fa' ? (
-        <FiniteSimulationPanel
-          machine={props.machine}
-          emptySymbol={props.emptySymbol ?? 'ε'}
-          request={props.request}
-          onActivity={report}
-          onMessage={props.onMessage}
-          onClose={props.onClose}
-        />
-      ) : (
-        <SimulationPanel
-          {...props}
-          request={
-            props.request &&
-            props.request.action !== 'closure' &&
-            props.request.action !== 'state'
-              ? { id: props.request.id, action: props.request.action }
-              : undefined
-          }
-          onActivity={report}
-        />
-      )}
-    </div>
-  );
-}
-
-function NoteDialog({
-  note,
-  onClose,
-  onSave,
-  onDelete,
-}: {
-  note?: Machine['notes'][number];
-  onClose: () => void;
-  onSave: (text: string) => void;
-  onDelete: () => void;
-}) {
-  const [text, setText] = useState(note?.text || '');
-  return (
-    <Modal title="Nota del diagrama" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave(text);
-        }}
-      >
-        <div className="modal-body">
-          <label className="field">
-            <span>Texto</span>
-            <textarea
-              autoFocus
-              rows={5}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Describe qué hace esta parte de la máquina…"
-            />
-          </label>
-        </div>
-        <div className="modal-footer">
-          <Button variant="subtle" onClick={onDelete}>
-            <FiTrash2 />
-            Eliminar
-          </Button>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button type="submit" variant="primary">
-            Guardar nota
-          </Button>
-        </div>
-      </form>
-    </Modal>
-  );
-}
-function HelpDialog({
-  onClose,
-  finite,
-  emptySymbol,
-}: {
-  onClose: () => void;
-  finite: boolean;
-  emptySymbol: 'ε' | 'λ';
-}) {
-  return (
-    <Modal
-      title="Un recorrido por tu máquina"
-      subtitle="Todo lo que necesitas para empezar a explorar."
-      onClose={onClose}
-      wide
-    >
-      <div className="modal-body help-body">
-        <section>
-          <h3>Construye el grafo</h3>
-          <p>
-            Usa <kbd>S</kbd> y haz clic para crear estados. Con <kbd>T</kbd>,
-            arrastra de un estado a otro para conectarlos. Haz clic derecho en
-            un estado o pulsa la etiqueta de una transición para editarla.
-          </p>
-          <p>
-            Selecciona un estado para marcarlo como inicial o final en el menú
-            contextual. Arrastra los estados para moverlos, o una etiqueta de
-            transición para ajustar su curva.
-          </p>
-        </section>
-        <section>
-          {finite ? (
-            <>
-              <h3>Sigue la entrada</h3>
-              <p>
-                Escribe una cadena o deja la entrada vacía para probar{' '}
-                {emptySymbol}. Las transiciones vacías avanzan sin consumir
-                símbolos. Se acepta cuando una configuración consume toda la
-                cadena en un estado final.
-              </p>
-              <p>
-                Paso por estado muestra cada transición. Paso con cierre{' '}
-                {emptySymbol} agrupa los saltos vacíos. En una etiqueta, [abz]
-                añade a, b y z; solo las expresiones con guion, como [a-z], son
-                rangos. También se admiten cadenas completas. Selecciona varias
-                configuraciones con {shortcutLabel('Ctrl')} para congelarlas,
-                quitarlas o consultar sus trazas.
-              </p>
-              <p>
-                En Convertir puedes construir y comprobar un AFD, refinar el
-                árbol de minimización, añadir un estado trampa y obtener una
-                gramática o expresión regular. Vista permite guardar, restaurar
-                y transformar la distribución del grafo.
-              </p>
-              <p>
-                JFLAP 7.1 omite el cierre vacío después de un rango. Para
-                aplicar el cierre también en ese caso, usa Convertir → Expandir
-                rangos y cadenas.
-              </p>
-            </>
-          ) : (
-            <>
-              <h3>Sigue la cinta</h3>
-              <p>
-                Escribe una entrada, incluso vacía, y pulsa Ejecutar o Paso.{' '}
-                <code>□</code> representa un blanco; la cinta crece hacia ambos
-                lados. L mueve a la izquierda, R a la derecha y S permanece.
-              </p>
-              <p>
-                En no determinismo aparecen varias configuraciones. Puedes
-                seleccionarlas, congelarlas, descongelarlas, quitarlas o
-                consultar su traza.
-              </p>
-            </>
-          )}
-        </section>
-        <section>
-          <h3>Prueba y comparte</h3>
-          <p>
-            Entradas múltiples permite probar varias cadenas en la máquina
-            activa, comparar resultados y exportarlos como texto o imagen. Una
-            línea vacía prueba la cadena vacía.
-          </p>
-          {!finite && (
-            <p>
-              La salida de JFLAP empieza bajo el cabezal y termina antes del
-              primer blanco. El límite de ejecución se muestra como «Límite»,
-              sin confundirlo con rechazo.
-            </p>
-          )}
-        </section>
-        <section>
-          <h3>Atajos</h3>
-          <div className="shortcut-list">
-            {[
-              ['V / A', 'Seleccionar'],
-              ['S', 'Crear estado'],
-              ['T', 'Crear transición'],
-              ['N', 'Crear nota'],
-              ['D / Supr', 'Eliminar'],
-              ['Ctrl + Z / Y', 'Deshacer / rehacer'],
-              ['Ctrl + S / O', 'Guardar / abrir'],
-              ['F5 / F6', 'Ejecutar / paso'],
-              ['Mayús + arrastrar', 'Selección de área'],
-              ['Espacio + arrastrar', 'Mover el lienzo'],
-            ].map(([key, label]) => (
-              <div key={key}>
-                <span>{label}</span>
-                <kbd>{shortcutLabel(key)}</kbd>
-              </div>
-            ))}
-          </div>
-        </section>
-      </div>
-      <div className="modal-footer">
-        <Button variant="primary" onClick={onClose}>
-          Listo
-        </Button>
-      </div>
-    </Modal>
   );
 }

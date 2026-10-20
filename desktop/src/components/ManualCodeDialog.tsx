@@ -1,11 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
 import type { DragEvent } from 'react';
-import { FiFile, FiPlay } from 'react-icons/fi';
-import { Button, Modal, TextAreaField } from './ui';
+import { useEffect, useRef, useState } from 'react';
 import { parseJff } from '../domain/jff';
 import type { Machine } from '../domain/model';
+import { FiFile, FiPlay } from './icons';
+import { Button } from './ui/Button';
+import { Modal } from './ui/Modal';
+import { ModalBody } from './ui/ModalBody';
+import { ModalFooter } from './ui/ModalFooter';
+import { TextAreaField } from './ui/TextAreaField';
 
 const MAX_CODE_BYTES = 32 * 1024 * 1024;
+/**
+ * Creates a machine from its source code.
+ * @param props - Component options.
+ * @param props.onClose - Requests closing the component; receives no arguments.
+ * @param props.onGenerate - Receives the machine parsed from the supplied source code.
+ * @returns The source code input and machine creation dialog.
+ */
 export default function ManualCodeDialog({
   onClose,
   onGenerate,
@@ -87,7 +98,7 @@ export default function ManualCodeDialog({
       title="Ingresar código manualmente"
       subtitle="Pega el XML o arrastra un archivo .jff."
       onClose={onClose}
-      wide
+      size="wide"
     >
       <form
         onSubmit={(event) => {
@@ -95,8 +106,8 @@ export default function ManualCodeDialog({
           generate();
         }}
       >
-        <div
-          className={`modal-body manual-code-body${dragging ? ' is-dragging' : ''}`}
+        <ModalBody
+          className={`manual-code-body${dragging ? ' is-dragging' : ''}`}
           onDragOver={(event) => {
             event.preventDefault();
             event.dataTransfer.dropEffect = 'copy';
@@ -138,8 +149,8 @@ export default function ManualCodeDialog({
               event.target.value = '';
             }}
           />
-        </div>
-        <div className="modal-footer manual-code-footer">
+        </ModalBody>
+        <ModalFooter className="manual-code-footer">
           <Button disabled={loading} onClick={() => input.current?.click()}>
             <FiFile />
             {loading ? 'Cargando…' : 'Cargar archivo'}
@@ -153,7 +164,7 @@ export default function ManualCodeDialog({
             <FiPlay />
             Generar máquina
           </Button>
-        </div>
+        </ModalFooter>
       </form>
     </Modal>
   );

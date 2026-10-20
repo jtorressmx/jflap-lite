@@ -1,31 +1,4 @@
-import {
-  useEffect,
-  useId,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  FiArrowRight,
-  FiCheckCircle,
-  FiCrosshair,
-  FiDownload,
-  FiFileText,
-  FiImage,
-  FiList,
-  FiMinus,
-  FiPause,
-  FiPauseCircle,
-  FiPlay,
-  FiRotateCcw,
-  FiSkipForward,
-  FiTrash2,
-  FiUpload,
-  FiXCircle,
-  FiX,
-  FiZap,
-} from 'react-icons/fi';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   Configuration,
   Machine,
@@ -38,22 +11,45 @@ import {
   getOutput,
   getTapeContents,
   isConfigurationAccepted,
-  readTape,
   runMachine,
-  stepSession,
   stepInteractiveSession,
+  stepSession,
   traceSession,
 } from '../domain/turing';
+import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
 import { download } from '../lib/files';
 import { exportTablePng } from '../lib/tableImage';
 import {
-  BatchInputTable,
-  BatchTextFileNotice,
-  createBatchInputItem,
-  manualBatchInputs,
-} from './BatchInputTable';
-import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
-import { Badge, Button, EmptyState, Field, IconButton, Modal } from './ui';
+  FiArrowRight,
+  FiCheckCircle,
+  FiCrosshair,
+  FiDownload,
+  FiList,
+  FiPause,
+  FiPauseCircle,
+  FiPlay,
+  FiRotateCcw,
+  FiSkipForward,
+  FiTrash2,
+  FiXCircle,
+  FiZap,
+} from './icons';
+import { BatchActions } from './simulation/BatchActions';
+import { BatchInputEditor } from './simulation/BatchInputEditor';
+import { BatchResultsTable } from './simulation/BatchResultsTable';
+import { SelectableOutput } from './simulation/SelectableOutput';
+import { SimulationSpeed } from './simulation/SimulationSpeed';
+import { SimulationTabs } from './simulation/SimulationTabs';
+import { SimulationWindowActions } from './simulation/SimulationWindowActions';
+import { Tape } from './simulation/Tape';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { EmptyState } from './ui/EmptyState';
+import { Field } from './ui/Field';
+import { IconButton } from './ui/IconButton';
+import { Modal } from './ui/Modal';
+import { ModalBody } from './ui/ModalBody';
 
 type Request = {
   id: number;
@@ -170,225 +166,20 @@ function traceText(
   ].join('\n');
 }
 
-function ExecutionVerdict({ status }: { status?: Session['status'] }) {
-  if (status !== 'accepted' && status !== 'rejected') return null;
-  return (
-    <p className={`execution-verdict verdict-${status}`} role="status">
-      {status === 'accepted' ? 'Aceptada' : 'Rechazada'}
-    </p>
-  );
-}
-
-function SelectableOutput({ value }: { value: string }) {
-  const outputRef = useRef<HTMLOutputElement>(null);
-  const [selection, setSelection] = useState<{
-    count: number;
-    x: number;
-    y: number;
-    below: boolean;
-  } | null>(null);
-
-  useEffect(() => {
-    const updateSelection = () => {
-      const output = outputRef.current;
-      const current = window.getSelection();
-      if (
-        !output ||
-        !current ||
-        current.isCollapsed ||
-        !current.rangeCount
-      ) {
-        setSelection(null);
-        return;
-      }
-      const range = current.getRangeAt(0);
-      if (
-        !output.contains(range.startContainer) ||
-        !output.contains(range.endContainer)
-      ) {
-        setSelection(null);
-        return;
-      }
-      const selectedText = current.toString();
-      if (!selectedText) {
-        setSelection(null);
-        return;
-      }
-      const rect = range.getBoundingClientRect();
-      setSelection({
-        count: Array.from(selectedText).length,
-        x: Math.max(64, Math.min(window.innerWidth - 64, rect.left + rect.width / 2)),
-        y: rect.top < 40 ? rect.bottom : rect.top,
-        below: rect.top < 40,
-      });
-    };
-    document.addEventListener('selectionchange', updateSelection);
-    window.addEventListener('scroll', updateSelection, true);
-    window.addEventListener('resize', updateSelection);
-    return () => {
-      document.removeEventListener('selectionchange', updateSelection);
-      window.removeEventListener('scroll', updateSelection, true);
-      window.removeEventListener('resize', updateSelection);
-    };
-  }, []);
-
-  useEffect(() => setSelection(null), [value]);
-
-  return (
-    <section className="simulation-output" aria-label="Salida de la máquina">
-      <span className="simulation-output-label">Salida</span>
-      <div className="simulation-output-content">
-        <output
-          ref={outputRef}
-          className="simulation-output-value"
-          aria-label="Cadena de salida"
-        >
-          {value}
-        </output>
-      </div>
-      {selection && (
-        <span
-          className={`simulation-output-count${selection.below ? ' is-below' : ''}`}
-          role="tooltip"
-          aria-live="polite"
-          style={{ left: selection.x, top: selection.y }}
-        >
-          {selection.count}{' '}
-          {selection.count === 1 ? 'carácter' : 'caracteres'}
-        </span>
-      )}
-    </section>
-  );
-}
-
-function Tape({
-  configuration,
-  compact = false,
-  status,
-  stepInterval,
-}: {
-  configuration: Configuration;
-  compact?: boolean;
-  status?: Session['status'];
-  stepInterval?: number;
-}) {
-  const strip = useRef<HTMLDivElement>(null);
-  const animation = useRef<Animation | null>(null);
-  const previous = useRef({
-    head: configuration.head,
-    depth: configuration.depth,
-    id: configuration.id,
-  });
-  useLayoutEffect(() => {
-    const node = strip.current!;
-    const old = previous.current;
-    // Speed changes and stopping playback must not interrupt the current glide.
-    if (
-      !compact &&
-      old.id === configuration.id &&
-      old.head === configuration.head &&
-      old.depth === configuration.depth
-    )
-      return;
-    previous.current = {
-      head: configuration.head,
-      depth: configuration.depth,
-      id: configuration.id,
-    };
-    const delta = configuration.head - old.head;
-    const continuous =
-      configuration.depth === old.depth + 1 &&
-      configuration.parentId === old.id;
-    if (
-      compact ||
-      !continuous ||
-      Math.abs(delta) > 1 ||
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches
-    ) {
-      animation.current?.cancel();
-      return;
-    }
-    if (!delta) return;
-    const style = getComputedStyle(node);
-    const width = node.firstElementChild!.getBoundingClientRect().width;
-    const residual =
-      new DOMMatrixReadOnly(style.transform).m41 + node.offsetWidth / 2;
-    // The production CSS optimizer can rewrite milliseconds as seconds; WAAPI expects ms.
-    const cssDuration = style.getPropertyValue('--tape-motion-duration').trim();
-    const manualDuration =
-      parseFloat(cssDuration) * (cssDuration.endsWith('ms') ? 1 : 1000);
-    const duration =
-      stepInterval === undefined
-        ? manualDuration
-        : stepInterval *
-          parseFloat(style.getPropertyValue('--tape-motion-step-ratio'));
-    animation.current?.cancel();
-    animation.current = node.animate(
-      [
-        {
-          transform: `translate3d(calc(-50% + ${delta * width + residual}px),0,0)`,
-        },
-        { transform: 'translate3d(-50%,0,0)' },
-      ],
-      {
-        duration,
-        easing: style.getPropertyValue('--tape-motion-easing').trim(),
-      },
-    );
-  }, [
-    configuration.head,
-    configuration.depth,
-    configuration.id,
-    compact,
-    stepInterval,
-  ]);
-  useEffect(() => {
-    const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
-    const stop = () => {
-      if (motion.matches) animation.current?.cancel();
-    };
-    motion.addEventListener('change', stop);
-    return () => {
-      motion.removeEventListener('change', stop);
-      animation.current?.cancel();
-    };
-  }, []);
-  const count = compact ? 13 : 21;
-  const indices = Array.from(
-    { length: count },
-    (_, index) => configuration.head - Math.floor(count / 2) + index,
-  );
-  return (
-    <div className={`tape-display${compact ? ' is-compact' : ''}`}>
-      <div
-        className={`tape-viewport${compact ? ' tape-compact' : ''}${status === 'accepted' || status === 'rejected' ? ' tape-' + status : ''}`}
-        role="img"
-        aria-label={`Cinta: ${getTapeContents(configuration) || 'vacía'}. Cabezal en celda ${configuration.head}.`}
-      >
-        <div className="tape-track">
-          <div ref={strip} className="tape-strip">
-            {indices.map((index) => (
-              <div
-                key={index}
-                className={`tape-position${index === configuration.head ? ' is-head' : ''}`}
-              >
-                <span className="tape-cell">
-                  {readTape(configuration, index)}
-                </span>
-              </div>
-            ))}
-          </div>
-          <span className="tape-head-marker" aria-hidden="true">
-            ▼
-          </span>
-          <div className="tape-head-frame" aria-hidden="true" />
-        </div>
-      </div>
-      <ExecutionVerdict status={status} />
-    </div>
-  );
-}
-
+/**
+ * Coordinates Turing machine simulation and testing.
+ * @param props - Component options.
+ * @param [props.onClose] - Requests closing the component; receives no arguments.
+ * @param props.machine - Machine used by the component.
+ * @param props.preferences - Machine execution and acceptance preferences.
+ * @param [props.request] - Optional external simulation action request.
+ * @param props.request.id - Identifier that distinguishes this request from previous requests.
+ * @param props.request.action - Requested simulation action.
+ * @param props.onActivity - Receives active state identifiers, an optional transition, and an optional tracking guide.
+ * @param props.onMessage - Receives the message to present in the application.
+ * @param [props.emptySymbol=ε] - Symbol used to display the empty string.
+ * @returns The Turing machine simulation, tests, and traces.
+ */
 export function SimulationPanel({
   onClose,
   machine,
@@ -472,9 +263,7 @@ export function SimulationPanel({
           ? [config.state]
           : [],
       config?.transitionId,
-      directing
-        ? { state: config?.state, transitions: path }
-        : undefined,
+      directing ? { state: config?.state, transitions: path } : undefined,
     );
     if (terminal(session)) setPlaying(false);
   }, [session, onActivity, directing]);
@@ -885,48 +674,18 @@ export function SimulationPanel({
         role="tablist"
         aria-label="Herramientas de simulación"
       >
-        {(
-          [
-            { id: 'simulation', title: 'Simulación' },
-            { id: 'batch', title: 'Entradas múltiples' },
-            { id: 'trace', title: 'Traza' },
-          ] as const
-        ).map((item) => (
-          <button
-            key={item.id}
-            role="tab"
-            aria-selected={tab === item.id}
-            aria-controls={`${panelId}-simulation-${item.id}`}
-            id={`${panelId}-tab-${item.id}`}
-            tabIndex={tab === item.id ? 0 : -1}
-            className={tab === item.id ? 'is-active' : ''}
-            onClick={() => setTab(item.id)}
-            onKeyDown={(event) => {
-              if (!['ArrowLeft', 'ArrowRight'].includes(event.key)) return;
-              const tabs = ['simulation', 'batch', 'trace'] as const;
-              const index = tabs.indexOf(tab);
-              const next =
-                tabs[(index + (event.key === 'ArrowRight' ? 1 : -1) + 3) % 3];
-              setTab(next);
-              document.getElementById(`${panelId}-tab-${next}`)?.focus();
-            }}
-          >
-            {item.title}
-          </button>
-        ))}
+        <SimulationTabs
+          selected={tab}
+          onSelect={setTab}
+          tabId={(id) => `${panelId}-tab-${id}`}
+          panelId={(id) => `${panelId}-simulation-${id}`}
+        />
         <div className="simulation-tab-status">
           {session?.status === 'limit' && (
             <Badge tone="warning">{statusNames[session.status]}</Badge>
           )}
         </div>
-        {onClose && (
-          <IconButton label="Ocultar ventana" tooltip onClick={onClose}>
-            <FiMinus />
-          </IconButton>
-        )}
-        <IconButton label="Cerrar simulación" tooltip onClick={closeSimulation}>
-          <FiX />
-        </IconButton>
+        <SimulationWindowActions onHide={onClose} onClose={closeSimulation} />
       </div>
       {tab === 'simulation' && (
         <div
@@ -977,23 +736,25 @@ export function SimulationPanel({
                 <FiCrosshair />
                 {directing ? 'Dirigiendo' : 'Dirigir'}
               </Button>
-              <IconButton label="Ejecución rápida" tooltip onClick={() => fast()}>
+              <IconButton
+                label="Ejecución rápida"
+                tooltip
+                onClick={() => fast()}
+              >
                 <FiZap />
               </IconButton>
             </div>
-            <label className="simulation-speed">
-              <span>Velocidad</span>
-              <input
-                type="range"
-                min="100"
-                max={directing ? 1600 - MIN_DIRECT_INTERVAL : 1500}
-                step="50"
-                value={1600 - speed}
-                onChange={(event) => setSpeed(1600 - Number(event.target.value))}
-                aria-label="Velocidad de simulación"
-              />
+            <SimulationSpeed
+              label={<span>Velocidad</span>}
+              min="100"
+              max={directing ? 1600 - MIN_DIRECT_INTERVAL : 1500}
+              step="50"
+              value={1600 - speed}
+              onChange={(event) => setSpeed(1600 - Number(event.target.value))}
+              aria-label="Velocidad de simulación"
+            >
               <span>{(1000 / speed).toFixed(1)} pasos/s</span>
-            </label>
+            </SimulationSpeed>
           </div>
           <div className="simulation-tape-row">
             <div className="simulation-tape-main">
@@ -1106,149 +867,99 @@ export function SimulationPanel({
           className="batch-content"
         >
           <div className="batch-entry">
-            {batchFile ? (
-              <>
-                <BatchTextFileNotice
-                  fileName={batchFile.name}
-                  onClear={() => setBatchFile(null)}
-                />
-                <textarea
-                  aria-label="Entradas del archivo de texto"
-                  className="batch-text-file-editor"
-                  value={batchFile.content}
-                  onChange={(event) => {
-                    setBatchFile({
-                      ...batchFile,
-                      content: event.target.value,
-                    });
-                    setResults([]);
-                  }}
-                  spellCheck={false}
-                />
-              </>
-            ) : (
-              <BatchInputTable
-                items={batchItems}
-                onChange={(items) => {
-                  setBatchItems(items);
-                  setBatchFile(null);
-                  setResults([]);
-                }}
-              />
-            )}
-            <div className="batch-actions">
-              <Button variant="primary" onClick={runBatch}>
-                <FiPlay /> Probar todas
-              </Button>
-              <IconButton
-                label="Cargar entradas desde archivo de texto"
-                tooltip
-                onClick={() => void openBatchText()}
-              >
-                <FiUpload />
-              </IconButton>
-              <IconButton
-                label="Exportar resultados como texto"
-                tooltip
-                disabled={!results.length}
-                onClick={() => void saveLegacyResults()}
-              >
-                <FiFileText />
-              </IconButton>
-              <IconButton
-                label="Exportar resultados como imagen"
-                tooltip
-                disabled={!results.length}
-                onClick={() => void saveResultsImage()}
-              >
-                <FiImage />
-              </IconButton>
-            </div>
+            <BatchInputEditor
+              items={batchItems}
+              file={batchFile}
+              onClearFile={() => setBatchFile(null)}
+              onFileChange={(file) => {
+                setBatchFile(file);
+                setResults([]);
+              }}
+              onItemsChange={(items) => {
+                setBatchItems(items);
+                setBatchFile(null);
+                setResults([]);
+              }}
+            />
+            <BatchActions
+              onRun={runBatch}
+              onImport={() => void openBatchText()}
+              onExportText={() => void saveLegacyResults()}
+              onExportImage={() => void saveResultsImage()}
+              exportDisabled={!results.length}
+            />
           </div>
           <div className="batch-results">
             {!results.length ? (
               <EmptyState icon={<FiList />} title="Sin resultados" />
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Entrada</th>
-                    <th>Resultado</th>
-                    <th>Salida</th>
-                    <th>Pasos</th>
-                    <th>
-                      <span className="sr-only">Detalle</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((row) => {
-                    const matches = comparison(row);
-                    const config =
-                      row.session?.status === 'accepted'
-                        ? acceptingConfigurations(
-                            row.machine,
-                            row.session,
-                            preferences,
-                          )[0]
-                        : undefined;
-                    return (
-                      <tr key={row.id}>
-                        <td>
-                          <code>{row.input || emptySymbol}</code>
-                        </td>
-                        <td>
-                          {row.session ? (
-                            <Badge tone={tone(row.session.status)}>
-                              {statusNames[row.session.status]}
-                            </Badge>
-                          ) : (
-                            <span className="field-error">{row.error}</span>
+              <BatchResultsTable>
+                {results.map((row) => {
+                  const matches = comparison(row);
+                  const config =
+                    row.session?.status === 'accepted'
+                      ? acceptingConfigurations(
+                          row.machine,
+                          row.session,
+                          preferences,
+                        )[0]
+                      : undefined;
+                  return (
+                    <tr key={row.id}>
+                      <td>
+                        <code>{row.input || emptySymbol}</code>
+                      </td>
+                      <td>
+                        {row.session ? (
+                          <Badge tone={tone(row.session.status)}>
+                            {statusNames[row.session.status]}
+                          </Badge>
+                        ) : (
+                          <span className="field-error">{row.error}</span>
+                        )}
+                      </td>
+                      <td>
+                        <code>
+                          {config ? getOutput(config) || emptySymbol : '—'}
+                        </code>
+                      </td>
+                      <td>{row.session?.steps ?? '—'}</td>
+                      <td>
+                        <div className="batch-row-actions">
+                          {matches !== null && (
+                            <span
+                              className={
+                                matches ? 'batch-match' : 'batch-mismatch'
+                              }
+                              title={
+                                matches
+                                  ? 'Coincide con lo esperado'
+                                  : `Se esperaba ${row.expected || 'salida'} ${row.expectedOutput ?? ''}`
+                              }
+                            >
+                              {matches ? <FiCheckCircle /> : <FiXCircle />}
+                            </span>
                           )}
-                        </td>
-                        <td>
-                          <code>
-                            {config ? getOutput(config) || emptySymbol : '—'}
-                          </code>
-                        </td>
-                        <td>{row.session?.steps ?? '—'}</td>
-                        <td>
-                          <div className="batch-row-actions">
-                            {matches !== null && (
-                              <span
-                                className={
-                                  matches ? 'batch-match' : 'batch-mismatch'
-                                }
-                                title={
-                                  matches
-                                    ? 'Coincide con lo esperado'
-                                    : `Se esperaba ${row.expected || 'salida'} ${row.expectedOutput ?? ''}`
-                                }
-                              >
-                                {matches ? <FiCheckCircle /> : <FiXCircle />}
-                              </span>
-                            )}
-                            {row.session && (
-                              <IconButton
-                                label={`Ver resultado y traza de ${row.input || 'entrada vacía'}`}
-                                tooltip
-                                onClick={() =>
-                                  setResultModal({
-                                    machine: row.machine,
-                                    session: row.session!,
-                                  })
-                                }
-                              >
-                                <FiArrowRight />
-                              </IconButton>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                          {row.session && (
+                            <IconButton
+                              label={`Ver resultado y traza de ${row.input || 'entrada vacía'}`}
+                              tooltip
+                              onClick={() =>
+                                setResultModal({
+                                  machine: row.machine,
+                                  session: row.session!,
+                                })
+                              }
+                            >
+                              <FiArrowRight />
+                            </IconButton>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </BatchResultsTable>
             )}
           </div>
         </div>
@@ -1312,10 +1023,10 @@ export function SimulationPanel({
         <Modal
           title="Resultado de la ejecución"
           subtitle={resultModal.machine.name}
-          wide
+          size="wide"
           onClose={() => setResultModal(null)}
         >
-          <div className="modal-body simulation-result-body">
+          <ModalBody className="simulation-result-body">
             <div className="simulation-result-summary">
               <span>{resultModal.session.steps} pasos</span>
               <code>Entrada: {resultModal.session.input || emptySymbol}</code>
@@ -1388,7 +1099,7 @@ export function SimulationPanel({
                 </details>
               </div>
             ))}
-          </div>
+          </ModalBody>
         </Modal>
       )}
     </section>

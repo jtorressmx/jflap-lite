@@ -1,46 +1,25 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import type {
   KeyboardEvent as ReactKeyboardEvent,
   PointerEvent as ReactPointerEvent,
 } from 'react';
-import {
-  FiArrowRight,
-  FiCheck,
-  FiEye,
-  FiList,
-  FiMinus,
-  FiPlus,
-  FiTrash2,
-  FiX,
-} from 'react-icons/fi';
-import { Button, Field, IconButton, Popover, shortcutLabel } from './ui';
+import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import type { Machine, Preferences } from '../domain/model';
 import {
   defaultPreferences,
-  movementSymbol,
   machineKind,
   machineTitle,
+  movementSymbol,
   nextStateId,
 } from '../domain/model';
-import {
-  normalizeRead,
-  normalizeWrite,
-  validateTransition,
-} from '../domain/turing';
-import type { Preferences } from '../domain/model';
-import type { Machine } from '../domain/model';
-import { transitionLabels } from '../domain/finite/transitionInput';
+import { shortcutLabel } from '../lib/shortcuts';
+import { StateProperties } from './graph/StateProperties';
+import { TransitionProperties } from './graph/TransitionProperties';
+import { Popover } from './ui/Popover';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type State = Machine['states'][number];
 type Transition = Machine['transitions'][number];
-type TransitionDraft = {
-  key: string;
-  id?: string;
-  read: string;
-  write: string;
-  move: Transition['move'];
-};
 type Props = {
   readOnly?: boolean;
   emptySymbol?: 'ε' | 'λ';
@@ -189,6 +168,41 @@ function connectionPreviewPath(
   return `M ${start.x} ${start.y} Q ${control.x} ${control.y} ${end.x} ${end.y}`;
 }
 
+/**
+ * Shows the interactive machine diagram editor.
+ * @param props - Component options.
+ * @param [props.readOnly=false] - Disables diagram editing when enabled.
+ * @param [props.emptySymbol=ε] - Symbol used to display the empty string.
+ * @param props.machine - Machine used by the component.
+ * @param props.tool - Selected tool.
+ * @param props.selected - Identifiers of selected elements; none by default.
+ * @param props.onSelect - Receives the identifiers of the newly selected elements.
+ * @param props.onChange - Receives the updated machine and an optional flag confirming the change.
+ * @param props.onEditState - Reserved callback accepting the identifier of a state to edit.
+ * @param props.onEditTransition - Reserved callback accepting the identifier of a transition to edit.
+ * @param [props.onViewTransitionRules] - Receives the identifier of the transition whose rules are requested.
+ * @param props.onCreateTransition - Reserved callback accepting source and destination state identifiers.
+ * @param props.onEditNote - Receives the identifier of the note requested for editing.
+ * @param [props.editRequest] - Optional external edit request; null means no request.
+ * @param props.editRequest.type - Kind of element requested for editing.
+ * @param [props.editRequest.id] - Identifier of the existing element requested for editing.
+ * @param [props.editRequest.from] - Source state identifier for a new transition.
+ * @param [props.editRequest.to] - Destination state identifier for a new transition.
+ * @param [props.onEditComplete] - Reports that the external edit request was handled; receives no arguments.
+ * @param [props.preferences] - Editing preferences; defaults are used when omitted.
+ * @param [props.activeStates] - Active state identifiers; none by default.
+ * @param [props.activeTransition] - Optional active transition identifier.
+ * @param [props.followCamera=false] - Allows the view to follow simulation activity.
+ * @param [props.followState] - Optional identifier of the state the view should follow.
+ * @param [props.followedTransitions] - Identifiers of transitions to follow; none by default.
+ * @param [props.highlightStates] - Identifiers of highlighted states; none by default.
+ * @param props.showLabels - Whether state labels are displayed.
+ * @param props.zoom - Current diagram zoom factor.
+ * @param props.onZoom - Receives the requested zoom factor.
+ * @param props.fitKey - Changing this value requests fitting the diagram to the available area.
+ * @param [props.stateScale=1] - State size multiplier.
+ * @returns The interactive diagram editor.
+ */
 function GraphEditor({
   readOnly = false,
   emptySymbol = 'ε',
@@ -1195,7 +1209,10 @@ function GraphEditor({
                   markerEnd={`url(#${markerId}-${activeStates.includes(state.id) || selected.includes(state.id) ? 'active-arrow' : 'arrow'})`}
                 />
               )}
-              <circle r={stateRadius + haloGap * labelScale} className="state-halo" />
+              <circle
+                r={stateRadius + haloGap * labelScale}
+                className="state-halo"
+              />
               <circle r={stateRadius} className="state-body" />
               {state.final && (
                 <circle
@@ -1304,9 +1321,7 @@ function GraphEditor({
                   : undefined
               }
               onStraighten={
-                editor.id
-                  ? () => straightenTransition(editor.id!)
-                  : undefined
+                editor.id ? () => straightenTransition(editor.id!) : undefined
               }
               onClose={() => setEditor(null)}
               onViewRules={onViewTransitionRules}
@@ -1315,502 +1330,6 @@ function GraphEditor({
         </Popover>
       )}
     </div>
-  );
-}
-
-function StateProperties({
-  state,
-  onChange,
-  onDelete,
-  onClose,
-}: {
-  state: State;
-  onChange: (s: State) => void;
-  onDelete: () => void;
-  onClose: () => void;
-}) {
-  const [name, setName] = useState(state.name),
-    [label, setLabel] = useState(state.label);
-  const save = () =>
-    onChange({ ...state, name: name.trim() || state.name, label });
-  const submitOnEnter = (event: ReactKeyboardEvent<HTMLInputElement>) => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      event.currentTarget.form?.requestSubmit();
-    }
-  };
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-        onClose();
-      }}
-    >
-      <div className="popover-heading">
-        <strong>{state.name}</strong>
-        <IconButton label="Cerrar propiedades" onClick={onClose}>
-          <FiX />
-        </IconButton>
-      </div>
-      <Field
-        label="Nombre"
-        autoFocus
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        onKeyDown={submitOnEnter}
-        onBlur={save}
-      />
-      <Field
-        label="Etiqueta"
-        value={label}
-        onChange={(e) => setLabel(e.target.value)}
-        onKeyDown={submitOnEnter}
-        onBlur={save}
-      />
-      <div className="state-flags">
-        <label>
-          <input
-            type="checkbox"
-            checked={state.initial}
-            onChange={(e) =>
-              onChange({
-                ...state,
-                name: name.trim() || state.name,
-                label,
-                initial: e.target.checked,
-              })
-            }
-          />{' '}
-          Inicial
-        </label>
-        <label>
-          <input
-            type="checkbox"
-            checked={state.final}
-            onChange={(e) =>
-              onChange({
-                ...state,
-                name: name.trim() || state.name,
-                label,
-                final: e.target.checked,
-              })
-            }
-          />{' '}
-          Final
-        </label>
-        <IconButton label="Eliminar estado" onClick={onDelete}>
-          <FiTrash2 />
-        </IconButton>
-      </div>
-    </form>
-  );
-}
-function TransitionProperties({
-  machine,
-  preferences,
-  transition,
-  from,
-  to,
-  onSave,
-  onDelete,
-  onStraighten,
-  onClose,
-  onViewRules,
-}: {
-  machine: Machine;
-  preferences: Preferences;
-  transition?: Transition;
-  from?: string;
-  to?: string;
-  onSave: (t: Transition[], repeat?: boolean) => void;
-  onDelete?: () => void;
-  onStraighten?: () => void;
-  onClose: () => void;
-  onViewRules?: (id: string) => void;
-}) {
-  const [read, setRead] = useState(transition?.read || ''),
-    [write, setWrite] = useState(transition?.write || ''),
-    [move, setMove] = useState<Transition['move']>(transition?.move || 'R'),
-    [multipleRules, setMultipleRules] = useState(false),
-    [rules, setRules] = useState<TransitionDraft[]>(() => [
-      {
-        key: transition?.id ?? crypto.randomUUID(),
-        id: transition?.id,
-        read: transition?.read || '',
-        write: transition?.write || '',
-        move: transition?.move || 'R',
-      },
-    ]),
-    [error, setError] = useState('');
-  const finite = machineKind(machine) === 'fa';
-  const a = transition?.from ?? from!,
-    b = transition?.to ?? to!;
-  const hasCurvature = machine.transitions.some(
-    (item) => item.from === a && item.to === b && item.control,
-  );
-  function changeRule(index: number, update: Partial<TransitionDraft>) {
-    setRules((current) =>
-      current.map((rule, ruleIndex) =>
-        ruleIndex === index ? { ...rule, ...update } : rule,
-      ),
-    );
-    if (index === 0) {
-      if (update.read !== undefined) setRead(update.read);
-      if (update.write !== undefined) setWrite(update.write);
-      if (update.move !== undefined) setMove(update.move);
-    }
-  }
-  function showMultipleRules() {
-    setRules((current) =>
-      current.map((rule, index) =>
-        index === 0 ? { ...rule, read, write, move } : rule,
-      ),
-    );
-    setMultipleRules((current) => !current);
-    setError('');
-  }
-  function addRule() {
-    setRules((current) => [
-      ...current,
-      {
-        key: crypto.randomUUID(),
-        read: '',
-        write: '',
-        move: 'R',
-      },
-    ]);
-    setError('');
-  }
-  function removeRule(index: number) {
-    const next = rules.filter((_, ruleIndex) => ruleIndex !== index);
-    setRules(next);
-    if (index === 0 && next[0]) {
-      setRead(next[0].read);
-      setWrite(next[0].write);
-      setMove(next[0].move);
-    }
-    setError('');
-  }
-  function save(repeat = false) {
-    if (finite) {
-      try {
-        const labels = transitionLabels(read);
-        const additions = labels
-          .filter(
-            (label) =>
-              !machine.transitions.some(
-                (t) =>
-                  t.id !== transition?.id &&
-                  t.from === a &&
-                  t.to === b &&
-                  t.read === label,
-              ),
-          )
-          .map(
-            (label, index): Transition => ({
-              ...transition,
-              id:
-                index === 0 && transition ? transition.id : crypto.randomUUID(),
-              from: a,
-              to: b,
-              read: label,
-              write: '',
-              move: 'R',
-            }),
-          );
-        if (!additions.length) {
-          setError('Esta transición ya existe.');
-          return;
-        }
-        onSave(additions, repeat);
-        if (repeat) {
-          setRead('');
-          setError('');
-        }
-      } catch (error) {
-        setError((error as Error).message);
-      }
-      return;
-    }
-    const updates = rules.map((rule): Transition => ({
-      ...(rule.id === transition?.id ? transition : {}),
-      id: rule.id ?? crypto.randomUUID(),
-      from: a,
-      to: b,
-      read: normalizeRead(rule.read),
-      write: normalizeWrite(rule.write),
-      move: rule.move,
-    }));
-    const signatures = new Set<string>();
-    for (const [index, updated] of updates.entries()) {
-      const issue = validateTransition(updated, preferences);
-      if (issue) {
-        setError(`Regla ${index + 1}: ${issue}`);
-        return;
-      }
-      const signature = JSON.stringify([
-        updated.from,
-        updated.to,
-        updated.read,
-        updated.write,
-        updated.move,
-      ]);
-      if (signatures.has(signature)) {
-        setError(`La regla ${index + 1} está repetida en la tabla.`);
-        return;
-      }
-      if (
-        machine.transitions.some(
-          (existing) =>
-            existing.id !== transition?.id &&
-            existing.from === updated.from &&
-            existing.to === updated.to &&
-            existing.read === updated.read &&
-            existing.write === updated.write &&
-            existing.move === updated.move,
-        )
-      ) {
-        setError(`La regla ${index + 1} ya existe.`);
-        return;
-      }
-      signatures.add(signature);
-    }
-    onSave(updates, repeat);
-    if (repeat) {
-      setRead('');
-      setError('');
-    }
-  }
-  return (
-    <form
-      onKeyDown={(event) => {
-        if (finite && event.key === 'Enter' && event.shiftKey) {
-          event.preventDefault();
-          save(true);
-        }
-      }}
-      onSubmit={(event) => {
-        event.preventDefault();
-        save();
-      }}
-    >
-      <div className="popover-heading">
-        <span className="transition-endpoints">
-          <span className="transition-endpoint">
-            {machine.states.find((s) => s.id === a)?.name}
-          </span>
-          <FiArrowRight aria-hidden="true" />
-          <span className="transition-endpoint">
-            {machine.states.find((s) => s.id === b)?.name}
-          </span>
-        </span>
-        <div className="popover-heading-actions">
-          {transition && onViewRules && (
-            <IconButton
-              label="Ver transiciones (Ctrl+R)"
-              onClick={() => onViewRules(transition.id)}
-            >
-              <FiEye />
-            </IconButton>
-          )}
-          <IconButton label="Cancelar transición" onClick={onClose}>
-            <FiX />
-          </IconButton>
-        </div>
-      </div>
-      {!multipleRules ? (
-        <>
-          <div className="transition-expression">
-            {finite ? (
-              <input
-                aria-label="Símbolos"
-                autoFocus
-                value={read}
-                onChange={(e) => setRead(e.target.value)}
-                spellCheck={false}
-              />
-            ) : (
-              <>
-                <input
-                  aria-label="Leer"
-                  maxLength={1}
-                  autoFocus
-                  value={read}
-                  placeholder="□"
-                  onChange={(e) => {
-                    const value = e.target.value.slice(0, 1);
-                    setRead(value);
-                    changeRule(0, { read: value });
-                  }}
-                  spellCheck={false}
-                />
-                <span>;</span>
-                <input
-                  aria-label="Escribir"
-                  maxLength={1}
-                  value={write}
-                  placeholder="□"
-                  onChange={(e) => {
-                    const value = e.target.value.slice(0, 1);
-                    setWrite(value);
-                    changeRule(0, { write: value });
-                  }}
-                  spellCheck={false}
-                />
-                <span>,</span>
-                <select
-                  aria-label="Movimiento"
-                  value={move}
-                  onChange={(e) => {
-                    const value = e.target.value as Transition['move'];
-                    setMove(value);
-                    changeRule(0, { move: value });
-                  }}
-                >
-                  <option value="L">Izquierda</option>
-                  <option value="R">Derecha</option>
-                  {(preferences.allowStay || transition?.move === 'S') && (
-                    <option value="S">Permanecer</option>
-                  )}
-                </select>
-              </>
-            )}
-            <IconButton
-              label={rules.length > 1 ? `Guardar ${rules.length} transiciones` : 'Guardar transición'}
-              onClick={() => save()}
-            >
-              <FiCheck />
-            </IconButton>
-            {onDelete && (
-              <IconButton label="Eliminar transición" onClick={onDelete}>
-                <FiTrash2 />
-              </IconButton>
-            )}
-          </div>
-          {(!finite || hasCurvature) && (
-            <div className="transition-multiple-toggle">
-              {hasCurvature && onStraighten && (
-                <Button variant="subtle" onClick={onStraighten}>
-                  <FiMinus />
-                  Quitar curvatura
-                </Button>
-              )}
-              {!finite && (
-                <Button variant="subtle" onClick={showMultipleRules}>
-                  <FiList />
-                  {rules.length > 1 ? `Tabla · ${rules.length} reglas` : 'Varias reglas'}
-                </Button>
-              )}
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="transition-multiple-heading">
-            <strong>Reglas</strong>
-            <Button variant="subtle" onClick={addRule}>
-              <FiPlus />
-              Agregar fila
-            </Button>
-          </div>
-          <div className="transition-rules-scroll">
-            <table className="transition-rules-table">
-              <caption className="sr-only">Reglas de transición</caption>
-              <thead>
-                <tr>
-                  <th scope="col">Lee</th>
-                  <th scope="col">Escribe</th>
-                  <th scope="col">Movimiento</th>
-                  <th scope="col"><span className="sr-only">Acción</span></th>
-                </tr>
-              </thead>
-              <tbody>
-                {rules.map((rule, index) => (
-                  <tr key={rule.key}>
-                    <td>
-                      <input
-                        aria-label={`Leer regla ${index + 1}`}
-                        maxLength={1}
-                        autoFocus={index === 0}
-                        value={rule.read}
-                        onChange={(e) =>
-                          changeRule(index, { read: e.target.value.slice(0, 1) })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <input
-                        aria-label={`Escribir regla ${index + 1}`}
-                        maxLength={1}
-                        value={rule.write}
-                        onChange={(e) =>
-                          changeRule(index, { write: e.target.value.slice(0, 1) })
-                        }
-                      />
-                    </td>
-                    <td>
-                      <select
-                        aria-label={`Movimiento regla ${index + 1}`}
-                        value={rule.move}
-                        onChange={(e) =>
-                          changeRule(index, {
-                            move: e.target.value as Transition['move'],
-                          })
-                        }
-                      >
-                        <option value="L">Izquierda</option>
-                        <option value="R">Derecha</option>
-                        {(preferences.allowStay || rule.move === 'S') && (
-                          <option value="S">Permanecer</option>
-                        )}
-                      </select>
-                    </td>
-                    <td>
-                      <IconButton
-                        label={`Eliminar regla ${index + 1}`}
-                        disabled={rules.length === 1}
-                        onClick={() => removeRule(index)}
-                      >
-                        <FiTrash2 />
-                      </IconButton>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="transition-multiple-actions">
-            {hasCurvature && onStraighten && (
-              <Button variant="subtle" onClick={onStraighten}>
-                <FiMinus />
-                Quitar curvatura
-              </Button>
-            )}
-            <Button variant="subtle" onClick={showMultipleRules}>
-              <FiList />
-              Una regla
-            </Button>
-            <IconButton
-              label={rules.length > 1 ? `Guardar ${rules.length} transiciones` : 'Guardar transición'}
-              onClick={() => save()}
-            >
-              <FiCheck />
-            </IconButton>
-            {onDelete && (
-              <IconButton label="Eliminar transición" onClick={onDelete}>
-                <FiTrash2 />
-              </IconButton>
-            )}
-          </div>
-        </>
-      )}
-      {error && (
-        <p role="alert" className="field-error">
-          {error}
-        </p>
-      )}
-    </form>
   );
 }
 export default GraphEditor;

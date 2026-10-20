@@ -1,51 +1,48 @@
 import { useEffect, useId, useRef, useState } from 'react';
+import type { FiniteSession } from '../domain/finite';
 import {
-  FiArrowRight,
+  canStepFinite,
+  createFiniteSession,
+  finiteAccepts,
+  finiteNondeterminism,
+  finiteStatus,
+  finiteTrace,
+  runFinite,
+  stepFinite,
+} from '../domain/finite';
+import type { Machine } from '../domain/model';
+import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
+import { download } from '../lib/files';
+import { exportTablePng } from '../lib/tableImage';
+import {
   FiArrowLeft,
+  FiArrowRight,
   FiDownload,
-  FiFileText,
-  FiMinus,
-  FiImage,
   FiList,
   FiPause,
   FiPlay,
   FiRotateCcw,
   FiSkipForward,
-  FiUpload,
-  FiX,
-  FiZap,
   FiTrash2,
-} from 'react-icons/fi';
-import {
-  Badge,
-  Button,
-  EmptyState,
-  Field,
-  IconButton,
-  Select,
-  Modal,
-} from './ui';
-import type { Machine } from '../domain/model';
-import {
-  createFiniteSession,
-  canStepFinite,
-  finiteStatus,
-  finiteAccepts,
-  finiteNondeterminism,
-  finiteTrace,
-  runFinite,
-  stepFinite,
-} from '../domain/finite';
-import type { FiniteSession } from '../domain/finite';
-import { download } from '../lib/files';
-import { exportTablePng } from '../lib/tableImage';
-import {
-  BatchInputTable,
-  BatchTextFileNotice,
-  createBatchInputItem,
-  manualBatchInputs,
-} from './BatchInputTable';
-import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
+  FiZap,
+} from './icons';
+import { BatchActions } from './simulation/BatchActions';
+import { BatchInputEditor } from './simulation/BatchInputEditor';
+import { BatchResultsTable } from './simulation/BatchResultsTable';
+import { SimulationSpeed } from './simulation/SimulationSpeed';
+import { SimulationTabs } from './simulation/SimulationTabs';
+import { SimulationWindowActions } from './simulation/SimulationWindowActions';
+import { Badge } from './ui/Badge';
+import { Button } from './ui/Button';
+import { DataTable } from './ui/DataTable';
+import { EmptyState } from './ui/EmptyState';
+import { Field } from './ui/Field';
+import { IconButton } from './ui/IconButton';
+import { Modal } from './ui/Modal';
+import { ModalBody } from './ui/ModalBody';
+import { ModalFooter } from './ui/ModalFooter';
+import { Select } from './ui/Select';
 
 type Props = {
   machine: Machine;
@@ -78,6 +75,19 @@ function parseBatchLine(line: string) {
     return { input: tokens[0] };
   return { input: line };
 }
+/**
+ * Coordinates finite automaton simulation and testing.
+ * @param props - Component options.
+ * @param props.machine - Machine used by the component.
+ * @param props.emptySymbol - Symbol used to display the empty string.
+ * @param [props.request] - Optional external simulation action request.
+ * @param props.request.id - Identifier that distinguishes this request from previous requests.
+ * @param props.request.action - Requested simulation action.
+ * @param props.onActivity - Receives active state identifiers and the optional active transition identifier.
+ * @param props.onMessage - Receives the message to present in the application.
+ * @param [props.onClose] - Requests closing the component; receives no arguments.
+ * @returns The finite automaton simulation, tests, and traces.
+ */
 export default function FiniteSimulationPanel({
   machine,
   emptySymbol,
@@ -346,56 +356,20 @@ export default function FiniteSimulationPanel({
           role="tablist"
           aria-label="Herramientas de simulación"
         >
-          {(['simulation', 'batch', 'trace'] as const).map((id, i) => (
-            <button
-              key={id}
-              id={`${panelId}-${id}-tab`}
-              aria-controls={`${panelId}-${id}`}
-              role="tab"
-              aria-selected={tab === id}
-              tabIndex={tab === id ? 0 : -1}
-              onKeyDown={(event) => {
-                if (
-                  !['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(
-                    event.key,
-                  )
-                )
-                  return;
-                event.preventDefault();
-                const ids = ['simulation', 'batch', 'trace'] as const;
-                const index =
-                  event.key === 'Home'
-                    ? 0
-                    : event.key === 'End'
-                      ? 2
-                      : (i + (event.key === 'ArrowRight' ? 1 : 2)) % 3;
-                setTab(ids[index]);
-                setPlaying(false);
-                document
-                  .getElementById(`${panelId}-${ids[index]}-tab`)
-                  ?.focus();
-              }}
-              className={tab === id ? 'is-active' : ''}
-              onClick={() => {
-                setTab(id);
-                setPlaying(false);
-              }}
-            >
-              {['Simulación', 'Entradas múltiples', 'Traza'][i]}
-            </button>
-          ))}
+          <SimulationTabs
+            selected={tab}
+            onSelect={(id) => {
+              setTab(id);
+              setPlaying(false);
+            }}
+            tabId={(id) => `${panelId}-${id}-tab`}
+            panelId={(id) => `${panelId}-${id}`}
+          />
         </div>
         <div className="simulation-tab-status">
           <Badge>{finiteNondeterminism(machine).length ? 'AFN' : 'AFD'}</Badge>
         </div>
-        {onClose && (
-          <IconButton label="Ocultar ventana" tooltip onClick={onClose}>
-            <FiMinus />
-          </IconButton>
-        )}
-        <IconButton label="Cerrar simulación" tooltip onClick={closeSimulation}>
-          <FiX />
-        </IconButton>
+        <SimulationWindowActions onHide={onClose} onClose={closeSimulation} />
       </div>
       {tab === 'simulation' && (
         <div
@@ -475,18 +449,14 @@ export default function FiniteSimulationPanel({
                 <FiZap />
               </IconButton>
             </div>
-            <label className="simulation-speed">
-              Velocidad
-              <input
-                aria-label="Velocidad de simulación"
-                type="range"
-                min="100"
-                max="1600"
-                step="100"
-                value={1700 - speed}
-                onChange={(e) => setSpeed(1700 - Number(e.target.value))}
-              />
-            </label>
+            <SimulationSpeed
+              aria-label="Velocidad de simulación"
+              min="100"
+              max="1600"
+              step="100"
+              value={1700 - speed}
+              onChange={(e) => setSpeed(1700 - Number(e.target.value))}
+            ></SimulationSpeed>
           </div>
           {session && chosen && (
             <>
@@ -675,65 +645,27 @@ export default function FiniteSimulationPanel({
           aria-labelledby={`${panelId}-batch-tab`}
         >
           <div className="batch-entry">
-            {batchFile ? (
-              <>
-                <BatchTextFileNotice
-                  fileName={batchFile.name}
-                  onClear={() => setBatchFile(null)}
-                />
-                <textarea
-                  aria-label="Entradas del archivo de texto"
-                  className="batch-text-file-editor"
-                  value={batchFile.content}
-                  onChange={(event) => {
-                    setBatchFile({
-                      ...batchFile,
-                      content: event.target.value,
-                    });
-                    setResults([]);
-                  }}
-                  spellCheck={false}
-                />
-              </>
-            ) : (
-              <BatchInputTable
-                items={batchItems}
-                onChange={(items) => {
-                  setBatchItems(items);
-                  setBatchFile(null);
-                  setResults([]);
-                }}
-              />
-            )}
-            <div className="batch-actions">
-              <Button onClick={runBatch} variant="primary">
-                <FiPlay />
-                Probar todas
-              </Button>
-              <IconButton
-                label="Cargar entradas desde archivo de texto"
-                tooltip
-                onClick={() => textInput.current?.click()}
-              >
-                <FiUpload />
-              </IconButton>
-              <IconButton
-                label="Exportar resultados como texto"
-                tooltip
-                disabled={!results.length}
-                onClick={exportBatchText}
-              >
-                <FiFileText />
-              </IconButton>
-              <IconButton
-                label="Exportar resultados como imagen"
-                tooltip
-                disabled={!results.length}
-                onClick={exportBatchImage}
-              >
-                <FiImage />
-              </IconButton>
-            </div>
+            <BatchInputEditor
+              items={batchItems}
+              file={batchFile}
+              onClearFile={() => setBatchFile(null)}
+              onFileChange={(file) => {
+                setBatchFile(file);
+                setResults([]);
+              }}
+              onItemsChange={(items) => {
+                setBatchItems(items);
+                setBatchFile(null);
+                setResults([]);
+              }}
+            />
+            <BatchActions
+              onRun={runBatch}
+              onImport={() => textInput.current?.click()}
+              onExportText={exportBatchText}
+              onExportImage={exportBatchImage}
+              exportDisabled={!results.length}
+            />
             <input
               hidden
               ref={textInput}
@@ -749,54 +681,41 @@ export default function FiniteSimulationPanel({
             {!results.length ? (
               <EmptyState icon={<FiList />} title="Sin resultados" />
             ) : (
-              <table>
-                <thead>
-                  <tr>
-                    <th>Entrada</th>
-                    <th>Resultado</th>
-                    <th>Salida</th>
-                    <th>Pasos</th>
-                    <th>
-                      <span className="sr-only">Detalle</span>
-                    </th>
+              <BatchResultsTable>
+                {results.map((r, i) => (
+                  <tr key={i}>
+                    <td>
+                      <code>{r.input || emptySymbol}</code>
+                    </td>
+                    <td>
+                      <Badge
+                        tone={
+                          r.status === 'accepted'
+                            ? 'success'
+                            : r.status === 'rejected'
+                              ? 'danger'
+                              : 'warning'
+                        }
+                      >
+                        {names[r.status]}
+                      </Badge>
+                    </td>
+                    <td>
+                      <code>—</code>
+                    </td>
+                    <td>{r.session.steps}</td>
+                    <td>
+                      <IconButton
+                        label={`Ver traza de ${r.input || 'entrada vacía'}`}
+                        tooltip
+                        onClick={() => setResult(r)}
+                      >
+                        <FiArrowRight />
+                      </IconButton>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {results.map((r, i) => (
-                    <tr key={i}>
-                      <td>
-                        <code>{r.input || emptySymbol}</code>
-                      </td>
-                      <td>
-                        <Badge
-                          tone={
-                            r.status === 'accepted'
-                              ? 'success'
-                              : r.status === 'rejected'
-                                ? 'danger'
-                                : 'warning'
-                          }
-                        >
-                          {names[r.status]}
-                        </Badge>
-                      </td>
-                      <td>
-                        <code>—</code>
-                      </td>
-                      <td>{r.session.steps}</td>
-                      <td>
-                        <IconButton
-                          label={`Ver traza de ${r.input || 'entrada vacía'}`}
-                          tooltip
-                          onClick={() => setResult(r)}
-                        >
-                          <FiArrowRight />
-                        </IconButton>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                ))}
+              </BatchResultsTable>
             )}
           </div>
         </div>
@@ -849,33 +768,30 @@ export default function FiniteSimulationPanel({
                 ))}
             </Select>
           )}
-          <table>
-            <thead>
-              <tr>
-                <th>Paso</th>
-                <th>Estado</th>
-                <th>Por leer</th>
-                <th>Transición</th>
+          <DataTable
+            columns={[
+              { id: 'column-0', header: <>Paso</> },
+              { id: 'column-1', header: <>Estado</> },
+              { id: 'column-2', header: <>Por leer</> },
+              { id: 'column-3', header: <>Transición</> },
+            ]}
+          >
+            {trace.map((c) => (
+              <tr key={c.id}>
+                <td>{c.depth}</td>
+                <td>{label(c.state)}</td>
+                <td>
+                  <code>{session!.input.slice(c.offset)}</code>
+                </td>
+                <td>
+                  {c.transitionId
+                    ? machine.transitions.find((t) => t.id === c.transitionId)
+                        ?.read || emptySymbol
+                    : 'Inicio'}
+                </td>
               </tr>
-            </thead>
-            <tbody>
-              {trace.map((c) => (
-                <tr key={c.id}>
-                  <td>{c.depth}</td>
-                  <td>{label(c.state)}</td>
-                  <td>
-                    <code>{session!.input.slice(c.offset)}</code>
-                  </td>
-                  <td>
-                    {c.transitionId
-                      ? machine.transitions.find((t) => t.id === c.transitionId)
-                          ?.read || emptySymbol
-                      : 'Inicio'}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+            ))}
+          </DataTable>
           {!trace.length && (
             <p className="simulation-notice">
               Inicia una simulación para consultar la traza.
@@ -889,36 +805,30 @@ export default function FiniteSimulationPanel({
           subtitle={`Entrada: ${result.input || emptySymbol} · ${names[result.status]}`}
           onClose={() => setResult(null)}
         >
-          <div className="modal-body">
-            <table>
-              <thead>
-                <tr>
-                  <th>Paso</th>
-                  <th>Estado</th>
-                  <th>Por leer</th>
+          <ModalBody>
+            <DataTable
+              columns={[
+                { id: 'column-0', header: <>Paso</> },
+                { id: 'column-1', header: <>Estado</> },
+                { id: 'column-2', header: <>Por leer</> },
+              ]}
+            >
+              {batchTrace.map((c) => (
+                <tr key={c.id}>
+                  <td>{c.depth}</td>
+                  <td>
+                    {result.machine.states.find((s) => s.id === c.state)?.name}
+                  </td>
+                  <td>
+                    <code>{result.input.slice(c.offset)}</code>
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {batchTrace.map((c) => (
-                  <tr key={c.id}>
-                    <td>{c.depth}</td>
-                    <td>
-                      {
-                        result.machine.states.find((s) => s.id === c.state)
-                          ?.name
-                      }
-                    </td>
-                    <td>
-                      <code>{result.input.slice(c.offset)}</code>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <div className="modal-footer">
+              ))}
+            </DataTable>
+          </ModalBody>
+          <ModalFooter>
             <Button onClick={() => setResult(null)}>Listo</Button>
-          </div>
+          </ModalFooter>
         </Modal>
       )}
     </section>

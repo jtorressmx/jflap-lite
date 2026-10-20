@@ -834,10 +834,10 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   @apply gap-5 my-8;
 }
-.home-option.button {
+.button.button-card {
   @apply justify-start items-start whitespace-normal text-left p-6 gap-5 rounded-lg;
 }
-.home-option.button:hover {
+.button.button-card:hover {
   @apply border-accent bg-surface;
 }
 .home-option-icon {
@@ -893,7 +893,7 @@
 .home-recent-row > .home-document-open {
   @apply p-3;
 }
-.home-recent-remove:hover:not(:disabled) {
+.icon-button-danger:hover:not(:disabled) {
   @apply text-danger bg-danger-soft;
 }
 .home-document-kind {
@@ -995,6 +995,16 @@
   .button-subtle {
     @apply bg-transparent border-transparent;
     box-shadow: none;
+  }
+  .button-danger {
+    @apply bg-danger border-danger text-on-accent;
+    transition: opacity var(--duration);
+  }
+  .button-danger:hover:not(:disabled) {
+    @apply opacity-90 bg-danger;
+  }
+  .button-danger:active:not(:disabled) {
+    @apply bg-danger;
   }
   .icon-button {
     @apply w-control h-control shrink-0 p-0 bg-transparent border border-solid border-transparent text-secondary;
