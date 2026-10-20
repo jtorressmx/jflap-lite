@@ -1,0 +1,1639 @@
+/* Los selectores y su orden conservan la cascada existente.
+   @apply usa los tokens de theme.css; la geometría y los estados siguen en cada regla. */
+
+/* GraphEditor */
+.graph-editor {
+  @apply relative w-full h-full min-h-0 overflow-hidden bg-canvas;
+}
+.graph-canvas {
+  @apply block w-full h-full touch-none;
+  outline: none;
+  @apply select-none;
+}
+.graph-canvas:focus-visible {
+  outline: var(--focus-ring);
+  outline-offset: calc(-1 * var(--focus-offset-wide));
+}
+.graph-editor.is-following .graph-content {
+  transition: transform var(--tape-motion-duration) var(--tape-motion-easing);
+}
+.canvas-dot {
+  @apply fill-border;
+}
+.graph-tool-select .graph-canvas {
+  @apply cursor-grab;
+}
+.graph-tool-state .graph-canvas,
+.graph-tool-transition .graph-canvas,
+.graph-tool-note .graph-canvas {
+  @apply cursor-crosshair;
+}
+.graph-tool-delete .graph-canvas {
+  @apply cursor-not-allowed;
+}
+.graph-editor.is-panning .graph-canvas,
+.graph-editor.is-panning .graph-state,
+.graph-editor.is-panning .graph-note {
+  @apply cursor-grabbing;
+}
+.graph-arrow {
+  fill: var(--graph-stroke);
+}
+.graph-arrow-active {
+  fill: var(--graph-active-edge);
+}
+.graph-edge,
+.graph-state,
+.graph-note {
+  outline: none;
+}
+.edge-line,
+.initial-arrow {
+  fill: none;
+  stroke: var(--graph-stroke);
+  stroke-width: 1.75;
+  vector-effect: non-scaling-stroke;
+  @apply pointer-events-none;
+}
+.edge-line {
+  stroke-width: 1.4;
+}
+.graph-edge.is-followed .edge-line {
+  stroke: var(--graph-active-edge);
+  stroke-width: 2;
+  opacity: 0.45;
+}
+.edge-hit {
+  fill: none;
+  @apply stroke-transparent;
+  stroke-width: 18;
+  @apply cursor-pointer;
+}
+.graph-edge.is-selected .edge-line,
+.graph-edge.is-active .edge-line {
+  stroke: var(--graph-active-edge);
+  stroke-width: 1.75;
+  opacity: 1;
+}
+.edge-label {
+  @apply cursor-pointer;
+  outline: none;
+}
+.edge-label rect {
+  @apply fill-transparent;
+  stroke: none;
+}
+.edge-label text {
+  @apply fill-foreground font-mono text-xs pointer-events-none;
+}
+.edge-label:hover text,
+.edge-label:focus-visible text {
+  @apply fill-accent;
+}
+.edge-label.is-active text,
+.edge-label.is-selected text {
+  @apply fill-accent;
+}
+.edge-control {
+  @apply fill-surface stroke-accent;
+  stroke-width: 1.5;
+  @apply cursor-move;
+}
+.graph-state {
+  @apply cursor-move;
+}
+.state-body {
+  fill: var(--graph-state-fill);
+  stroke: var(--graph-stroke);
+  stroke-width: var(--graph-state-border-width);
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(var(--shadow-control));
+}
+.state-final {
+  fill: none;
+  stroke: var(--graph-stroke);
+  stroke-width: var(--graph-state-final-border-width);
+  vector-effect: non-scaling-stroke;
+  @apply pointer-events-none;
+}
+.state-halo {
+  @apply fill-transparent stroke-transparent;
+  stroke-width: var(--graph-state-border-width);
+}
+.state-name {
+  fill: var(--graph-state-text);
+  @apply font-mono;
+  font-size: var(--graph-state-name-size);
+  @apply font-semibold pointer-events-none;
+}
+.state-label {
+  @apply fill-secondary font-sans text-xs pointer-events-none;
+}
+.graph-state:hover .state-body,
+.graph-state:focus-visible .state-body,
+.graph-state.is-selected .state-body,
+.graph-state.is-transition-source .state-body {
+  fill: var(--graph-state-highlight);
+  @apply stroke-accent;
+  stroke-width: var(--graph-state-emphasis-border-width);
+}
+.graph-state.is-selected .state-final,
+.graph-state.is-transition-source .state-final {
+  @apply stroke-accent;
+}
+.graph-state.is-selected .state-halo,
+.graph-state:focus-visible .state-halo {
+  @apply stroke-accent;
+  stroke-dasharray: 3 3;
+}
+.graph-state.is-active .state-body,
+.graph-state.is-highlighted .state-body {
+  fill: var(--graph-state-highlight);
+  stroke: var(--graph-active-edge);
+  stroke-width: var(--graph-state-emphasis-border-width);
+}
+.graph-state.is-active .state-halo {
+  @apply fill-accent-soft stroke-accent;
+}
+.graph-state.is-active .state-final,
+.graph-state.is-highlighted .state-final {
+  stroke: var(--graph-active-edge);
+}
+.graph-state.is-selected .initial-arrow,
+.graph-state.is-active .initial-arrow {
+  stroke: var(--graph-active-edge);
+}
+.graph-note {
+  @apply cursor-move;
+}
+.graph-note rect {
+  @apply fill-surface stroke-border;
+  stroke-width: 1;
+}
+.graph-note text {
+  @apply fill-secondary font-sans text-sm pointer-events-none;
+}
+.graph-note:hover rect,
+.graph-note.is-selected rect,
+.graph-note:focus-visible rect {
+  @apply fill-accent-soft stroke-accent;
+}
+.selection-box {
+  @apply fill-accent-soft;
+  fill-opacity: 0.5;
+  @apply stroke-accent;
+  stroke-width: 1;
+  @apply pointer-events-none;
+}
+.connection-preview {
+  fill: none;
+  @apply stroke-accent;
+  stroke-width: 1.5;
+  stroke-dasharray: 6 4;
+  @apply pointer-events-none;
+  vector-effect: non-scaling-stroke;
+}
+
+/* BatchInputTable */
+.batch-input-list {
+  @apply flex flex-1 flex-col gap-2 min-h-0;
+}
+
+.batch-input-table-wrap {
+  @apply flex-1 min-h-control overflow-auto border border-solid border-border rounded-md bg-surface;
+}
+
+.batch-input-table {
+  @apply w-full border-collapse text-sm text-left;
+}
+
+.batch-input-table th,
+.batch-input-table td {
+  @apply py-2 px-3 border-b border-b-border;
+}
+
+.batch-input-table th {
+  @apply sticky top-0;
+  z-index: 1;
+  @apply bg-surface text-secondary font-medium;
+}
+
+.batch-input-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.batch-input-table td:first-child {
+  @apply w-full;
+}
+
+.batch-input-table input {
+  @apply font-mono;
+}
+
+.batch-input-table .icon-button {
+  @apply min-h-8 min-w-8;
+}
+
+.batch-input-empty {
+  @apply text-secondary text-xs;
+}
+
+.batch-input-empty-state {
+  @apply text-tertiary text-center;
+}
+
+.batch-input-actions {
+  @apply flex flex-wrap gap-2;
+}
+
+.batch-text-file {
+  @apply flex items-center flex-1 justify-between gap-3 min-h-control py-2 px-3 border border-solid border-border rounded-md bg-surface;
+}
+
+.batch-text-file-name {
+  @apply overflow-hidden text-secondary text-ellipsis whitespace-nowrap;
+}
+
+/* SimulationPanel */
+.simulation-panel {
+  @apply flex-none flex flex-col;
+  height: min(var(--simulation-height), 50vh);
+  @apply min-h-0 overflow-hidden bg-surface border-t border-t-border;
+}
+.simulation-tabs {
+  @apply flex items-center flex-none gap-2 py-0 px-4 border-b border-b-border;
+}
+:is(.simulation-tabs, .simulation-tab-buttons) > button {
+  @apply relative self-stretch py-3 px-3;
+  border: 0;
+  @apply bg-transparent text-secondary text-sm cursor-pointer;
+}
+:is(.simulation-tabs, .simulation-tab-buttons) > button:hover {
+  @apply text-foreground bg-accent-soft;
+}
+:is(.simulation-tabs, .simulation-tab-buttons) > button.is-active {
+  @apply text-accent font-semibold;
+}
+:is(.simulation-tabs, .simulation-tab-buttons) > button.is-active::after {
+  @apply absolute;
+  content: "";
+  height: var(--simulation-tab-indicator-height);
+  @apply bg-accent bottom-0 left-3 right-3 rounded-sm;
+}
+.simulation-tab-status {
+  @apply flex items-center gap-3 ml-auto text-secondary text-xs whitespace-nowrap;
+}
+.simulation-content {
+  @apply flex flex-1 flex-col gap-3 py-3 px-5 overflow-auto min-h-0 overscroll-contain;
+}
+.simulation-controls {
+  @apply flex gap-3;
+  align-items: end;
+  @apply flex-none;
+}
+.simulation-input {
+  @apply w-simulation-input;
+  flex: 0 1 var(--simulation-input-width);
+}
+.simulation-input input {
+  @apply font-mono;
+}
+.simulation-buttons {
+  @apply flex gap-2 items-center pb-1;
+}
+.simulation-follow-button {
+  @apply whitespace-nowrap;
+}
+.simulation-speed {
+  @apply flex items-center gap-2 ml-auto pb-3 text-secondary text-xs whitespace-nowrap;
+}
+.simulation-speed input {
+  @apply w-simulation-speed accent-accent;
+}
+.simulation-tape-row {
+  @apply flex items-center gap-5 flex-none;
+}
+.simulation-output {
+  @apply flex flex-none flex-col gap-1 py-2 px-3 bg-canvas border border-solid border-border rounded-md;
+}
+.simulation-output-label {
+  @apply text-secondary text-xs font-semibold;
+}
+.simulation-output-content {
+  @apply min-w-0 py-1 px-0;
+}
+.simulation-output-value {
+  @apply block min-h-control text-foreground font-mono text-md whitespace-pre-wrap;
+  overflow-wrap: anywhere;
+  @apply select-text;
+}
+.simulation-output-count {
+  @apply fixed;
+  z-index: 50;
+  @apply py-1 px-2 bg-foreground rounded-sm;
+  box-shadow: var(--shadow-flyout);
+  @apply text-surface text-xs whitespace-nowrap pointer-events-none;
+  transform: translate(-50%, calc(-100% - var(--space-1)));
+}
+.simulation-output-count.is-below {
+  transform: translate(-50%, var(--space-2));
+}
+.simulation-tape-main {
+  @apply flex-1 min-w-0;
+}
+.simulation-tape-heading {
+  @apply flex justify-between gap-2 mb-1 text-secondary text-xs;
+}
+.simulation-tape-title {
+  @apply text-foreground font-semibold;
+}
+.tape-display {
+  @apply min-w-0;
+}
+.tape-display.is-compact {
+  --tape-cell-width: var(--tape-compact-cell-width);
+  --tape-cell-height: var(--tape-compact-cell-height);
+  @apply flex-1;
+  max-width: calc(var(--tape-cell-width) * 9);
+}
+.tape-viewport {
+  --tape-head-color: var(--accent);
+  @apply w-full overflow-hidden;
+  mask-image: linear-gradient(
+    to right,
+    transparent,
+    black var(--tape-edge-fade),
+    black calc(100% - var(--tape-edge-fade)),
+    transparent
+  );
+}
+.tape-track {
+  @apply relative pt-5 pb-1;
+}
+.tape-strip {
+  @apply relative;
+  left: 50%;
+  transform: translate3d(-50%, 0, 0);
+  @apply flex w-max;
+}
+.tape-display:not(.is-compact) .tape-strip {
+  will-change: transform;
+}
+.tape-position {
+  flex: 0 0 var(--tape-cell-width);
+  width: var(--tape-cell-width);
+  @apply text-center;
+}
+.tape-cell {
+  @apply flex justify-center items-center;
+  height: var(--tape-cell-height);
+  @apply border border-solid border-border-strong;
+  border-right: 0;
+  @apply bg-canvas text-foreground font-mono text-md;
+}
+.tape-position:last-child .tape-cell {
+  @apply border-r border-r-border-strong;
+}
+.tape-position.is-head .tape-cell {
+  @apply font-semibold;
+}
+.tape-head-marker {
+  @apply absolute top-0;
+  left: 50%;
+  transform: translateX(-50%);
+  color: var(--tape-head-color);
+  @apply text-xs;
+}
+.tape-head-frame {
+  @apply absolute bottom-1;
+  left: 50%;
+  transform: translateX(-50%);
+  width: var(--tape-cell-width);
+  height: var(--tape-cell-height);
+  outline: 2px solid var(--tape-head-color);
+  outline-offset: -1px;
+  @apply rounded-sm pointer-events-none;
+}
+.tape-accepted {
+  --tape-result-color: var(--success);
+  --tape-result-surface: var(--success-soft);
+  --tape-head-color: var(--success);
+}
+.tape-rejected {
+  --tape-result-color: var(--danger);
+  --tape-result-surface: var(--danger-soft);
+  --tape-head-color: var(--danger);
+}
+.tape-accepted .tape-cell,
+.tape-rejected .tape-cell {
+  background: var(--tape-result-surface);
+  color: var(--tape-result-color);
+  border-color: var(--tape-result-color);
+}
+.execution-verdict {
+  @apply mt-2 mx-0 mb-0 text-center text-sm font-medium;
+}
+.verdict-accepted {
+  @apply text-success;
+}
+.verdict-rejected {
+  @apply text-danger;
+}
+.simulation-state-info {
+  @apply flex flex-col items-center justify-center gap-1 w-simulation-state flex-none p-3 bg-canvas border border-solid border-border rounded-md text-secondary text-xs;
+}
+.simulation-state-info strong {
+  @apply text-accent font-mono text-lg;
+}
+.simulation-notice {
+  @apply m-0 text-secondary text-xs;
+}
+.configuration-list {
+  @apply flex gap-2 flex-wrap;
+}
+.configuration-card {
+  @apply flex gap-1 items-center p-1 border border-solid border-border bg-canvas rounded-md;
+}
+.configuration-card.is-selected {
+  @apply border-accent;
+}
+.configuration-select {
+  @apply flex items-center gap-2 bg-transparent;
+  border: 0;
+  @apply text-secondary cursor-pointer text-xs py-1 px-2;
+}
+.configuration-select > span:first-child {
+  @apply text-foreground font-mono font-semibold;
+}
+.configuration-select .configuration-rejected {
+  @apply text-danger;
+}
+.configuration-select .configuration-accepted {
+  @apply text-success;
+}
+.configuration-card .icon-button {
+  @apply w-7 h-7;
+}
+.batch-content {
+  @apply grid;
+  grid-template-columns: minmax(var(--batch-entry-min-width), 0.8fr) minmax(
+      0,
+      2fr
+    );
+  @apply gap-4 py-3 px-5 min-h-0 flex-1;
+}
+.batch-entry {
+  @apply flex flex-col gap-2 min-h-0 overflow-auto;
+}
+.batch-entry > label {
+  @apply text-sm font-semibold;
+}
+.batch-entry textarea {
+  @apply min-h-batch-input flex-1 resize-y p-2 bg-canvas text-foreground border border-solid border-border rounded-sm;
+  font: var(--font-size-sm) var(--font-mono);
+}
+.batch-actions {
+  @apply flex gap-2 items-center flex-wrap;
+}
+.batch-results {
+  @apply overflow-auto min-w-0 border border-solid border-border rounded-md;
+}
+.batch-results table {
+  @apply border-collapse w-full text-xs text-left;
+}
+.batch-results th {
+  @apply sticky top-0 bg-canvas text-secondary font-medium;
+}
+.batch-results th,
+.batch-results td {
+  @apply py-1 px-3 border-b border-b-border;
+}
+.batch-results th {
+  @apply h-8;
+}
+.batch-results td {
+  @apply h-8;
+}
+.batch-results .icon-button {
+  @apply w-6 h-6 min-h-6;
+}
+.batch-results td code {
+  @apply whitespace-pre-wrap;
+  overflow-wrap: anywhere;
+}
+.batch-row-actions {
+  @apply flex items-center gap-2;
+}
+.batch-match {
+  @apply text-success;
+}
+.batch-mismatch {
+  @apply text-danger;
+}
+.trace-content {
+  @apply flex-1 min-h-0 overflow-auto py-3 px-5 overscroll-contain;
+}
+.trace-toolbar {
+  @apply flex items-center justify-between gap-3 text-secondary text-xs mb-3;
+}
+.trace-timeline {
+  @apply flex flex-col gap-2;
+}
+.trace-step {
+  @apply flex items-center gap-3 py-2 px-3 border border-solid border-border rounded-md bg-canvas text-foreground cursor-pointer text-left;
+}
+.trace-step:hover,
+.trace-step.is-selected {
+  @apply border-accent bg-accent-soft;
+}
+.trace-step-number {
+  @apply flex items-center justify-center flex-none w-trace-step h-trace-step rounded-sm bg-surface text-accent font-mono text-xs;
+}
+.trace-step-state {
+  min-width: var(--trace-state-min-width);
+  @apply font-mono text-sm;
+}
+.trace-step-state small {
+  @apply block text-secondary font-sans text-xs;
+}
+.tape-compact {
+  @apply w-auto min-w-0;
+}
+
+.tape-compact .tape-cell {
+  @apply text-sm;
+}
+
+.simulation-result-summary {
+  @apply flex items-center flex-wrap gap-4 my-3 mx-0 text-secondary text-sm;
+}
+.simulation-result-config {
+  @apply py-3 px-0 border-b border-b-border;
+}
+.simulation-result-heading {
+  @apply flex items-center justify-between gap-3 text-sm;
+}
+.simulation-result-heading strong {
+  @apply font-mono text-accent;
+}
+.simulation-result-config details {
+  @apply mt-3 text-sm;
+}
+.simulation-result-config summary {
+  @apply cursor-pointer text-secondary;
+}
+.simulation-result-config pre {
+  @apply overflow-auto p-3 bg-canvas;
+  font: var(--font-size-xs) var(--font-mono);
+  @apply rounded-md;
+}
+@media (max-width: 1000px) {
+  .simulation-controls {
+    @apply flex-wrap;
+  }
+  .simulation-speed {
+    @apply flex ml-0 pb-1;
+  }
+  .simulation-state-info {
+    width: var(--simulation-state-narrow-width);
+  }
+}
+@media (max-width: 650px) {
+  .simulation-tabs {
+    @apply gap-0 py-0 px-2;
+  }
+  :is(.simulation-tabs, .simulation-tab-buttons) > button {
+    @apply py-3 px-2;
+  }
+  .simulation-tab-status > span {
+    @apply hidden;
+  }
+  .simulation-content {
+    @apply p-3;
+  }
+  .simulation-controls {
+    @apply flex-wrap gap-2;
+  }
+  .simulation-input {
+    @apply flex-1 w-auto;
+  }
+  .simulation-buttons .button {
+    @apply p-2;
+  }
+  .simulation-state-info {
+    @apply hidden;
+  }
+  .batch-content {
+    @apply p-3;
+    grid-template-columns: 1fr;
+    @apply overflow-auto;
+  }
+  .batch-entry {
+    @apply overflow-visible;
+  }
+  .batch-entry textarea {
+    @apply min-h-batch-input-narrow;
+  }
+  .batch-results {
+    @apply min-h-batch-results overflow-auto;
+  }
+  .trace-content {
+    @apply p-3;
+  }
+  .trace-step {
+    @apply p-2 gap-2;
+  }
+  .trace-step-state {
+    @apply min-w-trace-state-narrow;
+  }
+}
+
+.simulation-tab-buttons {
+  @apply flex self-stretch gap-2;
+}
+
+/* FiniteSimulationPanel */
+.finite-progress {
+  @apply flex items-center gap-5 p-4 bg-canvas border border-solid border-border rounded-md flex-wrap;
+}
+.finite-progress > span {
+  @apply text-xs text-secondary;
+}
+.finite-progress > code {
+  @apply whitespace-pre-wrap text-lg;
+  overflow-wrap: anywhere;
+  @apply min-w-0;
+}
+.finite-progress .badge {
+  @apply flex-none;
+}
+.finite-progress-state strong {
+  @apply text-foreground font-mono text-sm;
+}
+.finite-configurations {
+  @apply flex flex-col gap-3;
+}
+.finite-configurations > summary {
+  @apply w-fit text-secondary text-xs cursor-pointer;
+}
+.finite-consumed {
+  @apply text-tertiary;
+}
+.finite-progress mark {
+  @apply text-accent bg-accent-soft p-1 rounded-sm;
+}
+.finite-configuration.button {
+  @apply flex gap-3;
+}
+.finite-configuration.is-selected {
+  @apply border-accent bg-accent-soft;
+}
+.finite-configuration strong {
+  @apply font-mono;
+}
+.finite-configuration > span {
+  @apply text-secondary;
+}
+.finite-configuration code {
+  @apply whitespace-pre-wrap;
+  overflow-wrap: anywhere;
+}
+.finite-configuration mark {
+  @apply bg-accent-soft text-accent;
+}
+.finite-configuration .finite-consumed {
+  @apply line-through;
+}
+.finite-results {
+  @apply overflow-auto min-w-0;
+}
+.finite-simulation .finite-results table {
+  @apply text-xs text-left;
+}
+.finite-simulation .finite-results th,
+.finite-simulation .finite-results td {
+  @apply h-8 py-1 px-3;
+}
+.finite-results-heading {
+  @apply flex justify-between items-center gap-3 mb-3 text-xs text-secondary;
+}
+.finite-simulation table {
+  @apply w-full border-collapse text-sm;
+}
+.finite-simulation th,
+.finite-simulation td {
+  @apply py-2 px-3 text-left border-b border-b-border;
+}
+.finite-simulation th {
+  @apply text-secondary font-medium;
+}
+@media (max-width: 1000px) {
+  .finite-simulation .simulation-controls {
+    @apply flex-wrap;
+  }
+  .finite-simulation .simulation-speed {
+    @apply ml-0;
+  }
+  .finite-simulation .batch-content {
+    grid-template-columns: 1fr;
+    @apply overflow-auto;
+  }
+}
+
+/* FiniteTools */
+.finite-tools {
+  @apply flex flex-col gap-4;
+}
+.finite-tools h3 {
+  @apply my-2 mx-0 text-md;
+}
+.finite-tool-actions,
+.finite-tool-form {
+  @apply flex gap-2 flex-wrap;
+  align-items: start;
+}
+.finite-tool-actions {
+  @apply items-center;
+}
+.finite-tool-form .field {
+  @apply flex-1 min-w-movement-input;
+}
+.finite-tool-form > .button {
+  @apply self-center mt-6;
+}
+.finite-tool-pair {
+  @apply grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(100%, var(--document-picker-width)), 1fr)
+  );
+  @apply gap-4;
+}
+.finite-tool-pair > * {
+  @apply min-w-0;
+}
+.finite-tool-graph {
+  @apply h-finite-preview border border-solid border-border rounded-md overflow-hidden relative;
+}
+.finite-partitions,
+.finite-production-list {
+  @apply flex flex-col gap-3;
+}
+.finite-partitions > div {
+  @apply p-3;
+  border-inline-start: var(--space-1) solid var(--accent-soft);
+  @apply text-sm;
+}
+.finite-partitions > div > div {
+  @apply flex flex-wrap gap-2 mt-2;
+}
+.finite-partitions [aria-pressed="true"] {
+  @apply bg-accent-soft border-accent;
+}
+.finite-production-list label {
+  @apply flex gap-2 items-center font-mono text-sm;
+}
+.finite-tool-table {
+  @apply w-full border-collapse text-sm;
+}
+.finite-tool-table th,
+.finite-tool-table td {
+  @apply p-2 border-b border-b-border text-left;
+}
+.finite-tool-table th {
+  @apply text-secondary font-medium;
+}
+.finite-tool-table code {
+  overflow-wrap: anywhere;
+  @apply whitespace-pre-wrap;
+}
+.finite-tool-scroll {
+  @apply overflow-auto;
+}
+.finite-expression {
+  @apply whitespace-pre-wrap;
+  overflow-wrap: anywhere;
+  @apply p-4 bg-canvas border border-solid border-border rounded-md text-md;
+}
+
+/* HomePage */
+.home-page {
+  @apply flex-1 min-h-0 overflow-auto bg-canvas py-16 px-8;
+}
+.home-heading,
+.home-options,
+.home-open,
+.home-documents {
+  @apply w-full max-w-home mx-auto;
+}
+.home-heading h1 {
+  @apply font-display text-home-title font-semibold mt-4 mb-3;
+}
+.home-options {
+  @apply grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  @apply gap-5 my-8;
+}
+.home-option.button {
+  @apply justify-start items-start whitespace-normal text-left p-6 gap-5 rounded-lg;
+}
+.home-option.button:hover {
+  @apply border-accent bg-surface;
+}
+.home-option-icon {
+  @apply grid place-items-center w-home-icon h-home-icon flex-none text-accent bg-accent-soft rounded-lg;
+}
+.home-option-icon > svg {
+  @apply w-6 h-6;
+}
+.home-option-copy {
+  @apply flex flex-col items-start gap-3 min-w-0;
+}
+.home-option-copy strong {
+  @apply text-lg font-semibold text-foreground;
+}
+.home-option-copy > span:not(.badge) {
+  @apply text-sm leading-copy text-secondary;
+}
+.home-option-copy .home-option-action {
+  @apply flex items-center gap-2;
+  color: var(--accent) !important;
+  @apply mt-3;
+}
+.home-open {
+  @apply flex items-center gap-4 text-secondary text-sm;
+}
+.home-documents {
+  @apply mt-12 border-t border-t-border pt-6;
+}
+.home-documents h2 {
+  @apply text-md mb-3;
+}
+.home-documents > .button {
+  @apply w-full justify-start p-3;
+}
+.home-document-row {
+  @apply flex items-center gap-2;
+}
+.home-document-open.button {
+  @apply flex-1 min-w-0 justify-start p-3;
+}
+.home-document-open > span:first-of-type {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.home-recents .home-document-open > span {
+  @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+}
+.home-recents .home-document-open > svg {
+  @apply shrink-0;
+}
+.home-recents .home-document-open > svg:last-child {
+  @apply ml-auto;
+}
+.home-recent-row > .home-document-open {
+  @apply p-3;
+}
+.home-recent-remove:hover:not(:disabled) {
+  @apply text-danger bg-danger-soft;
+}
+.home-document-kind {
+  @apply ml-auto text-secondary text-xs;
+}
+.app-body[hidden] {
+  @apply hidden;
+}
+@media (max-width: 760px) {
+  .home-page {
+    @apply py-8 px-5;
+  }
+  .home-options {
+    grid-template-columns: 1fr;
+  }
+  .home-open {
+    @apply items-start flex-col;
+  }
+  .home-document-kind {
+    @apply hidden;
+  }
+}
+@media (max-height: 700px) {
+  .home-page {
+    @apply py-6;
+  }
+}
+
+/* ManualCodeDialog */
+.manual-code-editor textarea {
+  @apply font-mono text-sm leading-code;
+  min-height: min(var(--manual-code-min-height), 40vh);
+  max-height: 50vh;
+  @apply resize-y;
+  tab-size: 2;
+}
+.manual-code-body.is-dragging textarea {
+  @apply border-accent bg-accent-soft;
+  outline: var(--focus-ring);
+}
+.manual-code-footer > .button:first-child {
+  @apply mr-auto;
+}
+@media (max-width: 760px) {
+  .manual-code-footer {
+    @apply flex-wrap;
+  }
+}
+
+/* Controles compartidos y estructura de la aplicación */
+@layer components {
+  .field-prominent input {
+    @apply min-h-12 py-2 px-4 text-md bg-accent-soft rounded-md;
+    border-bottom: var(--focus-ring);
+    box-shadow: var(--shadow-control);
+    transition:
+      background var(--duration),
+      border-color var(--duration),
+      box-shadow var(--duration);
+  }
+  .field-prominent input:hover {
+    @apply border-accent;
+  }
+  .field-prominent input:focus {
+    @apply border-accent;
+    outline: var(--focus-ring);
+    outline-offset: var(--space-0);
+    @apply pb-2;
+  }
+  .field-prominent input[aria-invalid="true"] {
+    @apply border-danger;
+  }
+  .button,
+  .icon-button {
+    @apply inline-flex items-center justify-center gap-2 rounded-sm min-h-control text-sm font-medium whitespace-nowrap;
+    transition:
+      background var(--duration),
+      border-color var(--duration);
+  }
+  .button {
+    @apply border border-solid border-border-strong bg-surface py-1 px-3;
+    box-shadow: var(--shadow-control);
+  }
+  .button:hover:not(:disabled) {
+    @apply bg-surface-hover;
+  }
+  .button:active:not(:disabled) {
+    @apply bg-surface-pressed;
+  }
+  .button-primary {
+    @apply bg-accent border-accent text-on-accent;
+  }
+  .button-primary:hover:not(:disabled) {
+    @apply bg-accent-hover border-accent-hover;
+  }
+  .button-primary:active:not(:disabled) {
+    @apply bg-accent-pressed;
+  }
+  .button-subtle {
+    @apply bg-transparent border-transparent;
+    box-shadow: none;
+  }
+  .icon-button {
+    @apply w-control h-control shrink-0 p-0 bg-transparent border border-solid border-transparent text-secondary;
+  }
+  .icon-button:hover:not(:disabled) {
+    @apply bg-surface-hover text-foreground;
+  }
+  .icon-button.is-active {
+    @apply bg-accent-soft text-accent;
+  }
+  .field {
+    @apply flex flex-col gap-2 min-w-0;
+  }
+  .field > label,
+  .field > span:first-child {
+    @apply text-sm font-medium text-foreground;
+  }
+  .field-hint {
+    @apply block text-xs font-normal text-secondary leading-body;
+  }
+  .field-error {
+    @apply text-danger text-sm;
+  }
+  .toggle-row {
+    @apply relative flex items-center justify-between gap-5 min-h-12 cursor-pointer;
+  }
+  .toggle-row > span:first-child {
+    @apply flex-1;
+  }
+  .toggle-label {
+    @apply block text-sm;
+  }
+  .toggle-row input {
+    @apply absolute right-0;
+    opacity: 0;
+    @apply w-10 h-6 cursor-pointer;
+  }
+  .toggle-track {
+    @apply flex-none flex items-center w-10 h-5 p-tight border border-solid border-tertiary rounded-full bg-canvas pointer-events-none;
+  }
+  .toggle-track > span {
+    @apply h-3 w-3 rounded-full bg-secondary;
+    transition: transform var(--duration);
+  }
+  .toggle-row input:checked + .toggle-track {
+    @apply bg-accent border-accent;
+  }
+  .toggle-row input:checked + .toggle-track > span {
+    @apply bg-on-accent;
+    transform: translateX(var(--space-5));
+  }
+  .toggle-row input:focus-visible + .toggle-track {
+    outline: var(--focus-ring);
+    outline-offset: var(--focus-offset-wide);
+  }
+  .badge {
+    @apply inline-flex items-center justify-center min-h-5 rounded-sm py-0 px-2 text-xs font-medium whitespace-nowrap bg-surface-hover text-secondary;
+  }
+  .badge-accent {
+    @apply bg-accent-soft text-accent;
+  }
+  .badge-success {
+    @apply bg-success-soft text-success;
+  }
+  .badge-danger {
+    @apply bg-danger-soft text-danger;
+  }
+  .badge-warning {
+    @apply bg-warning-soft text-warning;
+  }
+  .menu {
+    @apply relative inline-flex shrink-0;
+  }
+  .menu-trigger {
+    @apply flex items-center justify-center gap-2;
+    border: 0;
+    @apply bg-transparent text-sm min-h-7 py-1 px-3 rounded-sm;
+  }
+  .menu-trigger:hover,
+  .menu-trigger[aria-expanded="true"] {
+    @apply bg-surface-hover;
+  }
+  .menu-trigger > svg:last-child:not(:first-child) {
+    @apply w-3 h-3;
+  }
+  .menu-popover {
+    @apply absolute;
+    top: calc(100% + var(--space-1));
+    @apply left-0;
+    z-index: 50;
+    @apply min-w-menu p-1 bg-surface border border-solid border-border rounded-md;
+    box-shadow: var(--shadow-flyout);
+  }
+  .menu-entry {
+    @apply flex items-center rounded-sm;
+  }
+  .menu-entry > button[role="menuitem"]:first-child {
+    @apply flex items-center gap-2 w-full p-2;
+    border: 0;
+    @apply bg-transparent rounded-sm text-left text-sm whitespace-nowrap flex-1 min-w-0;
+  }
+  .menu-entry:hover,
+  .menu-entry > button[role="menuitem"]:first-child:hover:not(:disabled) {
+    @apply bg-surface-hover;
+  }
+  .menu-entry > .icon-button {
+    @apply flex-none mr-1 text-secondary;
+  }
+  .menu-entry > .icon-button:hover {
+    @apply text-danger bg-danger-soft;
+  }
+  .menu-item-icon {
+    @apply flex w-5 text-secondary;
+  }
+  .menu-popover kbd {
+    @apply ml-auto pl-6;
+  }
+  .menu-separator {
+    @apply h-px my-1 mx-2 bg-border;
+  }
+  .modal {
+    @apply text-foreground bg-surface p-0 border border-solid border-border rounded-lg;
+    box-shadow: var(--shadow-dialog);
+    @apply w-dialog;
+    max-width: calc(100vw - var(--space-8));
+    max-height: calc(100vh - var(--space-12));
+    @apply overflow-auto;
+  }
+  .modal::backdrop {
+    @apply bg-backdrop;
+    backdrop-filter: blur(var(--backdrop-blur));
+  }
+  .modal-wide {
+    @apply w-dialog-wide;
+  }
+  .modal-fullscreen[open] {
+    @apply flex flex-col;
+    width: calc(100vw - var(--space-8));
+    height: calc(100vh - var(--space-8));
+    @apply max-w-none max-h-none overflow-hidden;
+  }
+  .modal-fullscreen .modal-heading {
+    @apply flex-none py-5 px-8 border-b border-b-border;
+  }
+  .modal-fullscreen .modal-body {
+    @apply flex-1 min-h-0;
+  }
+  .modal-fullscreen .modal-footer {
+    @apply flex-none;
+  }
+  .modal-heading {
+    @apply flex justify-between gap-4 pt-6 px-6 pb-4;
+  }
+  .modal-heading h2 {
+    @apply text-xl;
+  }
+  .modal-heading p {
+    @apply mt-2 text-secondary text-sm;
+  }
+  .modal-body {
+    @apply pt-2 px-6 pb-6 flex flex-col gap-5;
+  }
+  .modal-body p {
+    @apply text-sm leading-copy;
+  }
+  .modal-footer {
+    @apply flex items-center justify-end gap-2 py-4 px-6 border-t border-t-border bg-canvas;
+  }
+  .modal-footer .button {
+    @apply min-w-16;
+  }
+  .form-row {
+    @apply grid;
+    grid-template-columns: 1fr 1fr;
+    @apply gap-4;
+  }
+  .settings-body {
+    @apply grid;
+    grid-template-columns: minmax(
+        var(--settings-section-min-width),
+        0.8fr
+      ) minmax(0, 1.2fr);
+    align-content: start;
+    @apply gap-8 py-6 px-8 overflow-auto;
+  }
+  .settings-section {
+    @apply flex flex-col gap-4 min-w-0;
+  }
+  .settings-section h3 {
+    @apply m-0 text-md;
+  }
+  .settings-section-wide {
+    grid-column: 1 / -1;
+  }
+  .settings-options {
+    @apply flex flex-col gap-2;
+  }
+  .settings-controls {
+    @apply grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    @apply gap-y-4 gap-x-6;
+  }
+  .settings-controls > .form-row,
+  .settings-controls > .settings-scale-field {
+    grid-column: 1 / -1;
+  }
+  .empty-state {
+    @apply flex flex-col items-center justify-center gap-2 p-6 text-secondary text-center text-sm;
+  }
+  .empty-state > svg {
+    @apply w-6 h-6 text-tertiary;
+  }
+  .empty-state strong {
+    @apply font-medium text-foreground;
+  }
+  .empty-state p {
+    @apply max-w-empty-copy text-xs;
+  }
+  .app-shell {
+    @apply flex flex-col h-full min-w-app overflow-hidden;
+  }
+  .menubar {
+    @apply flex items-center flex-none gap-2 h-menubar py-0 px-3 border-b border-b-border;
+  }
+  .menubar-spacer {
+    @apply flex-1;
+  }
+  .app-body {
+    @apply flex flex-1 min-h-0;
+  }
+  .dirty-dot {
+    @apply inline-block flex-none w-dirty-dot h-dirty-dot bg-tertiary rounded-full;
+  }
+  .main-workspace {
+    @apply flex flex-1 flex-col min-w-0 min-h-0 bg-surface;
+  }
+  .commandbar {
+    @apply h-12 min-h-12 flex items-center gap-2 py-0 px-4 border-b border-b-border;
+  }
+  .command-group {
+    @apply flex items-center gap-1;
+  }
+  .command-divider {
+    @apply h-5 w-px bg-border my-0 mx-2;
+  }
+  .command-spacer {
+    @apply flex-1;
+  }
+  .editor-row {
+    @apply flex flex-1;
+    min-height: var(--canvas-min-height);
+    @apply overflow-hidden;
+  }
+  .canvas-section {
+    @apply flex flex-col flex-1 min-w-0 min-h-0 bg-canvas;
+  }
+  .canvas-content {
+    @apply relative flex-1 min-h-0 overflow-hidden;
+  }
+  .canvas-tools {
+    @apply flex items-center gap-1 absolute;
+    z-index: 3;
+    @apply top-3 left-6 p-1 bg-surface border border-solid border-border rounded-md;
+    box-shadow: var(--shadow-control);
+  }
+  .canvas-tools .icon-button {
+    @apply w-8 h-8;
+  }
+  .canvas-tools .icon-button[data-tooltip],
+  .zoom-control .icon-button[data-tooltip],
+  .simulation-panel .icon-button[data-tooltip] {
+    @apply relative;
+  }
+  .canvas-tools .icon-button[data-tooltip]::after,
+  .zoom-control .icon-button[data-tooltip]::after,
+  .simulation-panel .icon-button[data-tooltip]::after {
+    @apply absolute;
+    left: 50%;
+    z-index: 10;
+    @apply w-max;
+    max-width: calc(100vw - var(--space-8));
+    @apply py-1 px-2 rounded-sm bg-foreground;
+    box-shadow: var(--shadow-flyout);
+    @apply text-surface;
+    content: attr(data-tooltip);
+    @apply text-xs font-medium leading-tooltip whitespace-nowrap pointer-events-none;
+    opacity: 0;
+    @apply invisible;
+    transition:
+      opacity var(--duration),
+      transform var(--duration),
+      visibility 0s linear var(--duration);
+  }
+  .canvas-tools .icon-button[data-tooltip]::after {
+    top: calc(100% + var(--space-2));
+    transform: translate(-50%, var(--space-1));
+  }
+  .zoom-control .icon-button[data-tooltip]::after {
+    bottom: calc(100% + var(--space-2));
+    transform: translate(-50%, var(--space-1));
+  }
+  .simulation-panel .icon-button[data-tooltip]::after {
+    bottom: calc(100% + var(--space-2));
+    transform: translate(-50%, var(--space-1));
+  }
+  .simulation-tabs > .icon-button[data-tooltip]::after {
+    top: calc(100% + var(--space-2));
+    @apply bottom-auto;
+    transform: translate(-50%, 0);
+  }
+  .canvas-tools .icon-button[data-tooltip]:hover::after,
+  .canvas-tools .icon-button[data-tooltip]:focus-visible::after,
+  .zoom-control .icon-button[data-tooltip]:hover::after,
+  .zoom-control .icon-button[data-tooltip]:focus-visible::after,
+  .simulation-panel .icon-button[data-tooltip]:hover::after,
+  .simulation-panel .icon-button[data-tooltip]:focus-visible::after {
+    transform: translate(-50%, 0);
+    opacity: 1;
+    @apply visible;
+    transition-delay: 0s;
+  }
+  .zoom-control {
+    @apply flex items-center gap-1 absolute bottom-3 right-4 p-1 bg-surface border border-solid border-border rounded-md;
+    box-shadow: var(--shadow-control);
+  }
+  .zoom-control > button:not(.icon-button) {
+    @apply p-1;
+    border: 0;
+    @apply bg-transparent text-secondary text-xs w-10;
+  }
+  .zoom-control > span {
+    @apply w-px h-4 bg-border;
+  }
+  .zoom-control .icon-button {
+    @apply w-7 h-7 min-h-7;
+  }
+  .no-grid .canvas-dot {
+    @apply hidden;
+  }
+  .toast {
+    @apply fixed flex items-center gap-3 bottom-12;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 80;
+    @apply pt-2 pr-3 pb-2 pl-4 bg-surface border border-solid border-border rounded-md;
+    box-shadow: var(--shadow-flyout);
+    @apply text-sm;
+    max-width: calc(100% - var(--space-12));
+  }
+  .toast > svg {
+    @apply text-accent;
+  }
+  .toast .icon-button {
+    @apply w-6 h-6 min-h-6;
+  }
+  .help-body {
+    @apply grid;
+    grid-template-columns: 1fr 1fr;
+    @apply gap-6;
+  }
+  .help-body h3 {
+    @apply mb-3;
+  }
+  .help-body p + p {
+    @apply mt-3;
+  }
+  .help-body p {
+    @apply text-secondary;
+  }
+  .shortcut-list {
+    @apply flex flex-col gap-2;
+  }
+  .shortcut-list > div {
+    @apply flex justify-between gap-2 text-xs;
+  }
+  .shortcut-list kbd {
+    @apply bg-canvas border border-solid border-border rounded-sm py-0 px-1;
+  }
+  .about-body {
+    @apply text-secondary;
+  }
+  .about-logo {
+    @apply flex w-16 h-16 items-center justify-center bg-accent text-on-accent rounded-xl;
+  }
+  .about-logo > svg {
+    @apply w-8 h-8;
+  }
+  .about-body > a {
+    @apply text-sm;
+  }
+  .about-body > a > svg {
+    @apply w-3;
+  }
+  .combine-list {
+    @apply flex flex-col gap-2;
+  }
+  .combine-list > button {
+    @apply flex items-center gap-3 p-3 border border-solid border-border rounded-md bg-canvas text-sm;
+  }
+  .combine-list > button > span {
+    @apply flex-1 text-left;
+  }
+  .combine-list > button:hover {
+    @apply border-accent;
+  }
+  .export-options {
+    @apply gap-2;
+  }
+  .export-options > .button {
+    @apply justify-start p-3;
+  }
+  .export-options > .button > span:last-child {
+    @apply ml-auto text-xs;
+  }
+}
+
+/* Popovers, transiciones y documentos */
+
+.license-text {
+  @apply whitespace-pre-wrap;
+  overflow-wrap: anywhere;
+  font: var(--font-size-xs) / var(--leading-license) var(--font-mono);
+  @apply text-secondary;
+}
+.simulation-stack {
+  @apply flex-none min-h-0;
+}
+.simulation-host[hidden] {
+  @apply hidden;
+}
+.simulation-stack[hidden] {
+  @apply hidden;
+}
+.editor-row {
+  @apply min-h-0;
+}
+.canvas-tools {
+  @apply left-4;
+}
+.popover {
+  @apply absolute;
+  z-index: 10;
+  @apply p-3 bg-surface border border-solid border-border rounded-md;
+  box-shadow: var(--shadow-flyout);
+  max-width: calc(100% - var(--space-4));
+  max-height: calc(100% - var(--space-4));
+  @apply overflow-auto text-sm;
+}
+.popover form {
+  @apply flex flex-col gap-2;
+}
+.popover-heading {
+  @apply flex justify-between items-center gap-2 text-secondary;
+}
+.popover-heading .icon-button {
+  @apply w-6 min-h-6 h-6;
+}
+.popover-heading-actions {
+  @apply flex items-center gap-1;
+}
+.transition-view-body {
+  max-height: min(65vh, var(--transition-view-max-height));
+  @apply overflow-y-auto;
+}
+.transition-view-list {
+  @apply flex flex-col gap-2 m-0 p-0 list-none;
+}
+.transition-view-row {
+  @apply flex items-center gap-3 min-h-10 py-2 px-3 border border-solid border-border rounded-md bg-canvas;
+}
+.transition-view-index {
+  @apply grid flex-none w-6 h-6 place-items-center rounded-full bg-accent-soft text-accent text-xs font-semibold;
+}
+.transition-view-row code {
+  @apply text-foreground font-mono text-md;
+}
+.transition-endpoints {
+  @apply inline-flex items-center gap-2 min-w-0 text-accent;
+}
+.transition-endpoints > svg {
+  @apply flex-none;
+}
+.transition-endpoint {
+  @apply inline-flex items-center min-h-6 px-2 border border-solid border-border rounded-sm bg-surface-hover text-foreground text-xs font-semibold;
+}
+.state-popover {
+  @apply w-state-popover;
+}
+.state-flags {
+  @apply flex items-center gap-3;
+}
+.state-flags label {
+  @apply flex items-center gap-1;
+}
+.state-flags .icon-button {
+  @apply ml-auto text-danger;
+}
+.transition-popover {
+  @apply w-transition-popover;
+}
+.transition-expression {
+  @apply flex items-center gap-1 font-mono;
+}
+.transition-expression input,
+.transition-expression select {
+  @apply min-w-0 flex-1 w-transition-input py-1 px-2;
+}
+.transition-expression .icon-button {
+  @apply w-7 min-w-7;
+}
+.transition-expression select {
+  flex: 0 0 var(--movement-input-width);
+  @apply w-movement-input;
+}
+.transition-multiple-toggle {
+  @apply flex justify-between gap-2 mt-1;
+}
+.transition-multiple-heading,
+.transition-multiple-actions {
+  @apply flex items-center gap-2;
+}
+.transition-multiple-heading {
+  @apply justify-between;
+}
+.transition-multiple-heading strong {
+  @apply font-semibold;
+}
+.transition-multiple-actions {
+  @apply justify-end;
+}
+.transition-rules-scroll {
+  @apply max-w-full overflow-x-auto;
+}
+.transition-rules-table {
+  @apply w-full border-collapse table-fixed;
+}
+.transition-rules-table th,
+.transition-rules-table td {
+  @apply p-1 border-b border-b-border;
+}
+.transition-rules-table th {
+  @apply text-secondary text-xs font-semibold text-left;
+}
+.transition-rules-table th:first-child,
+.transition-rules-table th:nth-child(2) {
+  width: 18%;
+}
+.transition-rules-table th:nth-child(3) {
+  width: 48%;
+}
+.transition-rules-table th:last-child {
+  @apply w-7;
+}
+.transition-rules-table input,
+.transition-rules-table select {
+  @apply min-w-0 w-full py-1 px-2 font-mono;
+}
+.transition-rules-table select {
+  @apply font-sans;
+}
+.transition-rules-table .icon-button {
+  @apply w-6 min-w-6 h-6;
+}
+.active-document {
+  @apply flex items-center gap-1 min-w-0 max-w-document-picker;
+}
+.document-picker {
+  @apply min-w-0 flex-1;
+}
+.document-picker .menu-trigger {
+  @apply min-w-0 max-w-full py-1 px-2;
+}
+.document-name {
+  @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs min-w-0;
+}
+.active-document .icon-button {
+  @apply w-7 min-h-7 h-7;
+}
+.document-picker .menu-popover {
+  @apply left-auto right-0;
+  max-height: calc(100vh - var(--space-16));
+  @apply overflow-y-auto;
+}
+
+/* Adaptación y movimiento reducido */
+@layer responsive {
+  @media (max-width: 1250px) {
+    .canvas-tools {
+      @apply left-5;
+    }
+  }
+  @media (max-width: 1000px) {
+    .commandbar {
+      @apply py-0 px-3;
+    }
+  }
+  @media (max-width: 760px) {
+    .modal-fullscreen[open] {
+      width: calc(100vw - var(--space-4));
+      height: calc(100vh - var(--space-4));
+    }
+    .modal-fullscreen .modal-heading {
+      @apply p-4;
+    }
+    .settings-body {
+      grid-template-columns: 1fr;
+      @apply gap-6 p-4;
+    }
+    .settings-section-wide {
+      grid-column: auto;
+    }
+    .settings-controls {
+      grid-template-columns: 1fr;
+    }
+    .settings-controls > .form-row,
+    .settings-controls > .settings-scale-field {
+      grid-column: auto;
+    }
+    .settings-controls > .form-row {
+      grid-template-columns: 1fr;
+    }
+    .commandbar .button-subtle > span {
+      @apply hidden;
+    }
+    .command-divider {
+      @apply my-0 mx-1;
+    }
+    .help-body {
+      grid-template-columns: 1fr;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      transition: none !important;
+      animation: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}

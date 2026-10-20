@@ -29,7 +29,6 @@ import {
 import type { Preferences } from '../domain/model';
 import type { Machine } from '../domain/model';
 import { transitionLabels } from '../domain/finite/transitionInput';
-import './GraphEditor.css';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';

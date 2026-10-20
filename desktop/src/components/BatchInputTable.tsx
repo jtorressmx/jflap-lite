@@ -1,7 +1,6 @@
 import { useRef } from 'react';
 import { FiPlus, FiTrash2 } from 'react-icons/fi';
 import { Button, IconButton } from './ui';
-import './BatchInputTable.css';
 
 export type BatchInputItem = {
   id: string;

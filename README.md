@@ -59,7 +59,8 @@ El empaquetado se ejecuta en el sistema de destino. El workflow `Build macOS` co
 - `desktop/src/domain/`: modelos, simuladores, conversiones y formato JFF.
 - `desktop/src/components/`: editor, simulación y controles compartidos.
 - `desktop/src/hooks/`: documentos, historial y recuperación.
-- `desktop/src/styles.css`: tema, tokens y estilos compartidos.
+- `desktop/src/styles.css`: entrada única de Tailwind y estilos base.
+- `desktop/src/styles/theme.css`: tokens compartidos, temas y paletas.
 
 El renderer está aislado de Node.js. El puente nativo gestiona archivos, impresión y recuperación. Las rutas recuperadas de una sesión requieren abrir el archivo o elegir su destino antes de escribirlo.
 

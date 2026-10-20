@@ -4,7 +4,6 @@ import { FiFile, FiPlay } from 'react-icons/fi';
 import { Button, Modal, TextAreaField } from './ui';
 import { parseJff } from '../domain/jff';
 import type { Machine } from '../domain/model';
-import './ManualCodeDialog.css';
 
 const MAX_CODE_BYTES = 32 * 1024 * 1024;
 export default function ManualCodeDialog({

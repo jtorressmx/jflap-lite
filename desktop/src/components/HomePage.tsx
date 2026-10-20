@@ -10,7 +10,6 @@ import {
 import { Button, IconButton } from './ui';
 import type { Machine, MachineKind } from '../domain/model';
 import { machineTitle } from '../domain/model';
-import './HomePage.css';
 
 export default function HomePage({
   onCreate,

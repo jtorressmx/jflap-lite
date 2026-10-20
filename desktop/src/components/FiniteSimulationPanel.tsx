@@ -46,8 +46,6 @@ import {
   manualBatchInputs,
 } from './BatchInputTable';
 import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
-import './SimulationPanel.css';
-import './FiniteSimulationPanel.css';
 
 type Props = {
   machine: Machine;

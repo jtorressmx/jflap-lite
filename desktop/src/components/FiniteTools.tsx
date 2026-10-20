@@ -25,7 +25,6 @@ import type {
   SubsetConstruction,
 } from '../domain/finite';
 import { download } from '../lib/files';
-import './FiniteTools.css';
 
 export type FiniteTool = 'dfa' | 'minimize' | 'trap' | 'grammar' | 'regex';
 const titles: Record<FiniteTool, string> = {

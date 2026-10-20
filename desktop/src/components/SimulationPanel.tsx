@@ -54,7 +54,6 @@ import {
 } from './BatchInputTable';
 import type { BatchInputItem, BatchTextFile } from './BatchInputTable';
 import { Badge, Button, EmptyState, Field, IconButton, Modal } from './ui';
-import './SimulationPanel.css';
 
 type Request = {
   id: number;
