@@ -10,7 +10,6 @@ import {
    FiCircle,
    FiMaximize,
    FiMinus,
-   FiMousePointer,
    FiPlus,
    FiTrash2,
    FiType,
@@ -49,15 +48,10 @@ export function MachineEditor({
 }) {
    const machine = active.machine;
    const { emptySymbol, preferences, autoZoom, showLabels, stateScale } = settings;
-   const { tool, setTool, selected, setSelected, highlights, zoom, setZoom, fitKey, setFitKey } =
+   const { tool, toggleTool, selected, setSelected, highlights, zoom, setZoom, fitKey, setFitKey } =
       editor;
    const { activeStates, activeTransition, guide: simulationGuide } = simulation;
    const toolsList: { id: Tool; icon: ReactNode; label: string }[] = [
-      {
-         id: 'select',
-         icon: <FiMousePointer />,
-         label: 'Seleccionar (V)',
-      },
       { id: 'state', icon: <FiCircle />, label: 'Añadir estado (S)' },
       {
          id: 'transition',
@@ -108,7 +102,7 @@ export function MachineEditor({
                         label={t.label}
                         active={tool === t.id}
                         tooltip
-                        onClick={() => setTool(t.id)}
+                        onClick={() => toggleTool(t.id)}
                      >
                         {t.icon}
                      </IconButton>

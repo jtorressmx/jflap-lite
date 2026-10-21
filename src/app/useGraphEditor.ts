@@ -57,6 +57,14 @@ export function useGraphEditor({
       setFitKey((key) => key + 1);
    }, [documentId]);
    /**
+    * Toggles the active tool and returns to selection when it is chosen again.
+    * @param nextTool - Requested editor tool.
+    * @returns No value.
+    */
+   function toggleTool(nextTool: Tool) {
+      setTool((current) => (current === nextTool && nextTool !== 'select' ? 'select' : nextTool));
+   }
+   /**
     * Deletes selected elements and clears the selection.
     * Takes no input.
     * @returns No value.
@@ -155,7 +163,8 @@ export function useGraphEditor({
          d: 'delete',
          n: 'note',
       };
-      if (tools[e.key.toLowerCase()]) setTool(tools[e.key.toLowerCase()]);
+      const nextTool = tools[e.key.toLowerCase()];
+      if (nextTool) toggleTool(nextTool);
    });
    useEffect(() => {
       const key = (event: KeyboardEvent) => onKeyDown(event);
@@ -164,7 +173,7 @@ export function useGraphEditor({
    }, []);
    return {
       tool,
-      setTool,
+      toggleTool,
       selected,
       setSelected,
       selectedState,
