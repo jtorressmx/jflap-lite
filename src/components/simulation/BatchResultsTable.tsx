@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef } from 'react';
-import { DataTable } from '../ui/DataTable';
+
+import { DataTable } from '@/components/ui/DataTable';
 
 const columns = [
    { id: 'input', header: 'Entrada' },

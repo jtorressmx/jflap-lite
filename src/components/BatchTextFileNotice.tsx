@@ -1,4 +1,4 @@
-import { Button } from './ui/Button';
+import { Button } from '@/components/ui/Button';
 
 /**
  * Shows the loaded input file and the action to return to manual inputs.

@@ -1,12 +1,12 @@
-import type { Machine } from '../model';
-import { emptyFinite, finiteTransition } from '../finite';
+import { emptyFinite, finiteTransition } from '@/domain/finite';
 import {
    alphabet,
    assertFiniteInitial,
    epsilonClosure,
    finiteNondeterminism,
    rangeSymbols,
-} from './simulation';
+} from '@/domain/finite/simulation';
+import type { Machine } from '@/domain/model';
 
 /** Normalize the compact transition labels before operations on a character alphabet. */
 export function normalizeFinite(original: Machine): Machine {

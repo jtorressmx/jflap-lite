@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Machine } from '../domain/model';
-import { settingsChanged, storedSettings } from '../lib/settings';
+
+import type { Machine } from '@/domain/model';
+import { settingsChanged, storedSettings } from '@/lib/settings';
 
 export type WorkspaceDocument = {
    id: string;

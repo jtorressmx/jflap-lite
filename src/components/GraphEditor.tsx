@@ -1,18 +1,18 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
-import { StateProperties } from './graph/StateProperties';
-import { TransitionProperties } from './graph/TransitionProperties';
-import { Popover } from './ui/Popover';
-import type { Machine, Preferences } from '../domain/model';
+import { StateProperties } from '@/components/graph/StateProperties';
+import { TransitionProperties } from '@/components/graph/TransitionProperties';
+import { Popover } from '@/components/ui/Popover';
+import type { Machine, Preferences } from '@/domain/model';
 import {
    defaultPreferences,
    machineKind,
    machineTitle,
    movementSymbol,
    nextStateId,
-} from '../domain/model';
-import { shortcutLabel } from '../lib/shortcuts';
+} from '@/domain/model';
+import { shortcutLabel } from '@/lib/shortcuts';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';

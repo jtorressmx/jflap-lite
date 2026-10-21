@@ -1,8 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
 
-import { ExecutionVerdict } from './ExecutionVerdict';
-import type { Configuration, Session } from '../../domain/model';
-import { getTapeContents, readTape } from '../../domain/turing';
+import { ExecutionVerdict } from '@/components/simulation/ExecutionVerdict';
+import type { Configuration, Session } from '@/domain/model';
+import { getTapeContents, readTape } from '@/domain/turing';
 
 /**
  * Shows the tape and head movement.

@@ -1,13 +1,14 @@
 import type { DragEvent } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { parseJff } from '../domain/jff';
-import type { Machine } from '../domain/model';
-import { FiFile, FiPlay } from './icons';
-import { Button } from './ui/Button';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
-import { ModalFooter } from './ui/ModalFooter';
-import { TextAreaField } from './ui/TextAreaField';
+
+import { FiFile, FiPlay } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import { TextAreaField } from '@/components/ui/TextAreaField';
+import { parseJff } from '@/domain/jff';
+import type { Machine } from '@/domain/model';
 
 const MAX_CODE_BYTES = 32 * 1024 * 1024;
 /**

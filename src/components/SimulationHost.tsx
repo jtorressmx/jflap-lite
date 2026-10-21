@@ -1,8 +1,8 @@
 import { useCallback } from 'react';
 
-import FiniteSimulationPanel from './FiniteSimulationPanel';
-import SimulationPanel, { type SimulationGuide } from './SimulationPanel';
-import { machineKind } from '../domain/model';
+import FiniteSimulationPanel from '@/components/FiniteSimulationPanel';
+import SimulationPanel, { type SimulationGuide } from '@/components/SimulationPanel';
+import { machineKind } from '@/domain/model';
 
 /**
  * Connects the simulator to its document.

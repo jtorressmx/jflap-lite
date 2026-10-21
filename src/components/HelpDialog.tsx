@@ -1,8 +1,8 @@
-import { shortcutLabel } from '../lib/shortcuts';
-import { Button } from './ui/Button';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
-import { ModalFooter } from './ui/ModalFooter';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import { shortcutLabel } from '@/lib/shortcuts';
 
 /**
  * Shows editor help and keyboard shortcuts.

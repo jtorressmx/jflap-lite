@@ -1,4 +1,10 @@
 import { useState } from 'react';
+
+import { BuildAutomaton } from '@/components/finite/BuildAutomaton';
+import { Preview } from '@/components/finite/Preview';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { Select } from '@/components/ui/Select';
 import {
    alphabet,
    initialPartition,
@@ -6,13 +12,8 @@ import {
    partitionMachine,
    prepareMinimization,
    splitPartition,
-} from '../../domain/finite';
-import type { Machine } from '../../domain/model';
-import { Button } from '../ui/Button';
-import { Field } from '../ui/Field';
-import { Select } from '../ui/Select';
-import { BuildAutomaton } from './BuildAutomaton';
-import { Preview } from './Preview';
+} from '@/domain/finite';
+import type { Machine } from '@/domain/model';
 
 /**
  * Refines the partitions of an automaton.

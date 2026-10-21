@@ -1,5 +1,5 @@
-import { FiMinus, FiX } from '../icons';
-import { IconButton } from '../ui/IconButton';
+import { FiMinus, FiX } from '@/components/icons';
+import { IconButton } from '@/components/ui/IconButton';
 
 /**
  * Shows actions to hide or close a simulation.

@@ -1,13 +1,14 @@
 import { useState } from 'react';
-import { alphabet } from '../../domain/finite';
-import type { Machine } from '../../domain/model';
-import { shortcutLabel } from '../../lib/shortcuts';
-import { Badge } from '../ui/Badge';
-import { Button } from '../ui/Button';
-import { Field } from '../ui/Field';
-import { ModalFooter } from '../ui/ModalFooter';
-import { Select } from '../ui/Select';
-import { Preview } from './Preview';
+
+import { Preview } from '@/components/finite/Preview';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import { Select } from '@/components/ui/Select';
+import { alphabet } from '@/domain/finite';
+import type { Machine } from '@/domain/model';
+import { shortcutLabel } from '@/lib/shortcuts';
 
 /**
  * Builds and checks a target automaton.

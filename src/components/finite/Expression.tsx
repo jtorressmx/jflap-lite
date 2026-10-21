@@ -1,17 +1,18 @@
 import { useState } from 'react';
-import type { Elimination } from '../../domain/finite';
+
+import { Button } from '@/components/ui/Button';
+import { DataTable } from '@/components/ui/DataTable';
+import { Select } from '@/components/ui/Select';
+import type { Elimination } from '@/domain/finite';
 import {
    eliminateState,
    expressionJff,
    finalExpression,
    regexText,
    regularExpression,
-} from '../../domain/finite';
-import type { Machine } from '../../domain/model';
-import { download } from '../../lib/files';
-import { Button } from '../ui/Button';
-import { DataTable } from '../ui/DataTable';
-import { Select } from '../ui/Select';
+} from '@/domain/finite';
+import type { Machine } from '@/domain/model';
+import { download } from '@/lib/files';
 
 /**
  * Eliminates states to obtain a regular expression.

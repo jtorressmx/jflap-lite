@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
-import { FiArrowRight } from '../icons';
-import { Button } from './Button';
+
+import { FiArrowRight } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
 
 /**
  * Shows an action with a title and description in a card.

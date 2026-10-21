@@ -43,12 +43,16 @@ npm ci
 npm run dev
 ```
 
-| Comando         | Uso                                                                                                         |
-| --------------- | ----------------------------------------------------------------------------------------------------------- |
-| `npm run dev`   | Electron con recarga del renderer                                                                           |
-| `npm run build` | Comprobación estricta de TypeScript y compilación del renderer                                              |
-| `npm start`     | Electron con la compilación local                                                                           |
-| `npm run dist`  | Compila y genera el portátil de Windows x64 o el DMG de macOS para la arquitectura del equipo en `release/` |
+| Comando                | Uso                                                                                                         |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `npm run dev`          | Electron con recarga del renderer                                                                           |
+| `npm run build`        | Comprobación estricta de TypeScript y compilación del renderer                                              |
+| `npm start`            | Electron con la compilación local                                                                           |
+| `npm run lint`         | Comprueba JavaScript, TypeScript y las reglas de Hooks                                                      |
+| `npm run typecheck`    | Comprueba los tipos sin generar archivos                                                                    |
+| `npm run format:check` | Verifica el formato compartido del repositorio                                                              |
+| `npm run format`       | Aplica el formato compartido del repositorio                                                                |
+| `npm run dist`         | Compila y genera el portátil de Windows x64 o el DMG de macOS para la arquitectura del equipo en `release/` |
 
 El empaquetado se ejecuta en el sistema de destino. El workflow `Build macOS` compila y valida los DMG en runners nativos de Apple Silicon e Intel.
 

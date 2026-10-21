@@ -1,6 +1,6 @@
-import type { BatchInputItem, BatchTextFile } from '../../lib/batchInput';
-import { BatchInputTable } from '../BatchInputTable';
-import { BatchTextFileNotice } from '../BatchTextFileNotice';
+import { BatchInputTable } from '@/components/BatchInputTable';
+import { BatchTextFileNotice } from '@/components/BatchTextFileNotice';
+import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
 
 /**
  * Edits manual inputs or the contents of a test file.

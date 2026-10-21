@@ -1,5 +1,5 @@
-import { BLANK, defaultPreferences, machineKind } from './model';
-import type { Configuration, Machine, Preferences, Session, Transition } from './model';
+import type { Configuration, Machine, Preferences, Session, Transition } from '@/domain/model';
+import { BLANK, defaultPreferences, machineKind } from '@/domain/model';
 
 /** Empty fields mean a blank; a bare ! means !□, as in TMTransition.setRead. */
 export function normalizeRead(read: string): string {

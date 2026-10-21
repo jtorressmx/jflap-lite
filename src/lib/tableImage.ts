@@ -1,4 +1,4 @@
-import { download } from './files';
+import { download } from '@/lib/files';
 
 type Tone = 'success' | 'danger' | 'warning' | 'accent';
 type ImageTableCell = { text: string; tone?: Tone; mono?: boolean };

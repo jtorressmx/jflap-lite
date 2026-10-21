@@ -1,19 +1,20 @@
 import { useState } from 'react';
-import type { SubsetConstruction } from '../domain/finite';
+
+import { BuildAutomaton } from '@/components/finite/BuildAutomaton';
+import { Expression } from '@/components/finite/Expression';
+import { Grammar } from '@/components/finite/Grammar';
+import { Minimize } from '@/components/finite/Minimize';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import type { SubsetConstruction } from '@/domain/finite';
 import {
    completeDfa,
    prepareMinimization,
    regularExpression,
    regularGrammar,
    subsetConstruction,
-} from '../domain/finite';
-import type { Machine } from '../domain/model';
-import { BuildAutomaton } from './finite/BuildAutomaton';
-import { Expression } from './finite/Expression';
-import { Grammar } from './finite/Grammar';
-import { Minimize } from './finite/Minimize';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
+} from '@/domain/finite';
+import type { Machine } from '@/domain/model';
 
 export type FiniteTool = 'dfa' | 'minimize' | 'trap' | 'grammar' | 'regex';
 const titles: Record<FiniteTool, string> = {

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
-import { FiChevronDown } from '../icons';
-import { MenuItem, type MenuAction } from './MenuItem';
+
+import { FiChevronDown } from '@/components/icons';
+import { MenuItem, type MenuAction } from '@/components/ui/MenuItem';
 export type MenuEntry = MenuAction | { separator: true };
 /**
  * Shows an action menu with keyboard navigation.

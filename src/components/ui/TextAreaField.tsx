@@ -1,6 +1,7 @@
 import type { TextareaHTMLAttributes } from 'react';
 import { useId } from 'react';
-import { FormField } from './FormField';
+
+import { FormField } from '@/components/ui/FormField';
 
 /**
  * Shows a labeled text area with an optional error.

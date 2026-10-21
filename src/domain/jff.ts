@@ -1,6 +1,6 @@
-import { BLANK, defaultPreferences, machineKind } from './model';
-import type { Machine, Note, State, Transition } from './model';
-import { normalizeRead, normalizeWrite, validateTransition } from './turing';
+import type { Machine, Note, State, Transition } from '@/domain/model';
+import { BLANK, defaultPreferences, machineKind } from '@/domain/model';
+import { normalizeRead, normalizeWrite, validateTransition } from '@/domain/turing';
 
 function children(parent: Element, name: string): Element[] {
    return Array.from(parent.children).filter((element) => element.tagName === name);

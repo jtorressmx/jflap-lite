@@ -1,4 +1,4 @@
-import type { Session } from '../../domain/model';
+import type { Session } from '@/domain/model';
 
 /**
  * Shows an execution verdict.

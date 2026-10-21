@@ -1,10 +1,11 @@
 import type { KeyboardEvent as ReactKeyboardEvent } from 'react';
 import { useState } from 'react';
-import type { Machine } from '../../domain/model';
-import { FiTrash2, FiX } from '../icons';
-import { Field } from '../ui/Field';
-import { IconButton } from '../ui/IconButton';
-import { PopoverHeading } from '../ui/PopoverHeading';
+
+import { FiTrash2, FiX } from '@/components/icons';
+import { Field } from '@/components/ui/Field';
+import { IconButton } from '@/components/ui/IconButton';
+import { PopoverHeading } from '@/components/ui/PopoverHeading';
+import type { Machine } from '@/domain/model';
 type State = Machine['states'][number];
 /**
  * Edits the properties of a state.

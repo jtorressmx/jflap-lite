@@ -4,6 +4,7 @@ import { defineConfig } from 'vite';
 export default defineConfig({
    base: './',
    plugins: [react(), tailwindcss()],
+   resolve: { tsconfigPaths: true },
    build: { license: { fileName: 'THIRD-PARTY-LICENSES.md' } },
    server: { watch: { ignored: ['**/release/**'] } },
 });

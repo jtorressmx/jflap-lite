@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
-import GraphEditor from '../GraphEditor';
-import type { Machine } from '../../domain/model';
+import GraphEditor from '@/components/GraphEditor';
+import type { Machine } from '@/domain/model';
 const noOp = () => {};
 /**
  * Shows an interactive automaton preview.

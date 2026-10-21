@@ -1,9 +1,10 @@
 import { useRef } from 'react';
-import { createBatchInputItem, type BatchInputItem } from '../lib/batchInput';
-import { FiPlus, FiTrash2 } from './icons';
-import { Button } from './ui/Button';
-import { DataTable } from './ui/DataTable';
-import { IconButton } from './ui/IconButton';
+
+import { FiPlus, FiTrash2 } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { DataTable } from '@/components/ui/DataTable';
+import { IconButton } from '@/components/ui/IconButton';
+import { createBatchInputItem, type BatchInputItem } from '@/lib/batchInput';
 
 /**
  * Edits a list of test inputs.

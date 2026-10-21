@@ -1,6 +1,6 @@
-import { FiFileText, FiImage, FiPlay, FiUpload } from '../icons';
-import { Button } from '../ui/Button';
-import { IconButton } from '../ui/IconButton';
+import { FiFileText, FiImage, FiPlay, FiUpload } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 
 /**
  * Groups actions for multiple-input tests.

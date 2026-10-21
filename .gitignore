@@ -1,12 +1,14 @@
 node_modules/
 dist/
 /release/
+.eslintcache
+.env
+.env.*
+!.env.example
 *.log
 .DS_Store
 Thumbs.db
-dist
 *.build
-node_modules
 
 AGENTS.md
 agents.md

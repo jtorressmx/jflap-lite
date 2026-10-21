@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { Machine } from '../domain/model';
-import { FiTrash2 } from './icons';
-import { Button } from './ui/Button';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
-import { ModalFooter } from './ui/ModalFooter';
+
+import { FiTrash2 } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import type { Machine } from '@/domain/model';
 
 /**
  * Edits a diagram note.

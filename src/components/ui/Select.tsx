@@ -1,6 +1,7 @@
 import type { SelectHTMLAttributes } from 'react';
 import { useId } from 'react';
-import { FormField } from './FormField';
+
+import { FormField } from '@/components/ui/FormField';
 
 /**
  * Shows a labeled native select control.

@@ -1,5 +1,5 @@
-import { machineKind } from '../domain/model';
-import type { Machine } from '../domain/model';
+import type { Machine } from '@/domain/model';
+import { machineKind } from '@/domain/model';
 
 export async function download(
    content: BlobPart,

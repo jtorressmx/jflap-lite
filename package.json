@@ -6,10 +6,15 @@
    "scripts": {
       "dev": "node scripts/dev.mjs",
       "start": "node scripts/start.mjs",
+      "lint": "eslint . --max-warnings 0",
+      "typecheck": "tsc --noEmit",
+      "format": "prettier . --write",
+      "format:check": "prettier . --check",
       "build": "tsc && vite build",
       "dist": "npm run build && node scripts/package.mjs"
    },
    "devDependencies": {
+      "@eslint/js": "^10.0.1",
       "@tailwindcss/vite": "^4.3.3",
       "@types/node": "^24.0.0",
       "@types/react": "^19.2.0",
@@ -17,16 +22,27 @@
       "@vitejs/plugin-react": "^6.1.2",
       "electron": "^44.8.0",
       "electron-builder": "^26.15.3",
+      "eslint": "^10.13.0",
+      "eslint-plugin-react-hooks": "^7.1.1",
       "gifenc": "^1.0.3",
+      "globals": "^17.13.0",
+      "prettier": "^3.9.10",
       "react": "^19.2.0",
       "react-dom": "^19.2.0",
       "react-icons": "^5.5.0",
       "tailwindcss": "^4.3.3",
       "typescript": "^5.9.3",
+      "typescript-eslint": "^8.72.0",
       "vite": "^8.3.4"
    },
    "description": "Autómatas finitos y máquinas de Turing de JFLAP Lite para Windows y macOS.",
    "main": "electron/main.cjs",
+   "engines": {
+      "node": ">=24"
+   },
+   "imports": {
+      "#electron/*": "./electron/*.cjs"
+   },
    "build": {
       "appId": "org.jflap.lite",
       "productName": "JFLAP Lite",

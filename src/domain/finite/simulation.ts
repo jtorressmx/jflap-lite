@@ -1,5 +1,5 @@
-import { machineKind } from '../model';
-import type { Machine } from '../model';
+import type { Machine } from '@/domain/model';
+import { machineKind } from '@/domain/model';
 
 type FiniteAutomaton = {
    states: { id: string; initial: boolean; final: boolean }[];

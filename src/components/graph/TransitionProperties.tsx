@@ -1,13 +1,23 @@
 import { useState } from 'react';
-import { transitionLabels } from '../../domain/finite/transitionInput';
-import type { Machine, Preferences } from '../../domain/model';
-import { machineKind } from '../../domain/model';
-import { normalizeRead, normalizeWrite, validateTransition } from '../../domain/turing';
-import { FiArrowRight, FiCheck, FiEye, FiList, FiMinus, FiPlus, FiTrash2, FiX } from '../icons';
-import { Button } from '../ui/Button';
-import { DataTable } from '../ui/DataTable';
-import { IconButton } from '../ui/IconButton';
-import { PopoverHeading } from '../ui/PopoverHeading';
+
+import {
+   FiArrowRight,
+   FiCheck,
+   FiEye,
+   FiList,
+   FiMinus,
+   FiPlus,
+   FiTrash2,
+   FiX,
+} from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { DataTable } from '@/components/ui/DataTable';
+import { IconButton } from '@/components/ui/IconButton';
+import { PopoverHeading } from '@/components/ui/PopoverHeading';
+import { transitionLabels } from '@/domain/finite/transitionInput';
+import type { Machine, Preferences } from '@/domain/model';
+import { machineKind } from '@/domain/model';
+import { normalizeRead, normalizeWrite, validateTransition } from '@/domain/turing';
 type Transition = Machine['transitions'][number];
 type TransitionDraft = {
    key: string;

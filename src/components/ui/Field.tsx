@@ -1,6 +1,7 @@
 import type { InputHTMLAttributes } from 'react';
 import { useId } from 'react';
-import { FormField } from './FormField';
+
+import { FormField } from '@/components/ui/FormField';
 
 /**
  * Shows a text input with a label and optional help.

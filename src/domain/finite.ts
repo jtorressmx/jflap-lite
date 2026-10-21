@@ -1,6 +1,6 @@
-import type { Machine, Transition } from './model';
-export * from './finite/simulation';
-export * from './finite/conversions';
+import type { Machine, Transition } from '@/domain/model';
+export * from '@/domain/finite/conversions';
+export * from '@/domain/finite/simulation';
 
 export function emptyFinite(name = 'Autómata sin título'): Machine {
    return { kind: 'fa', name, states: [], transitions: [], notes: [] };

@@ -1,5 +1,6 @@
 import type { ComponentPropsWithRef } from 'react';
-import { shortcutLabel } from '../../lib/shortcuts';
+
+import { shortcutLabel } from '@/lib/shortcuts';
 
 /**
  * Shows an icon action with an accessible name.

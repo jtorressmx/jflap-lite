@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import type { Production } from '../../domain/finite';
-import { grammarJff, regularGrammar } from '../../domain/finite';
-import type { Machine } from '../../domain/model';
-import { download } from '../../lib/files';
-import { Button } from '../ui/Button';
-import { DataTable } from '../ui/DataTable';
+
+import { Button } from '@/components/ui/Button';
+import { DataTable } from '@/components/ui/DataTable';
+import type { Production } from '@/domain/finite';
+import { grammarJff, regularGrammar } from '@/domain/finite';
+import type { Machine } from '@/domain/model';
+import { download } from '@/lib/files';
 
 /**
  * Shows regular grammar productions and export actions.

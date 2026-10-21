@@ -1,9 +1,9 @@
-import type { Machine, MachineKind } from '../domain/model';
-import { machineTitle } from '../domain/model';
-import { DocumentListItem } from './DocumentListItem';
-import { FiCpu, FiFolder, FiGitBranch, FiTrash2, FiX } from './icons';
-import { ActionCard } from './ui/ActionCard';
-import { Button } from './ui/Button';
+import { DocumentListItem } from '@/components/DocumentListItem';
+import { FiCpu, FiFolder, FiGitBranch, FiTrash2, FiX } from '@/components/icons';
+import { ActionCard } from '@/components/ui/ActionCard';
+import { Button } from '@/components/ui/Button';
+import type { Machine, MachineKind } from '@/domain/model';
+import { machineTitle } from '@/domain/model';
 
 /**
  * Shows available editors and documents.

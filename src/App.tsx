@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
-import type { FiniteTool } from './components/FiniteTools';
-import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
-import GraphEditor from './components/GraphEditor';
-import { HelpDialog } from './components/HelpDialog';
-import HomePage from './components/HomePage';
+import type { FiniteTool } from '@/components/FiniteTools';
+import FiniteTools, { validateFiniteTool } from '@/components/FiniteTools';
+import GraphEditor from '@/components/GraphEditor';
+import { HelpDialog } from '@/components/HelpDialog';
+import HomePage from '@/components/HomePage';
 import {
    FiActivity,
    FiArrowRight,
@@ -41,32 +41,32 @@ import {
    FiType,
    FiX,
    FiZap,
-} from './components/icons';
-import ManualCodeDialog from './components/ManualCodeDialog';
-import { NoteDialog } from './components/NoteDialog';
-import { SimulationHost } from './components/SimulationHost';
-import { type SimulationGuide } from './components/SimulationPanel';
-import { Button } from './components/ui/Button';
-import { Field } from './components/ui/Field';
-import { FormRow } from './components/ui/FormRow';
-import { IconButton } from './components/ui/IconButton';
-import type { MenuEntry } from './components/ui/Menu';
-import { Menu } from './components/ui/Menu';
-import { Modal } from './components/ui/Modal';
-import { ModalBody } from './components/ui/ModalBody';
-import { ModalFooter } from './components/ui/ModalFooter';
-import { Select } from './components/ui/Select';
-import { Toggle } from './components/ui/Toggle';
+} from '@/components/icons';
+import ManualCodeDialog from '@/components/ManualCodeDialog';
+import { NoteDialog } from '@/components/NoteDialog';
+import { SimulationHost } from '@/components/SimulationHost';
+import { type SimulationGuide } from '@/components/SimulationPanel';
+import { Button } from '@/components/ui/Button';
+import { Field } from '@/components/ui/Field';
+import { FormRow } from '@/components/ui/FormRow';
+import { IconButton } from '@/components/ui/IconButton';
+import type { MenuEntry } from '@/components/ui/Menu';
+import { Menu } from '@/components/ui/Menu';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import { Select } from '@/components/ui/Select';
+import { Toggle } from '@/components/ui/Toggle';
 import {
    emptyFinite,
    equivalentFinite,
    finiteNondeterminism,
    normalizeFinite,
-} from './domain/finite';
-import type { FiniteLayout } from './domain/finite/layout';
-import { finiteLayouts, layoutFinite } from './domain/finite/layout';
-import { parseJff, serializeJff } from './domain/jff';
-import type { Machine, MachineKind, Preferences } from './domain/model';
+} from '@/domain/finite';
+import type { FiniteLayout } from '@/domain/finite/layout';
+import { finiteLayouts, layoutFinite } from '@/domain/finite/layout';
+import { parseJff, serializeJff } from '@/domain/jff';
+import type { Machine, MachineKind, Preferences } from '@/domain/model';
 import {
    BLANK,
    defaultPreferences,
@@ -74,13 +74,13 @@ import {
    machineKind,
    movementSymbol,
    nextStateId,
-} from './domain/model';
-import { nondeterministicStates } from './domain/turing';
-import type { WorkspaceDocument } from './hooks/useWorkspace';
-import { useWorkspace } from './hooks/useWorkspace';
-import { exportImage, exportPdf, printMachine } from './lib/files';
-import { readUiSettings, settingsChanged, storedSettings } from './lib/settings';
-import license from '../LICENSE?raw';
+} from '@/domain/model';
+import { nondeterministicStates } from '@/domain/turing';
+import type { WorkspaceDocument } from '@/hooks/useWorkspace';
+import { useWorkspace } from '@/hooks/useWorkspace';
+import { exportImage, exportPdf, printMachine } from '@/lib/files';
+import { readUiSettings, settingsChanged, storedSettings } from '@/lib/settings';
+import license from '@license?raw';
 
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type Dialog =

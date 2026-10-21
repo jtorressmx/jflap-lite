@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { FiArrowRight, FiFile } from './icons';
-import { Button } from './ui/Button';
-import { IconButton } from './ui/IconButton';
+
+import { FiArrowRight, FiFile } from '@/components/icons';
+import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 
 /**
  * Shows a document with opening and removal actions.

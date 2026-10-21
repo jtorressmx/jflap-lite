@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useEffect, useId, useRef } from 'react';
-import { FiX } from '../icons';
-import { IconButton } from './IconButton';
+
+import { FiX } from '@/components/icons';
+import { IconButton } from '@/components/ui/IconButton';
 
 /**
  * Shows a modal dialog with native focus and dismissal.

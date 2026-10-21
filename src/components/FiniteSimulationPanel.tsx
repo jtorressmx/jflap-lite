@@ -11,24 +11,24 @@ import {
    FiSkipForward,
    FiTrash2,
    FiZap,
-} from './icons';
-import { BatchActions } from './simulation/BatchActions';
-import { BatchInputEditor } from './simulation/BatchInputEditor';
-import { BatchResultsTable } from './simulation/BatchResultsTable';
-import { SimulationSpeed } from './simulation/SimulationSpeed';
-import { SimulationTabs } from './simulation/SimulationTabs';
-import { SimulationWindowActions } from './simulation/SimulationWindowActions';
-import { Badge } from './ui/Badge';
-import { Button } from './ui/Button';
-import { DataTable } from './ui/DataTable';
-import { EmptyState } from './ui/EmptyState';
-import { Field } from './ui/Field';
-import { IconButton } from './ui/IconButton';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
-import { ModalFooter } from './ui/ModalFooter';
-import { Select } from './ui/Select';
-import type { FiniteSession } from '../domain/finite';
+} from '@/components/icons';
+import { BatchActions } from '@/components/simulation/BatchActions';
+import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
+import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
+import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
+import { SimulationTabs } from '@/components/simulation/SimulationTabs';
+import { SimulationWindowActions } from '@/components/simulation/SimulationWindowActions';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { DataTable } from '@/components/ui/DataTable';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Field } from '@/components/ui/Field';
+import { IconButton } from '@/components/ui/IconButton';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import { ModalFooter } from '@/components/ui/ModalFooter';
+import { Select } from '@/components/ui/Select';
+import type { FiniteSession } from '@/domain/finite';
 import {
    canStepFinite,
    createFiniteSession,
@@ -38,12 +38,12 @@ import {
    finiteTrace,
    runFinite,
    stepFinite,
-} from '../domain/finite';
-import type { Machine } from '../domain/model';
-import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
-import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
-import { download } from '../lib/files';
-import { exportTablePng } from '../lib/tableImage';
+} from '@/domain/finite';
+import type { Machine } from '@/domain/model';
+import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
+import { download } from '@/lib/files';
+import { exportTablePng } from '@/lib/tableImage';
 
 type Props = {
    machine: Machine;

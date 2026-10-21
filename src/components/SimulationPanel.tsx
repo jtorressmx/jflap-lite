@@ -14,24 +14,24 @@ import {
    FiTrash2,
    FiXCircle,
    FiZap,
-} from './icons';
-import { BatchActions } from './simulation/BatchActions';
-import { BatchInputEditor } from './simulation/BatchInputEditor';
-import { BatchResultsTable } from './simulation/BatchResultsTable';
-import { SelectableOutput } from './simulation/SelectableOutput';
-import { SimulationSpeed } from './simulation/SimulationSpeed';
-import { SimulationTabs } from './simulation/SimulationTabs';
-import { SimulationWindowActions } from './simulation/SimulationWindowActions';
-import { Tape } from './simulation/Tape';
-import { Badge } from './ui/Badge';
-import { Button } from './ui/Button';
-import { EmptyState } from './ui/EmptyState';
-import { Field } from './ui/Field';
-import { IconButton } from './ui/IconButton';
-import { Modal } from './ui/Modal';
-import { ModalBody } from './ui/ModalBody';
-import type { Configuration, Machine, Preferences, Session } from '../domain/model';
-import { BLANK } from '../domain/model';
+} from '@/components/icons';
+import { BatchActions } from '@/components/simulation/BatchActions';
+import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
+import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
+import { SelectableOutput } from '@/components/simulation/SelectableOutput';
+import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
+import { SimulationTabs } from '@/components/simulation/SimulationTabs';
+import { SimulationWindowActions } from '@/components/simulation/SimulationWindowActions';
+import { Tape } from '@/components/simulation/Tape';
+import { Badge } from '@/components/ui/Badge';
+import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
+import { Field } from '@/components/ui/Field';
+import { IconButton } from '@/components/ui/IconButton';
+import { Modal } from '@/components/ui/Modal';
+import { ModalBody } from '@/components/ui/ModalBody';
+import type { Configuration, Machine, Preferences, Session } from '@/domain/model';
+import { BLANK } from '@/domain/model';
 import {
    createSession,
    getOutput,
@@ -41,11 +41,11 @@ import {
    stepInteractiveSession,
    stepSession,
    traceSession,
-} from '../domain/turing';
-import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
-import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
-import { download } from '../lib/files';
-import { exportTablePng } from '../lib/tableImage';
+} from '@/domain/turing';
+import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
+import { download } from '@/lib/files';
+import { exportTablePng } from '@/lib/tableImage';
 
 type Request = {
    id: number;

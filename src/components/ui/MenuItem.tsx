@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
-import { shortcutLabel } from '../../lib/shortcuts';
-import { FiCheck } from '../icons';
-import { IconButton } from './IconButton';
+
+import { FiCheck } from '@/components/icons';
+import { IconButton } from '@/components/ui/IconButton';
+import { shortcutLabel } from '@/lib/shortcuts';
 
 export type MenuAction = {
    label: string;

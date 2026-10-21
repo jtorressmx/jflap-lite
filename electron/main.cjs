@@ -6,8 +6,8 @@ const { pathToFileURL } = require('node:url');
 
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
 
-const policy = require('./policy.cjs');
-const { shortcutCommand } = require('./shortcuts.cjs');
+const policy = require('#electron/policy');
+const { shortcutCommand } = require('#electron/shortcuts');
 
 app.setName('JFLAP Lite');
 if (process.platform === 'win32') app.setAppUserModelId('org.jflap.lite');

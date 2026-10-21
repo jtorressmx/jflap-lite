@@ -1,4 +1,4 @@
-import type { Machine } from '../model';
+import type { Machine } from '@/domain/model';
 export type FiniteLayout =
    | 'circle'
    | 'gem'
