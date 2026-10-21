@@ -43,28 +43,28 @@ export default function HomePage({
    return (
       <main className="home-page">
          <header className="home-heading">
-            <span className="eyebrow">JFLAP LITE</span>
-            <h1>Elige qué quieres construir</h1>
-         </header>
-         <div className="home-open">
-            <Button onClick={onOpen}>
+            <div className="home-heading-copy">
+               <span className="eyebrow">JFLAP LITE</span>
+               <h1>Elige qué quieres construir</h1>
+            </div>
+            <Button variant="primary" className="home-open-button" onClick={onOpen}>
                <FiFolder /> Abrir archivo
             </Button>
-         </div>
+         </header>
          <div className="home-options">
-            <ActionCard
-               icon={<FiCpu />}
-               title="Máquina de Turing"
-               description="Lee, escribe y mueve el cabezal. Sigue la cinta durante la ejecución."
-               action="Abrir editor de Turing"
-               onClick={() => onCreate('turing')}
-            />
             <ActionCard
                icon={<FiGitBranch />}
                title="Autómatas finitos"
                description="Reconoce cadenas, explora el no determinismo y convierte o minimiza tu autómata."
                action="Abrir editor de autómatas"
                onClick={() => onCreate('fa')}
+            />
+            <ActionCard
+               icon={<FiCpu />}
+               title="Máquina de Turing"
+               description="Lee, escribe y mueve el cabezal. Sigue la cinta durante la ejecución."
+               action="Abrir editor de Turing"
+               onClick={() => onCreate('turing')}
             />
          </div>
          {recentFiles.length > 0 && (

@@ -816,12 +816,20 @@
 }
 .home-heading,
 .home-options,
-.home-open,
 .home-documents {
    @apply w-full max-w-home mx-auto;
 }
+.home-heading {
+   @apply flex items-end justify-between gap-6;
+}
+.home-heading-copy {
+   @apply min-w-0;
+}
 .home-heading h1 {
    @apply font-display text-home-title font-semibold mt-4 mb-3;
+}
+.home-open-button {
+   @apply flex-none px-4 py-2;
 }
 .home-options {
    @apply grid;
@@ -853,9 +861,6 @@
    @apply flex items-center gap-2;
    color: var(--accent) !important;
    @apply mt-3;
-}
-.home-open {
-   @apply flex items-center gap-4 text-secondary text-sm;
 }
 .home-documents {
    @apply mt-12 border-t border-t-border pt-6;
@@ -903,8 +908,8 @@
    .home-options {
       grid-template-columns: 1fr;
    }
-   .home-open {
-      @apply items-start flex-col;
+   .home-heading {
+      @apply items-start flex-col gap-0;
    }
    .home-document-kind {
       @apply hidden;
