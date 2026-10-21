@@ -5,6 +5,7 @@
    "type": "module",
    "scripts": {
       "dev": "node scripts/dev.mjs",
+      "dev:browser": "vite --host 127.0.0.1",
       "start": "node scripts/start.mjs",
       "lint": "eslint . --max-warnings 0",
       "typecheck": "tsc --noEmit",
