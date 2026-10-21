@@ -15,31 +15,21 @@ import { FormField } from './FormField';
  * @returns The labeled input and optional help.
  */
 export function Field({
-  label,
-  hint,
-  variant = 'default',
-  className = '',
-  ...props
+   label,
+   hint,
+   variant = 'default',
+   className = '',
+   ...props
 }: InputHTMLAttributes<HTMLInputElement> & {
-  label: string;
-  hint?: string;
-  variant?: 'default' | 'prominent';
+   label: string;
+   hint?: string;
+   variant?: 'default' | 'prominent';
 }) {
-  const generatedId = useId();
-  const id = props.id ?? generatedId;
-  return (
-    <FormField
-      id={id}
-      label={label}
-      hint={hint}
-      variant={variant}
-      className={className}
-    >
-      <input
-        id={id}
-        aria-describedby={hint ? `${id}-help` : undefined}
-        {...props}
-      />
-    </FormField>
-  );
+   const generatedId = useId();
+   const id = props.id ?? generatedId;
+   return (
+      <FormField id={id} label={label} hint={hint} variant={variant} className={className}>
+         <input id={id} aria-describedby={hint ? `${id}-help` : undefined} {...props} />
+      </FormField>
+   );
 }

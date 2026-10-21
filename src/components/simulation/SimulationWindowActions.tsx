@@ -9,22 +9,22 @@ import { IconButton } from '../ui/IconButton';
  * @returns The simulation window action buttons.
  */
 export function SimulationWindowActions({
-  onHide,
-  onClose,
+   onHide,
+   onClose,
 }: {
-  onHide?: () => void;
-  onClose: () => void;
+   onHide?: () => void;
+   onClose: () => void;
 }) {
-  return (
-    <>
-      {onHide && (
-        <IconButton label="Ocultar ventana" tooltip onClick={onHide}>
-          <FiMinus />
-        </IconButton>
-      )}
-      <IconButton label="Cerrar simulación" tooltip onClick={onClose}>
-        <FiX />
-      </IconButton>
-    </>
-  );
+   return (
+      <>
+         {onHide && (
+            <IconButton label="Ocultar ventana" tooltip onClick={onHide}>
+               <FiMinus />
+            </IconButton>
+         )}
+         <IconButton label="Cerrar simulación" tooltip onClick={onClose}>
+            <FiX />
+         </IconButton>
+      </>
+   );
 }

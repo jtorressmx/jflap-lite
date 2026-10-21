@@ -8,11 +8,11 @@ import type { ReactNode } from 'react';
  * @returns The status indicator with its semantic tone.
  */
 export function Badge({
-  children,
-  tone = 'neutral',
+   children,
+   tone = 'neutral',
 }: {
-  children: ReactNode;
-  tone?: 'neutral' | 'accent' | 'success' | 'danger' | 'warning';
+   children: ReactNode;
+   tone?: 'neutral' | 'accent' | 'success' | 'danger' | 'warning';
 }) {
-  return <span className={`badge badge-${tone}`}>{children}</span>;
+   return <span className={`badge badge-${tone}`}>{children}</span>;
 }

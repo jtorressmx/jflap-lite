@@ -4,13 +4,13 @@ import { FiCheck } from '../icons';
 import { IconButton } from './IconButton';
 
 export type MenuAction = {
-  label: string;
-  icon?: ReactNode;
-  shortcut?: string;
-  onClick: () => void;
-  disabled?: boolean;
-  checked?: boolean;
-  action?: { label: string; icon: ReactNode; onClick: () => void };
+   label: string;
+   icon?: ReactNode;
+   shortcut?: string;
+   onClick: () => void;
+   disabled?: boolean;
+   checked?: boolean;
+   action?: { label: string; icon: ReactNode; onClick: () => void };
 };
 
 /**
@@ -30,43 +30,35 @@ export type MenuAction = {
  * @param props.onClose - Requests menu closure before an action runs; receives no arguments.
  * @returns The menu item and optional secondary action.
  */
-export function MenuItem({
-  entry,
-  onClose,
-}: {
-  entry: MenuAction;
-  onClose: () => void;
-}) {
-  const action = entry.action;
-  return (
-    <div className="menu-entry" role="none">
-      <button
-        type="button"
-        role="menuitem"
-        disabled={entry.disabled}
-        onClick={() => {
-          onClose();
-          entry.onClick();
-        }}
-      >
-        <span className="menu-item-icon">
-          {entry.checked ? <FiCheck /> : entry.icon}
-        </span>
-        <span>{entry.label}</span>
-        {entry.shortcut && <kbd>{shortcutLabel(entry.shortcut)}</kbd>}
-      </button>
-      {action && (
-        <IconButton
-          label={action.label}
-          role="menuitem"
-          onClick={() => {
-            onClose();
-            action.onClick();
-          }}
-        >
-          {action.icon}
-        </IconButton>
-      )}
-    </div>
-  );
+export function MenuItem({ entry, onClose }: { entry: MenuAction; onClose: () => void }) {
+   const action = entry.action;
+   return (
+      <div className="menu-entry" role="none">
+         <button
+            type="button"
+            role="menuitem"
+            disabled={entry.disabled}
+            onClick={() => {
+               onClose();
+               entry.onClick();
+            }}
+         >
+            <span className="menu-item-icon">{entry.checked ? <FiCheck /> : entry.icon}</span>
+            <span>{entry.label}</span>
+            {entry.shortcut && <kbd>{shortcutLabel(entry.shortcut)}</kbd>}
+         </button>
+         {action && (
+            <IconButton
+               label={action.label}
+               role="menuitem"
+               onClick={() => {
+                  onClose();
+                  action.onClick();
+               }}
+            >
+               {action.icon}
+            </IconButton>
+         )}
+      </div>
+   );
 }

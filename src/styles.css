@@ -1,7 +1,7 @@
 @layer theme, base, components, responsive, utilities;
-@import "tailwindcss/utilities.css" layer(utilities) source(none);
-@import "./styles/theme.css";
-@import "./styles/components.css";
+@import 'tailwindcss/utilities.css' layer(utilities) source(none);
+@import './styles/theme.css';
+@import './styles/components.css';
 
 @source "./";
 /* La clase accesible existente conserva su definición y prioridad. */
@@ -9,130 +9,125 @@
 
 /* Se conserva la base actual: Preflight cambiaría los controles, SVG y diálogos. */
 @layer base {
-  *,
-  *::before,
-  *::after {
-    @apply box-border;
-  }
-  html,
-  body,
-  #root {
-    @apply m-0 w-full h-full overflow-hidden;
-  }
-  body {
-    @apply font-sans text-md leading-body text-foreground bg-mica;
-    -webkit-font-smoothing: antialiased;
-  }
-  button,
-  input,
-  textarea,
-  select {
-    font: inherit;
-  }
-  button {
-    @apply cursor-pointer;
-    color: inherit;
-  }
-  button:disabled {
-    opacity: var(--opacity-disabled);
-    @apply cursor-default;
-  }
-  button,
-  a,
-  input,
-  select,
-  textarea {
-    outline-offset: var(--focus-offset);
-  }
-  :focus-visible {
-    outline: var(--focus-ring);
-  }
-  svg {
-    @apply shrink-0 w-icon h-icon align-middle;
-  }
-  h1,
-  h2,
-  h3,
-  p {
-    @apply m-0;
-  }
-  h1,
-  h2,
-  h3 {
-    @apply font-display font-semibold leading-heading;
-  }
-  h2 {
-    @apply text-lg;
-  }
-  h3 {
-    @apply text-md;
-  }
-  a {
-    @apply text-accent no-underline;
-  }
-  a:hover {
-    @apply underline;
-  }
-  code,
-  kbd {
-    @apply font-mono;
-  }
-  kbd {
-    @apply text-xs text-secondary whitespace-nowrap;
-  }
-  input:not([type="checkbox"], [type="range"], [type="file"], [type="color"]),
-  textarea,
-  select {
-    @apply w-full bg-surface text-foreground border border-solid border-border-strong border-b-tertiary rounded-sm py-2 px-3 min-h-control text-sm;
-  }
-  input::placeholder,
-  textarea::placeholder {
-    @apply text-tertiary;
-  }
-  input:not(
-      [type="checkbox"],
-      [type="range"],
-      [type="file"],
-      [type="color"]
-    ):focus,
-  textarea:focus,
-  select:focus {
-    outline: none;
-    border-bottom: 2px solid var(--accent);
-    padding-bottom: calc(var(--space-2) - 1px);
-  }
-  input[aria-invalid="true"] {
-    @apply border-danger;
-  }
-  textarea {
-    @apply resize-y;
-  }
-  ::selection {
-    @apply bg-accent-soft text-accent;
-  }
-  ::-webkit-scrollbar {
-    @apply w-2 h-2;
-  }
-  ::-webkit-scrollbar-thumb {
-    @apply bg-border-strong;
-    border: 2px solid var(--surface);
-    @apply rounded-full;
-  }
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-  .sr-only {
-    position: absolute !important;
-    width: 1px !important;
-    height: 1px !important;
-    padding: 0 !important;
-    margin: -1px !important;
-    overflow: hidden !important;
-    clip: rect(0, 0, 0, 0) !important;
-    white-space: nowrap !important;
-    border: 0 !important;
-  }
-  .muted {
-    @apply text-secondary;
-  }
+   *,
+   *::before,
+   *::after {
+      @apply box-border;
+   }
+   html,
+   body,
+   #root {
+      @apply m-0 w-full h-full overflow-hidden;
+   }
+   body {
+      @apply font-sans text-md leading-body text-foreground bg-mica;
+      -webkit-font-smoothing: antialiased;
+   }
+   button,
+   input,
+   textarea,
+   select {
+      font: inherit;
+   }
+   button {
+      @apply cursor-pointer;
+      color: inherit;
+   }
+   button:disabled {
+      opacity: var(--opacity-disabled);
+      @apply cursor-default;
+   }
+   button,
+   a,
+   input,
+   select,
+   textarea {
+      outline-offset: var(--focus-offset);
+   }
+   :focus-visible {
+      outline: var(--focus-ring);
+   }
+   svg {
+      @apply shrink-0 w-icon h-icon align-middle;
+   }
+   h1,
+   h2,
+   h3,
+   p {
+      @apply m-0;
+   }
+   h1,
+   h2,
+   h3 {
+      @apply font-display font-semibold leading-heading;
+   }
+   h2 {
+      @apply text-lg;
+   }
+   h3 {
+      @apply text-md;
+   }
+   a {
+      @apply text-accent no-underline;
+   }
+   a:hover {
+      @apply underline;
+   }
+   code,
+   kbd {
+      @apply font-mono;
+   }
+   kbd {
+      @apply text-xs text-secondary whitespace-nowrap;
+   }
+   input:not([type='checkbox'], [type='range'], [type='file'], [type='color']),
+   textarea,
+   select {
+      @apply w-full bg-surface text-foreground border border-solid border-border-strong border-b-tertiary rounded-sm py-2 px-3 min-h-control text-sm;
+   }
+   input::placeholder,
+   textarea::placeholder {
+      @apply text-tertiary;
+   }
+   input:not([type='checkbox'], [type='range'], [type='file'], [type='color']):focus,
+   textarea:focus,
+   select:focus {
+      outline: none;
+      border-bottom: 2px solid var(--accent);
+      padding-bottom: calc(var(--space-2) - 1px);
+   }
+   input[aria-invalid='true'] {
+      @apply border-danger;
+   }
+   textarea {
+      @apply resize-y;
+   }
+   ::selection {
+      @apply bg-accent-soft text-accent;
+   }
+   ::-webkit-scrollbar {
+      @apply w-2 h-2;
+   }
+   ::-webkit-scrollbar-thumb {
+      @apply bg-border-strong;
+      border: 2px solid var(--surface);
+      @apply rounded-full;
+   }
+   ::-webkit-scrollbar-track {
+      @apply bg-transparent;
+   }
+   .sr-only {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      padding: 0 !important;
+      margin: -1px !important;
+      overflow: hidden !important;
+      clip: rect(0, 0, 0, 0) !important;
+      white-space: nowrap !important;
+      border: 0 !important;
+   }
+   .muted {
+      @apply text-secondary;
+   }
 }

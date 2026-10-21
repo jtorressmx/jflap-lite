@@ -8,20 +8,20 @@ import { Button } from './ui/Button';
  * @returns The loaded-file notice.
  */
 export function BatchTextFileNotice({
-  fileName,
-  onClear,
+   fileName,
+   onClear,
 }: {
-  fileName: string;
-  onClear: () => void;
+   fileName: string;
+   onClear: () => void;
 }) {
-  return (
-    <div className="batch-text-file" role="status">
-      <span className="batch-text-file-name" title={fileName}>
-        {fileName}
-      </span>
-      <Button variant="subtle" onClick={onClear}>
-        Volver a entradas
-      </Button>
-    </div>
-  );
+   return (
+      <div className="batch-text-file" role="status">
+         <span className="batch-text-file-name" title={fileName}>
+            {fileName}
+         </span>
+         <Button variant="subtle" onClick={onClear}>
+            Volver a entradas
+         </Button>
+      </div>
+   );
 }

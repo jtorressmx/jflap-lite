@@ -16,48 +16,48 @@ import { ModalFooter } from './ui/ModalFooter';
  * @returns The diagram note dialog.
  */
 export function NoteDialog({
-  note,
-  onClose,
-  onSave,
-  onDelete,
+   note,
+   onClose,
+   onSave,
+   onDelete,
 }: {
-  note?: Machine['notes'][number];
-  onClose: () => void;
-  onSave: (text: string) => void;
-  onDelete: () => void;
+   note?: Machine['notes'][number];
+   onClose: () => void;
+   onSave: (text: string) => void;
+   onDelete: () => void;
 }) {
-  const [text, setText] = useState(note?.text || '');
-  return (
-    <Modal title="Nota del diagrama" onClose={onClose}>
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          onSave(text);
-        }}
-      >
-        <ModalBody>
-          <label className="field">
-            <span>Texto</span>
-            <textarea
-              autoFocus
-              rows={5}
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Describe qué hace esta parte de la máquina…"
-            />
-          </label>
-        </ModalBody>
-        <ModalFooter>
-          <Button variant="subtle" onClick={onDelete}>
-            <FiTrash2 />
-            Eliminar
-          </Button>
-          <Button onClick={onClose}>Cancelar</Button>
-          <Button type="submit" variant="primary">
-            Guardar nota
-          </Button>
-        </ModalFooter>
-      </form>
-    </Modal>
-  );
+   const [text, setText] = useState(note?.text || '');
+   return (
+      <Modal title="Nota del diagrama" onClose={onClose}>
+         <form
+            onSubmit={(e) => {
+               e.preventDefault();
+               onSave(text);
+            }}
+         >
+            <ModalBody>
+               <label className="field">
+                  <span>Texto</span>
+                  <textarea
+                     autoFocus
+                     rows={5}
+                     value={text}
+                     onChange={(e) => setText(e.target.value)}
+                     placeholder="Describe qué hace esta parte de la máquina…"
+                  />
+               </label>
+            </ModalBody>
+            <ModalFooter>
+               <Button variant="subtle" onClick={onDelete}>
+                  <FiTrash2 />
+                  Eliminar
+               </Button>
+               <Button onClick={onClose}>Cancelar</Button>
+               <Button type="submit" variant="primary">
+                  Guardar nota
+               </Button>
+            </ModalFooter>
+         </form>
+      </Modal>
+   );
 }

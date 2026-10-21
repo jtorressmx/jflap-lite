@@ -9,19 +9,19 @@ import type { ReactNode } from 'react';
  * @returns The empty-state message.
  */
 export function EmptyState({
-  icon,
-  title,
-  children,
+   icon,
+   title,
+   children,
 }: {
-  icon?: ReactNode;
-  title: string;
-  children?: ReactNode;
+   icon?: ReactNode;
+   title: string;
+   children?: ReactNode;
 }) {
-  return (
-    <div className="empty-state">
-      {icon}
-      <strong>{title}</strong>
-      {children && <p>{children}</p>}
-    </div>
-  );
+   return (
+      <div className="empty-state">
+         {icon}
+         <strong>{title}</strong>
+         {children && <p>{children}</p>}
+      </div>
+   );
 }

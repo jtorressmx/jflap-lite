@@ -1,13 +1,13 @@
 import type { ReactNode } from 'react';
 
 export type FormFieldProps = {
-  id: string;
-  label: string;
-  hint?: string;
-  error?: string;
-  variant?: 'default' | 'prominent';
-  className?: string;
-  children: ReactNode;
+   id: string;
+   label: string;
+   hint?: string;
+   error?: string;
+   variant?: 'default' | 'prominent';
+   className?: string;
+   children: ReactNode;
 };
 
 /**
@@ -23,30 +23,28 @@ export type FormFieldProps = {
  * @returns The control container with its label, help, and error.
  */
 export function FormField({
-  id,
-  label,
-  hint,
-  error,
-  variant = 'default',
-  className = '',
-  children,
+   id,
+   label,
+   hint,
+   error,
+   variant = 'default',
+   className = '',
+   children,
 }: FormFieldProps) {
-  return (
-    <div
-      className={`field${variant === 'prominent' ? ' field-prominent' : ''} ${className}`}
-    >
-      <label htmlFor={id}>{label}</label>
-      {children}
-      {hint && (
-        <span id={`${id}-help`} className="field-hint">
-          {hint}
-        </span>
-      )}
-      {error && (
-        <p id={`${id}-error`} className="field-error" role="alert">
-          {error}
-        </p>
-      )}
-    </div>
-  );
+   return (
+      <div className={`field${variant === 'prominent' ? ' field-prominent' : ''} ${className}`}>
+         <label htmlFor={id}>{label}</label>
+         {children}
+         {hint && (
+            <span id={`${id}-help`} className="field-hint">
+               {hint}
+            </span>
+         )}
+         {error && (
+            <p id={`${id}-error`} className="field-error" role="alert">
+               {error}
+            </p>
+         )}
+      </div>
+   );
 }

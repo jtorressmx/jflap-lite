@@ -18,46 +18,37 @@ import { IconButton } from './ui/IconButton';
  * @returns The document row and its actions.
  */
 export function DocumentListItem({
-  name,
-  title,
-  detail,
-  onOpen,
-  onRemove,
-  removeLabel,
-  removeIcon,
-  className = '',
-  removeVariant = 'default',
+   name,
+   title,
+   detail,
+   onOpen,
+   onRemove,
+   removeLabel,
+   removeIcon,
+   className = '',
+   removeVariant = 'default',
 }: {
-  name: string;
-  title?: string;
-  detail?: ReactNode;
-  onOpen: () => void;
-  onRemove: () => void;
-  removeLabel: string;
-  removeIcon: ReactNode;
-  className?: string;
-  removeVariant?: 'default' | 'danger';
+   name: string;
+   title?: string;
+   detail?: ReactNode;
+   onOpen: () => void;
+   onRemove: () => void;
+   removeLabel: string;
+   removeIcon: ReactNode;
+   className?: string;
+   removeVariant?: 'default' | 'danger';
 }) {
-  return (
-    <div className={`home-document-row ${className}`}>
-      <Button
-        variant="subtle"
-        className="home-document-open"
-        title={title}
-        onClick={onOpen}
-      >
-        <FiFile />
-        <span>{name}</span>
-        {detail && <span className="home-document-kind">{detail}</span>}
-        <FiArrowRight />
-      </Button>
-      <IconButton
-        variant={removeVariant}
-        label={removeLabel}
-        onClick={onRemove}
-      >
-        {removeIcon}
-      </IconButton>
-    </div>
-  );
+   return (
+      <div className={`home-document-row ${className}`}>
+         <Button variant="subtle" className="home-document-open" title={title} onClick={onOpen}>
+            <FiFile />
+            <span>{name}</span>
+            {detail && <span className="home-document-kind">{detail}</span>}
+            <FiArrowRight />
+         </Button>
+         <IconButton variant={removeVariant} label={removeLabel} onClick={onRemove}>
+            {removeIcon}
+         </IconButton>
+      </div>
+   );
 }

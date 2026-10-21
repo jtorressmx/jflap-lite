@@ -13,20 +13,16 @@ import type { ComponentPropsWithRef } from 'react';
  * @returns The button with the requested visual variant.
  */
 export function Button({
-  variant = 'default',
-  className = '',
-  children,
-  ...props
+   variant = 'default',
+   className = '',
+   children,
+   ...props
 }: ComponentPropsWithRef<'button'> & {
-  variant?: 'default' | 'primary' | 'subtle' | 'danger' | 'card';
+   variant?: 'default' | 'primary' | 'subtle' | 'danger' | 'card';
 }) {
-  return (
-    <button
-      type="button"
-      className={`button button-${variant} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+   return (
+      <button type="button" className={`button button-${variant} ${className}`} {...props}>
+         {children}
+      </button>
+   );
 }

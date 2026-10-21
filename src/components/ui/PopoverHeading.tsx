@@ -8,9 +8,6 @@ import type { ComponentPropsWithRef } from 'react';
  * @param [props.ref] - Optional native element reference.
  * @returns The contextual window heading.
  */
-export function PopoverHeading({
-  className = '',
-  ...props
-}: ComponentPropsWithRef<'div'>) {
-  return <div className={`popover-heading ${className}`} {...props} />;
+export function PopoverHeading({ className = '', ...props }: ComponentPropsWithRef<'div'>) {
+   return <div className={`popover-heading ${className}`} {...props} />;
 }

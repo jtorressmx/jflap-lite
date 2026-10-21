@@ -8,9 +8,6 @@ import type { ComponentPropsWithRef } from 'react';
  * @param [props.ref] - Optional native element reference.
  * @returns The responsive field row.
  */
-export function FormRow({
-  className = '',
-  ...props
-}: ComponentPropsWithRef<'div'>) {
-  return <div className={`form-row ${className}`} {...props} />;
+export function FormRow({ className = '', ...props }: ComponentPropsWithRef<'div'>) {
+   return <div className={`form-row ${className}`} {...props} />;
 }

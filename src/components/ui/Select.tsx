@@ -13,17 +13,17 @@ import { FormField } from './FormField';
  * @returns The labeled native selector.
  */
 export function Select({
-  label,
-  children,
-  ...props
+   label,
+   children,
+   ...props
 }: SelectHTMLAttributes<HTMLSelectElement> & { label: string }) {
-  const generatedId = useId();
-  const id = props.id ?? generatedId;
-  return (
-    <FormField id={id} label={label}>
-      <select id={id} {...props}>
-        {children}
-      </select>
-    </FormField>
-  );
+   const generatedId = useId();
+   const id = props.id ?? generatedId;
+   return (
+      <FormField id={id} label={label}>
+         <select id={id} {...props}>
+            {children}
+         </select>
+      </FormField>
+   );
 }

@@ -13,32 +13,30 @@ import { BatchTextFileNotice } from '../BatchTextFileNotice';
  * @returns The editor for the selected input source.
  */
 export function BatchInputEditor({
-  items,
-  file,
-  onItemsChange,
-  onFileChange,
-  onClearFile,
+   items,
+   file,
+   onItemsChange,
+   onFileChange,
+   onClearFile,
 }: {
-  items: BatchInputItem[];
-  file: BatchTextFile | null;
-  onItemsChange: (items: BatchInputItem[]) => void;
-  onFileChange: (file: BatchTextFile) => void;
-  onClearFile: () => void;
+   items: BatchInputItem[];
+   file: BatchTextFile | null;
+   onItemsChange: (items: BatchInputItem[]) => void;
+   onFileChange: (file: BatchTextFile) => void;
+   onClearFile: () => void;
 }) {
-  return file ? (
-    <>
-      <BatchTextFileNotice fileName={file.name} onClear={onClearFile} />
-      <textarea
-        aria-label="Entradas del archivo de texto"
-        className="batch-text-file-editor"
-        value={file.content}
-        onChange={(event) =>
-          onFileChange({ ...file, content: event.target.value })
-        }
-        spellCheck={false}
-      />
-    </>
-  ) : (
-    <BatchInputTable items={items} onChange={onItemsChange} />
-  );
+   return file ? (
+      <>
+         <BatchTextFileNotice fileName={file.name} onClear={onClearFile} />
+         <textarea
+            aria-label="Entradas del archivo de texto"
+            className="batch-text-file-editor"
+            value={file.content}
+            onChange={(event) => onFileChange({ ...file, content: event.target.value })}
+            spellCheck={false}
+         />
+      </>
+   ) : (
+      <BatchInputTable items={items} onChange={onItemsChange} />
+   );
 }

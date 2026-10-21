@@ -17,31 +17,31 @@ import { shortcutLabel } from '../../lib/shortcuts';
  * @returns The icon button with its accessible name.
  */
 export function IconButton({
-  label,
-  active,
-  variant = 'default',
-  tooltip = false,
-  className = '',
-  children,
-  ...props
+   label,
+   active,
+   variant = 'default',
+   tooltip = false,
+   className = '',
+   children,
+   ...props
 }: ComponentPropsWithRef<'button'> & {
-  label: string;
-  active?: boolean;
-  variant?: 'default' | 'danger';
-  tooltip?: boolean;
+   label: string;
+   active?: boolean;
+   variant?: 'default' | 'danger';
+   tooltip?: boolean;
 }) {
-  label = shortcutLabel(label);
-  return (
-    <button
-      type="button"
-      aria-label={label}
-      title={tooltip ? undefined : label}
-      data-tooltip={tooltip ? label : undefined}
-      aria-pressed={active}
-      className={`icon-button icon-button-${variant} ${active ? 'is-active' : ''} ${className}`}
-      {...props}
-    >
-      {children}
-    </button>
-  );
+   label = shortcutLabel(label);
+   return (
+      <button
+         type="button"
+         aria-label={label}
+         title={tooltip ? undefined : label}
+         data-tooltip={tooltip ? label : undefined}
+         aria-pressed={active}
+         className={`icon-button icon-button-${variant} ${active ? 'is-active' : ''} ${className}`}
+         {...props}
+      >
+         {children}
+      </button>
+   );
 }

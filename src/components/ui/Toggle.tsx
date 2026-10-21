@@ -8,31 +8,31 @@
  * @returns The preference switch.
  */
 export function Toggle({
-  label,
-  description,
-  checked,
-  onChange,
+   label,
+   description,
+   checked,
+   onChange,
 }: {
-  label: string;
-  description?: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
+   label: string;
+   description?: string;
+   checked: boolean;
+   onChange: (v: boolean) => void;
 }) {
-  return (
-    <label className="toggle-row">
-      <span>
-        <span className="toggle-label">{label}</span>
-        {description && <span className="field-hint">{description}</span>}
-      </span>
-      <input
-        type="checkbox"
-        role="switch"
-        checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-      />
-      <span className="toggle-track" aria-hidden="true">
-        <span />
-      </span>
-    </label>
-  );
+   return (
+      <label className="toggle-row">
+         <span>
+            <span className="toggle-label">{label}</span>
+            {description && <span className="field-hint">{description}</span>}
+         </span>
+         <input
+            type="checkbox"
+            role="switch"
+            checked={checked}
+            onChange={(e) => onChange(e.target.checked)}
+         />
+         <span className="toggle-track" aria-hidden="true">
+            <span />
+         </span>
+      </label>
+   );
 }

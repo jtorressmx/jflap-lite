@@ -14,55 +14,55 @@ import { IconButton } from './IconButton';
  * @returns The modal dialog with its heading and content.
  */
 export function Modal({
-  title,
-  subtitle,
-  children,
-  onClose,
-  size = 'default',
+   title,
+   subtitle,
+   children,
+   onClose,
+   size = 'default',
 }: {
-  title: string;
-  subtitle?: string;
-  children: ReactNode;
-  onClose: () => void;
-  size?: 'default' | 'wide' | 'fullscreen';
+   title: string;
+   subtitle?: string;
+   children: ReactNode;
+   onClose: () => void;
+   size?: 'default' | 'wide' | 'fullscreen';
 }) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const id = useId();
-  useEffect(() => {
-    const dialog = ref.current;
-    if (!dialog) return;
-    dialog.showModal();
-    return () => dialog.close();
-  }, []);
-  return (
-    <dialog
-      className={`modal ${size === 'default' ? '' : `modal-${size}`}`}
-      ref={ref}
-      aria-labelledby={id}
-      onCancel={onClose}
-      onClick={(e) => {
-        if (e.target === e.currentTarget) {
-          const r = e.currentTarget.getBoundingClientRect();
-          if (
-            e.clientX < r.left ||
-            e.clientX > r.right ||
-            e.clientY < r.top ||
-            e.clientY > r.bottom
-          )
-            onClose();
-        }
-      }}
-    >
-      <div className="modal-heading">
-        <div>
-          <h2 id={id}>{title}</h2>
-          {subtitle && <p>{subtitle}</p>}
-        </div>
-        <IconButton label="Cerrar diálogo" onClick={onClose}>
-          <FiX />
-        </IconButton>
-      </div>
-      {children}
-    </dialog>
-  );
+   const ref = useRef<HTMLDialogElement>(null);
+   const id = useId();
+   useEffect(() => {
+      const dialog = ref.current;
+      if (!dialog) return;
+      dialog.showModal();
+      return () => dialog.close();
+   }, []);
+   return (
+      <dialog
+         className={`modal ${size === 'default' ? '' : `modal-${size}`}`}
+         ref={ref}
+         aria-labelledby={id}
+         onCancel={onClose}
+         onClick={(e) => {
+            if (e.target === e.currentTarget) {
+               const r = e.currentTarget.getBoundingClientRect();
+               if (
+                  e.clientX < r.left ||
+                  e.clientX > r.right ||
+                  e.clientY < r.top ||
+                  e.clientY > r.bottom
+               )
+                  onClose();
+            }
+         }}
+      >
+         <div className="modal-heading">
+            <div>
+               <h2 id={id}>{title}</h2>
+               {subtitle && <p>{subtitle}</p>}
+            </div>
+            <IconButton label="Cerrar diálogo" onClick={onClose}>
+               <FiX />
+            </IconButton>
+         </div>
+         {children}
+      </dialog>
+   );
 }

@@ -11,33 +11,33 @@ const noOp = () => {};
  * @returns The automaton preview.
  */
 export function Preview({
-  machine,
-  onSelect,
-  selected = [],
+   machine,
+   onSelect,
+   selected = [],
 }: {
-  machine: Machine;
-  selected?: string[];
-  onSelect?: (ids: string[]) => void;
+   machine: Machine;
+   selected?: string[];
+   onSelect?: (ids: string[]) => void;
 }) {
-  const [zoom, setZoom] = useState(1);
-  return (
-    <div className="finite-tool-graph">
-      <GraphEditor
-        readOnly
-        machine={machine}
-        tool="select"
-        selected={selected}
-        onSelect={onSelect ?? noOp}
-        onChange={noOp}
-        onEditState={noOp}
-        onEditTransition={noOp}
-        onEditNote={noOp}
-        onCreateTransition={noOp}
-        showLabels
-        zoom={zoom}
-        onZoom={setZoom}
-        fitKey={machine.states.length}
-      />
-    </div>
-  );
+   const [zoom, setZoom] = useState(1);
+   return (
+      <div className="finite-tool-graph">
+         <GraphEditor
+            readOnly
+            machine={machine}
+            tool="select"
+            selected={selected}
+            onSelect={onSelect ?? noOp}
+            onChange={noOp}
+            onEditState={noOp}
+            onEditTransition={noOp}
+            onEditNote={noOp}
+            onCreateTransition={noOp}
+            showLabels
+            zoom={zoom}
+            onZoom={setZoom}
+            fitKey={machine.states.length}
+         />
+      </div>
+   );
 }

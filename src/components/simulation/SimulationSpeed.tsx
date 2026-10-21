@@ -13,18 +13,18 @@ import type { InputHTMLAttributes, ReactNode } from 'react';
  * @returns The speed selector and optional reading.
  */
 export function SimulationSpeed({
-  label = 'Velocidad',
-  children,
-  ...props
+   label = 'Velocidad',
+   children,
+   ...props
 }: Omit<InputHTMLAttributes<HTMLInputElement>, 'type' | 'children'> & {
-  label?: ReactNode;
-  children?: ReactNode;
+   label?: ReactNode;
+   children?: ReactNode;
 }) {
-  return (
-    <label className="simulation-speed">
-      {label}
-      <input aria-label="Velocidad de simulación" type="range" {...props} />
-      {children}
-    </label>
-  );
+   return (
+      <label className="simulation-speed">
+         {label}
+         <input aria-label="Velocidad de simulación" type="range" {...props} />
+         {children}
+      </label>
+   );
 }

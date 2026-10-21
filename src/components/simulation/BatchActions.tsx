@@ -13,46 +13,42 @@ import { IconButton } from '../ui/IconButton';
  * @returns The test action bar.
  */
 export function BatchActions({
-  onRun,
-  onImport,
-  onExportText,
-  onExportImage,
-  exportDisabled,
+   onRun,
+   onImport,
+   onExportText,
+   onExportImage,
+   exportDisabled,
 }: {
-  onRun: () => void;
-  onImport: () => void;
-  onExportText: () => void;
-  onExportImage: () => void;
-  exportDisabled: boolean;
+   onRun: () => void;
+   onImport: () => void;
+   onExportText: () => void;
+   onExportImage: () => void;
+   exportDisabled: boolean;
 }) {
-  return (
-    <div className="batch-actions">
-      <Button variant="primary" onClick={onRun}>
-        <FiPlay /> Probar todas
-      </Button>
-      <IconButton
-        label="Cargar entradas desde archivo de texto"
-        tooltip
-        onClick={onImport}
-      >
-        <FiUpload />
-      </IconButton>
-      <IconButton
-        label="Exportar resultados como texto"
-        tooltip
-        disabled={exportDisabled}
-        onClick={onExportText}
-      >
-        <FiFileText />
-      </IconButton>
-      <IconButton
-        label="Exportar resultados como imagen"
-        tooltip
-        disabled={exportDisabled}
-        onClick={onExportImage}
-      >
-        <FiImage />
-      </IconButton>
-    </div>
-  );
+   return (
+      <div className="batch-actions">
+         <Button variant="primary" onClick={onRun}>
+            <FiPlay /> Probar todas
+         </Button>
+         <IconButton label="Cargar entradas desde archivo de texto" tooltip onClick={onImport}>
+            <FiUpload />
+         </IconButton>
+         <IconButton
+            label="Exportar resultados como texto"
+            tooltip
+            disabled={exportDisabled}
+            onClick={onExportText}
+         >
+            <FiFileText />
+         </IconButton>
+         <IconButton
+            label="Exportar resultados como imagen"
+            tooltip
+            disabled={exportDisabled}
+            onClick={onExportImage}
+         >
+            <FiImage />
+         </IconButton>
+      </div>
+   );
 }

@@ -1,12 +1,12 @@
 export type BatchInputItem = {
-  id: string;
-  input: string;
-  empty: boolean;
+   id: string;
+   input: string;
+   empty: boolean;
 };
 
 export type BatchTextFile = {
-  name: string;
-  content: string;
+   name: string;
+   content: string;
 };
 
 /**
@@ -15,7 +15,7 @@ export type BatchTextFile = {
  * @returns The input item with a unique identifier.
  */
 export function createBatchInputItem(empty = false): BatchInputItem {
-  return { id: crypto.randomUUID(), input: '', empty };
+   return { id: crypto.randomUUID(), input: '', empty };
 }
 
 /**
@@ -24,8 +24,8 @@ export function createBatchInputItem(empty = false): BatchInputItem {
  * @returns The nonblank input strings and explicitly empty strings.
  */
 export function manualBatchInputs(items: BatchInputItem[]): string[] {
-  return items.flatMap((item) => {
-    if (item.empty) return [''];
-    return item.input.trim() ? [item.input] : [];
-  });
+   return items.flatMap((item) => {
+      if (item.empty) return [''];
+      return item.input.trim() ? [item.input] : [];
+   });
 }

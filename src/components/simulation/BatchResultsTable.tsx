@@ -2,11 +2,11 @@ import type { ComponentPropsWithRef } from 'react';
 import { DataTable } from '../ui/DataTable';
 
 const columns = [
-  { id: 'input', header: 'Entrada' },
-  { id: 'result', header: 'Resultado' },
-  { id: 'output', header: 'Salida' },
-  { id: 'steps', header: 'Pasos' },
-  { id: 'detail', header: <span className="sr-only">Detalle</span> },
+   { id: 'input', header: 'Entrada' },
+   { id: 'result', header: 'Resultado' },
+   { id: 'output', header: 'Salida' },
+   { id: 'steps', header: 'Pasos' },
+   { id: 'detail', header: <span className="sr-only">Detalle</span> },
 ];
 
 /**
@@ -18,5 +18,5 @@ const columns = [
  * @returns The result table with its shared headers.
  */
 export function BatchResultsTable(props: ComponentPropsWithRef<'table'>) {
-  return <DataTable columns={columns} {...props} />;
+   return <DataTable columns={columns} {...props} />;
 }

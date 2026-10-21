@@ -15,27 +15,27 @@ type Column = { id: string; header: ReactNode };
  * @returns The table with semantic headers and supplied rows.
  */
 export function DataTable({
-  columns,
-  caption,
-  children,
-  ...props
+   columns,
+   caption,
+   children,
+   ...props
 }: ComponentPropsWithRef<'table'> & {
-  columns: readonly Column[];
-  caption?: ReactNode;
+   columns: readonly Column[];
+   caption?: ReactNode;
 }) {
-  return (
-    <table {...props}>
-      {caption && <caption className="sr-only">{caption}</caption>}
-      <thead>
-        <tr>
-          {columns.map((column) => (
-            <th key={column.id} scope="col">
-              {column.header}
-            </th>
-          ))}
-        </tr>
-      </thead>
-      <tbody>{children}</tbody>
-    </table>
-  );
+   return (
+      <table {...props}>
+         {caption && <caption className="sr-only">{caption}</caption>}
+         <thead>
+            <tr>
+               {columns.map((column) => (
+                  <th key={column.id} scope="col">
+                     {column.header}
+                  </th>
+               ))}
+            </tr>
+         </thead>
+         <tbody>{children}</tbody>
+      </table>
+   );
 }

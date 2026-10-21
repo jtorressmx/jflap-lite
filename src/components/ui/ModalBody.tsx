@@ -8,9 +8,6 @@ import type { ComponentPropsWithRef } from 'react';
  * @param [props.ref] - Optional native element reference.
  * @returns The dialog body.
  */
-export function ModalBody({
-  className = '',
-  ...props
-}: ComponentPropsWithRef<'div'>) {
-  return <div className={`modal-body ${className}`} {...props} />;
+export function ModalBody({ className = '', ...props }: ComponentPropsWithRef<'div'>) {
+   return <div className={`modal-body ${className}`} {...props} />;
 }

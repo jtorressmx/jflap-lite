@@ -22,93 +22,90 @@ import { Button } from './ui/Button';
  * @returns The home page with available editors and documents.
  */
 export default function HomePage({
-  onCreate,
-  onOpen,
-  documents,
-  onResume,
-  onCloseDocument,
-  recentFiles,
-  onRecent,
-  onRemoveRecent,
+   onCreate,
+   onOpen,
+   documents,
+   onResume,
+   onCloseDocument,
+   recentFiles,
+   onRecent,
+   onRemoveRecent,
 }: {
-  onCreate: (kind: MachineKind) => void;
-  onOpen: () => void;
-  documents: { id: string; machine: Machine; dirty: boolean }[];
-  onResume: (id: string) => void;
-  onCloseDocument: (id: string) => void;
-  recentFiles: DesktopRecentFile[];
-  onRecent: (file: DesktopRecentFile) => void;
-  onRemoveRecent: (file: DesktopRecentFile) => void;
+   onCreate: (kind: MachineKind) => void;
+   onOpen: () => void;
+   documents: { id: string; machine: Machine; dirty: boolean }[];
+   onResume: (id: string) => void;
+   onCloseDocument: (id: string) => void;
+   recentFiles: DesktopRecentFile[];
+   onRecent: (file: DesktopRecentFile) => void;
+   onRemoveRecent: (file: DesktopRecentFile) => void;
 }) {
-  return (
-    <main className="home-page">
-      <header className="home-heading">
-        <span className="eyebrow">JFLAP LITE</span>
-        <h1>Elige qué quieres construir</h1>
-      </header>
-      <div className="home-open">
-        <Button onClick={onOpen}>
-          <FiFolder /> Abrir archivo
-        </Button>
-      </div>
-      <div className="home-options">
-        <ActionCard
-          icon={<FiCpu />}
-          title="Máquina de Turing"
-          description="Lee, escribe y mueve el cabezal. Sigue la cinta durante la ejecución."
-          action="Abrir editor de Turing"
-          onClick={() => onCreate('turing')}
-        />
-        <ActionCard
-          icon={<FiGitBranch />}
-          title="Autómatas finitos"
-          description="Reconoce cadenas, explora el no determinismo y convierte o minimiza tu autómata."
-          action="Abrir editor de autómatas"
-          onClick={() => onCreate('fa')}
-        />
-      </div>
-      {recentFiles.length > 0 && (
-        <section
-          className="home-documents home-recents"
-          aria-label="Archivos recientes"
-        >
-          <h2>Recientes</h2>
-          {recentFiles.map((file) => (
-            <DocumentListItem
-              key={file.path}
-              className="home-recent-row"
-              name={file.name}
-              title={file.path}
-              onOpen={() => onRecent(file)}
-              onRemove={() => onRemoveRecent(file)}
-              removeLabel={`Quitar ${file.name} de recientes`}
-              removeIcon={<FiTrash2 />}
-              removeVariant="danger"
+   return (
+      <main className="home-page">
+         <header className="home-heading">
+            <span className="eyebrow">JFLAP LITE</span>
+            <h1>Elige qué quieres construir</h1>
+         </header>
+         <div className="home-open">
+            <Button onClick={onOpen}>
+               <FiFolder /> Abrir archivo
+            </Button>
+         </div>
+         <div className="home-options">
+            <ActionCard
+               icon={<FiCpu />}
+               title="Máquina de Turing"
+               description="Lee, escribe y mueve el cabezal. Sigue la cinta durante la ejecución."
+               action="Abrir editor de Turing"
+               onClick={() => onCreate('turing')}
             />
-          ))}
-        </section>
-      )}
-      {documents.length > 0 && (
-        <section className="home-documents" aria-label="Continuar trabajando">
-          <h2>Continuar trabajando</h2>
-          {documents.map((doc) => (
-            <DocumentListItem
-              key={doc.id}
-              name={doc.machine.name}
-              detail={
-                <>
-                  {machineTitle(doc.machine)}
-                  {doc.dirty ? ' · Sin guardar' : ''}
-                </>
-              }
-              onOpen={() => onResume(doc.id)}
-              onRemove={() => onCloseDocument(doc.id)}
-              removeLabel={`Cerrar ${doc.machine.name}`}
-              removeIcon={<FiX />}
+            <ActionCard
+               icon={<FiGitBranch />}
+               title="Autómatas finitos"
+               description="Reconoce cadenas, explora el no determinismo y convierte o minimiza tu autómata."
+               action="Abrir editor de autómatas"
+               onClick={() => onCreate('fa')}
             />
-          ))}
-        </section>
-      )}
-    </main>
-  );
+         </div>
+         {recentFiles.length > 0 && (
+            <section className="home-documents home-recents" aria-label="Archivos recientes">
+               <h2>Recientes</h2>
+               {recentFiles.map((file) => (
+                  <DocumentListItem
+                     key={file.path}
+                     className="home-recent-row"
+                     name={file.name}
+                     title={file.path}
+                     onOpen={() => onRecent(file)}
+                     onRemove={() => onRemoveRecent(file)}
+                     removeLabel={`Quitar ${file.name} de recientes`}
+                     removeIcon={<FiTrash2 />}
+                     removeVariant="danger"
+                  />
+               ))}
+            </section>
+         )}
+         {documents.length > 0 && (
+            <section className="home-documents" aria-label="Continuar trabajando">
+               <h2>Continuar trabajando</h2>
+               {documents.map((doc) => (
+                  <DocumentListItem
+                     key={doc.id}
+                     name={doc.machine.name}
+                     detail={
+                        <>
+                           {machineTitle(doc.machine)}
+                           {doc.dirty ? ' · Sin guardar' : ''}
+                        </>
+                     }
+                     onOpen={() => onResume(doc.id)}
+                     onRemove={() => onCloseDocument(doc.id)}
+                     removeLabel={`Cerrar ${doc.machine.name}`}
+                     removeIcon={<FiX />}
+                  />
+               ))}
+            </section>
+         )}
+      </main>
+   );
 }

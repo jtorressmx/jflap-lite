@@ -13,28 +13,28 @@ import { Button } from './Button';
  * @returns The interactive action card.
  */
 export function ActionCard({
-  icon,
-  title,
-  description,
-  action,
-  onClick,
+   icon,
+   title,
+   description,
+   action,
+   onClick,
 }: {
-  icon: ReactNode;
-  title: string;
-  description: string;
-  action: string;
-  onClick: () => void;
+   icon: ReactNode;
+   title: string;
+   description: string;
+   action: string;
+   onClick: () => void;
 }) {
-  return (
-    <Button variant="card" className="home-option" onClick={onClick}>
-      <span className="home-option-icon">{icon}</span>
-      <span className="home-option-copy">
-        <strong>{title}</strong>
-        <span>{description}</span>
-        <span className="home-option-action">
-          {action} <FiArrowRight />
-        </span>
-      </span>
-    </Button>
-  );
+   return (
+      <Button variant="card" className="home-option" onClick={onClick}>
+         <span className="home-option-icon">{icon}</span>
+         <span className="home-option-copy">
+            <strong>{title}</strong>
+            <span>{description}</span>
+            <span className="home-option-action">
+               {action} <FiArrowRight />
+            </span>
+         </span>
+      </Button>
+   );
 }

@@ -19,53 +19,45 @@ import SimulationPanel, { type SimulationGuide } from './SimulationPanel';
  * @returns The machine-specific simulator, visible when enabled.
  */
 export function SimulationHost({
-  enabled,
-  ...props
+   enabled,
+   ...props
 }: Omit<React.ComponentProps<typeof SimulationPanel>, 'request'> & {
-  enabled: boolean;
-  request?: {
-    id: number;
-    action:
-      | 'start'
-      | 'step'
-      | 'fast'
-      | 'batch'
-      | 'output'
-      | 'trace'
-      | 'closure'
-      | 'state';
-  };
+   enabled: boolean;
+   request?: {
+      id: number;
+      action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace' | 'closure' | 'state';
+   };
 }) {
-  const report = useCallback(
-    (states: string[], transition?: string, guide?: SimulationGuide) => {
-      if (enabled) props.onActivity(states, transition, guide);
-    },
-    [enabled, props.onActivity],
-  );
-  return (
-    <div className="simulation-host" hidden={!enabled}>
-      {machineKind(props.machine) === 'fa' ? (
-        <FiniteSimulationPanel
-          machine={props.machine}
-          emptySymbol={props.emptySymbol ?? 'ε'}
-          request={props.request}
-          onActivity={report}
-          onMessage={props.onMessage}
-          onClose={props.onClose}
-        />
-      ) : (
-        <SimulationPanel
-          {...props}
-          request={
-            props.request &&
-            props.request.action !== 'closure' &&
-            props.request.action !== 'state'
-              ? { id: props.request.id, action: props.request.action }
-              : undefined
-          }
-          onActivity={report}
-        />
-      )}
-    </div>
-  );
+   const report = useCallback(
+      (states: string[], transition?: string, guide?: SimulationGuide) => {
+         if (enabled) props.onActivity(states, transition, guide);
+      },
+      [enabled, props.onActivity]
+   );
+   return (
+      <div className="simulation-host" hidden={!enabled}>
+         {machineKind(props.machine) === 'fa' ? (
+            <FiniteSimulationPanel
+               machine={props.machine}
+               emptySymbol={props.emptySymbol ?? 'ε'}
+               request={props.request}
+               onActivity={report}
+               onMessage={props.onMessage}
+               onClose={props.onClose}
+            />
+         ) : (
+            <SimulationPanel
+               {...props}
+               request={
+                  props.request &&
+                  props.request.action !== 'closure' &&
+                  props.request.action !== 'state'
+                     ? { id: props.request.id, action: props.request.action }
+                     : undefined
+               }
+               onActivity={report}
+            />
+         )}
+      </div>
+   );
 }

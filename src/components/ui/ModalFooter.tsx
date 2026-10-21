@@ -8,9 +8,6 @@ import type { ComponentPropsWithRef } from 'react';
  * @param [props.ref] - Optional native element reference.
  * @returns The dialog action footer.
  */
-export function ModalFooter({
-  className = '',
-  ...props
-}: ComponentPropsWithRef<'div'>) {
-  return <div className={`modal-footer ${className}`} {...props} />;
+export function ModalFooter({ className = '', ...props }: ComponentPropsWithRef<'div'>) {
+   return <div className={`modal-footer ${className}`} {...props} />;
 }
