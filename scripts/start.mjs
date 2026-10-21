@@ -12,7 +12,12 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
    windowsHide: false,
 });
 child.on('exit', (code) => process.exit(code || 0));
-child.on('error', (error) => {
-   console.error(error);
+/**
+ * Terminates the launcher when Electron cannot start.
+ * Takes no input.
+ * @returns No value; terminates the process.
+ */
+child.on('error', () => {
+   process.stderr.write('No se pudo iniciar Electron. Comprueba la instalación de dependencias.\n');
    process.exit(1);
 });

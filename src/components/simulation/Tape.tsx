@@ -1,7 +1,8 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
+
+import { ExecutionVerdict } from './ExecutionVerdict';
 import type { Configuration, Session } from '../../domain/model';
 import { getTapeContents, readTape } from '../../domain/turing';
-import { ExecutionVerdict } from './ExecutionVerdict';
 
 /**
  * Shows the tape and head movement.
@@ -84,7 +85,14 @@ export function Tape({
             easing: style.getPropertyValue('--tape-motion-easing').trim(),
          }
       );
-   }, [configuration.head, configuration.depth, configuration.id, compact, stepInterval]);
+   }, [
+      configuration.head,
+      configuration.depth,
+      configuration.id,
+      configuration.parentId,
+      compact,
+      stepInterval,
+   ]);
    useEffect(() => {
       const motion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const stop = () => {

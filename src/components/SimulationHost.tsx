@@ -1,7 +1,8 @@
 import { useCallback } from 'react';
-import { machineKind } from '../domain/model';
+
 import FiniteSimulationPanel from './FiniteSimulationPanel';
 import SimulationPanel, { type SimulationGuide } from './SimulationPanel';
+import { machineKind } from '../domain/model';
 
 /**
  * Connects the simulator to its document.
@@ -20,6 +21,7 @@ import SimulationPanel, { type SimulationGuide } from './SimulationPanel';
  */
 export function SimulationHost({
    enabled,
+   onActivity,
    ...props
 }: Omit<React.ComponentProps<typeof SimulationPanel>, 'request'> & {
    enabled: boolean;
@@ -30,9 +32,9 @@ export function SimulationHost({
 }) {
    const report = useCallback(
       (states: string[], transition?: string, guide?: SimulationGuide) => {
-         if (enabled) props.onActivity(states, transition, guide);
+         if (enabled) onActivity(states, transition, guide);
       },
-      [enabled, props.onActivity]
+      [enabled, onActivity]
    );
    return (
       <div className="simulation-host" hidden={!enabled}>

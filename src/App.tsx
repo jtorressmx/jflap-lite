@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import license from '../LICENSE?raw';
+import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+
 import type { FiniteTool } from './components/FiniteTools';
 import FiniteTools, { validateFiniteTool } from './components/FiniteTools';
 import GraphEditor from './components/GraphEditor';
@@ -80,6 +80,7 @@ import type { WorkspaceDocument } from './hooks/useWorkspace';
 import { useWorkspace } from './hooks/useWorkspace';
 import { exportImage, exportPdf, printMachine } from './lib/files';
 import { readUiSettings, settingsChanged, storedSettings } from './lib/settings';
+import license from '../LICENSE?raw';
 
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 type Dialog =
@@ -220,7 +221,7 @@ export default function App() {
    const [importedCombine, setImportedCombine] = useState<Machine | null>(null);
    const nd = useMemo(
       () => (finite ? finiteNondeterminism(machine) : nondeterministicStates(machine)),
-      [machine]
+      [finite, machine]
    );
    const selectedState = machine.states.find((s) => selected.includes(s.id));
    const dirty = JSON.stringify(machine) !== active.saved;
@@ -326,11 +327,16 @@ export default function App() {
       });
       setSelected([]);
    }
+   /**
+    * Duplicates the selected states and their connecting transitions.
+    * Takes no input.
+    * @returns No value.
+    */
    function duplicateSelected() {
       const states = machine.states.filter((s) => selected.includes(s.id));
       if (!states.length) return;
       const ids = new Map<string, string>();
-      let copy = { ...machine, states: [...machine.states] };
+      const copy = { ...machine, states: [...machine.states] };
       for (const s of states) {
          const id = nextStateId(copy);
          ids.set(s.id, id);
@@ -360,10 +366,14 @@ export default function App() {
       });
       setSelected([...ids.values()]);
    }
+   /**
+    * Saves the active document to a selected or existing destination.
+    * @param asCopy - Requests a new destination instead of overwriting the current file.
+    * @returns Whether the document was saved successfully.
+    */
    async function save(asCopy = false) {
       if (!workspace.active) return false;
       let snapshot = machine;
-      let savedFileName = snapshot.name;
       try {
          let savesToChosenPath = asCopy || !active.path;
          let result;
@@ -397,15 +407,15 @@ export default function App() {
                if (result.canceled) return false;
             }
          }
-         savedFileName = result.path?.split(/[\\/]/).pop() || snapshot.name;
+         let savedFileName = result.path?.split(/[\\/]/).pop() || snapshot.name;
          if (snapshot.name !== machine.name) change(snapshot);
          workspace.markSaved(result.path, active.id, snapshot);
          if (!/\.jff$/i.test(savedFileName)) savedFileName += '.jff';
          notify(`${savedFileName} guardado.`);
          void refreshRecentFiles();
          return true;
-      } catch (error) {
-         notify((error as Error).message);
+      } catch {
+         notify('No se pudo guardar el archivo. Elige otra ubicación e inténtalo de nuevo.');
          return false;
       }
    }
@@ -530,21 +540,27 @@ export default function App() {
          })
          .catch((e) => notify(e.message));
    }, [home, machine.name, dirtyCount, notify]);
+   /**
+    * Opens files using the current document workspace.
+    * @param files - Native files to import into the workspace.
+    * @returns No value.
+    */
+   const receiveDesktopFiles = useEffectEvent((files: DesktopFile[]) => receiveNativeFiles(files));
    useEffect(() => {
       const desktop = window.desktop;
       let current = true;
-      const unsubscribe = desktop.onOpenFiles((files) => receiveNativeFiles(files));
+      const unsubscribe = desktop.onOpenFiles(receiveDesktopFiles);
       initialDesktopFiles ??= desktop.getInitialFiles();
       void initialDesktopFiles
          .then((files) => {
-            if (current && files.length) receiveNativeFiles(files);
+            if (current && files.length) receiveDesktopFiles(files);
          })
-         .catch((error) => notify(error.message));
+         .catch(() => notify('No se pudieron abrir los archivos solicitados.'));
       return () => {
          current = false;
          unsubscribe();
       };
-   }, []);
+   }, [notify]);
    useEffect(() => {
       return window.desktop.onCommand((command) => {
          switch (command) {
@@ -619,13 +635,18 @@ export default function App() {
          setComparison((error as Error).message);
       }
    }
+   /**
+    * Opens a new document combining the current and selected machines.
+    * @param second - Machine to append to the current diagram.
+    * @returns No value.
+    */
    function combine(second: Machine) {
       if (machineKind(second) !== machineKind(machine)) {
          notify('Combina documentos del mismo tipo.');
          return;
       }
       const ids = new Map<string, string>();
-      let result: Machine = {
+      const result: Machine = {
          ...structuredClone(machine),
          name: `${machine.name} + ${second.name}`,
       };
@@ -692,7 +713,10 @@ export default function App() {
          if (ctrl) {
             const k = e.key.toLowerCase();
             if (['z', 'y', 'a', 'd'].includes(k)) e.preventDefault();
-            if (k === 'z') e.shiftKey ? redo() : undo();
+            if (k === 'z') {
+               if (e.shiftKey) redo();
+               else undo();
+            }
             if (k === 'y') redo();
             if (k === 'a') setSelected(machine.states.map((s) => s.id));
             if (k === 'd') duplicateSelected();
@@ -1315,11 +1339,6 @@ export default function App() {
                                     change(m, commit);
                                     if (autoZoom && commit !== false) setFitKey((k) => k + 1);
                                  }}
-                                 onEditState={(id) => setDialog({ type: 'state', id })}
-                                 onEditTransition={(id) => setDialog({ type: 'transition', id })}
-                                 onCreateTransition={(from, to) =>
-                                    setDialog({ type: 'transition', from, to })
-                                 }
                                  onViewTransitionRules={(id) =>
                                     setDialog({ type: 'transition-rules', id })
                                  }

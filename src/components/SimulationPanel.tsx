@@ -1,20 +1,5 @@
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import type { Configuration, Machine, Preferences, Session } from '../domain/model';
-import { BLANK } from '../domain/model';
-import {
-   createSession,
-   getOutput,
-   getTapeContents,
-   isConfigurationAccepted,
-   runMachine,
-   stepInteractiveSession,
-   stepSession,
-   traceSession,
-} from '../domain/turing';
-import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
-import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
-import { download } from '../lib/files';
-import { exportTablePng } from '../lib/tableImage';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
+
 import {
    FiArrowRight,
    FiCheckCircle,
@@ -45,6 +30,22 @@ import { Field } from './ui/Field';
 import { IconButton } from './ui/IconButton';
 import { Modal } from './ui/Modal';
 import { ModalBody } from './ui/ModalBody';
+import type { Configuration, Machine, Preferences, Session } from '../domain/model';
+import { BLANK } from '../domain/model';
+import {
+   createSession,
+   getOutput,
+   getTapeContents,
+   isConfigurationAccepted,
+   runMachine,
+   stepInteractiveSession,
+   stepSession,
+   traceSession,
+} from '../domain/turing';
+import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
+import { download } from '../lib/files';
+import { exportTablePng } from '../lib/tableImage';
 
 type Request = {
    id: number;
@@ -355,9 +356,13 @@ export function SimulationPanel({
       return () => window.clearInterval(interval);
    }, [playing, speed, stepLimit, configurationLimit]);
 
-   useEffect(() => {
-      if (!request) return;
-      switch (request.action) {
+   /**
+    * Runs an external command using the current simulation state.
+    * @param action - Requested simulation action.
+    * @returns No value.
+    */
+   const performRequest = useEffectEvent((action: NonNullable<Props['request']>['action']) => {
+      switch (action) {
          case 'start':
             togglePlay();
             break;
@@ -377,8 +382,14 @@ export function SimulationPanel({
             setTab('trace');
             break;
       }
+   });
+   const requestId = request?.id;
+   const requestAction = request?.action;
+   useEffect(() => {
+      if (requestId === undefined || requestAction === undefined) return;
+      performRequest(requestAction);
       // Each menu request is an explicit command; edits must not replay it.
-   }, [request?.id]);
+   }, [requestId, requestAction]);
 
    const preview: Configuration = useMemo(
       () => ({

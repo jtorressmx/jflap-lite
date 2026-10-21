@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import type { Machine } from '../../domain/model';
+
 import GraphEditor from '../GraphEditor';
+import type { Machine } from '../../domain/model';
 const noOp = () => {};
 /**
  * Shows an interactive automaton preview.
@@ -29,10 +30,7 @@ export function Preview({
             selected={selected}
             onSelect={onSelect ?? noOp}
             onChange={noOp}
-            onEditState={noOp}
-            onEditTransition={noOp}
             onEditNote={noOp}
-            onCreateTransition={noOp}
             showLabels
             zoom={zoom}
             onZoom={setZoom}

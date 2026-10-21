@@ -1,4 +1,8 @@
-/** Split labels, expand bracketed symbol lists, and keep hyphenated ranges intact. */
+/**
+ * Splits labels, expands symbol lists, and preserves hyphenated ranges.
+ * @param input - Transition label text to parse.
+ * @returns The distinct transition labels.
+ */
 export function transitionLabels(input: string): string[] {
    const entries =
       input.includes(',') && input !== ','
@@ -14,7 +18,7 @@ export function transitionLabels(input: string): string[] {
          labels.add(value);
          continue;
       }
-      const bracketed = /^\[([^\[\]]*)\]$/u.exec(value);
+      const bracketed = /^\[([^[\]]*)\]$/u.exec(value);
       if (bracketed) {
          const symbols = Array.from(bracketed[1]);
          if (!symbols.length || symbols.includes('-'))

@@ -17,7 +17,14 @@ const child = spawn(
    { env, stdio: 'inherit', windowsHide: true }
 );
 child.on('exit', (code) => process.exit(code ?? 1));
-child.on('error', (error) => {
-   console.error(error);
+/**
+ * Terminates packaging when the builder cannot start.
+ * Takes no input.
+ * @returns No value; terminates the process.
+ */
+child.on('error', () => {
+   process.stderr.write(
+      'No se pudo iniciar el empaquetador. Comprueba la instalación de dependencias.\n'
+   );
    process.exit(1);
 });

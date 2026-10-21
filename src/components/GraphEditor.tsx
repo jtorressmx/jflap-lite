@@ -1,5 +1,9 @@
 import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
+
+import { StateProperties } from './graph/StateProperties';
+import { TransitionProperties } from './graph/TransitionProperties';
+import { Popover } from './ui/Popover';
 import type { Machine, Preferences } from '../domain/model';
 import {
    defaultPreferences,
@@ -9,9 +13,6 @@ import {
    nextStateId,
 } from '../domain/model';
 import { shortcutLabel } from '../lib/shortcuts';
-import { StateProperties } from './graph/StateProperties';
-import { TransitionProperties } from './graph/TransitionProperties';
-import { Popover } from './ui/Popover';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
@@ -33,10 +34,7 @@ type Props = {
    selected: string[];
    onSelect: (ids: string[]) => void;
    onChange: (machine: Machine, commit?: boolean) => void;
-   onEditState: (id: string) => void;
-   onEditTransition: (id: string) => void;
    onViewTransitionRules?: (id: string) => void;
-   onCreateTransition: (from: string, to: string) => void;
    onEditNote: (id: string) => void;
    activeStates?: string[];
    activeTransition?: string;
@@ -165,10 +163,7 @@ function connectionPreviewPath(
  * @param props.selected - Identifiers of selected elements; none by default.
  * @param props.onSelect - Receives the identifiers of the newly selected elements.
  * @param props.onChange - Receives the updated machine and an optional flag confirming the change.
- * @param props.onEditState - Reserved callback accepting the identifier of a state to edit.
- * @param props.onEditTransition - Reserved callback accepting the identifier of a transition to edit.
  * @param [props.onViewTransitionRules] - Receives the identifier of the transition whose rules are requested.
- * @param props.onCreateTransition - Reserved callback accepting source and destination state identifiers.
  * @param props.onEditNote - Receives the identifier of the note requested for editing.
  * @param [props.editRequest] - Optional external edit request; null means no request.
  * @param props.editRequest.type - Kind of element requested for editing.
@@ -198,10 +193,7 @@ function GraphEditor({
    selected,
    onSelect,
    onChange,
-   onEditState: _editState,
-   onEditTransition: _editTransition,
    onViewTransitionRules,
-   onCreateTransition: _createTransition,
    onEditNote,
    editRequest,
    onEditComplete,
@@ -322,13 +314,21 @@ function GraphEditor({
    });
    live.current = { machine, selected, onSelect, onChange, zoom, onZoom, pan };
 
-   useEffect(() => {
+   /**
+    * Opens the requested editor using the current diagram coordinates.
+    * Takes no input.
+    * @returns No value.
+    */
+   const handleEditRequest = useEffectEvent(() => {
       if (!editRequest) return;
       if (editRequest.type === 'state' && editRequest.id) onEditState(editRequest.id);
       else if (editRequest.id) onEditTransition(editRequest.id);
       else if (editRequest.from && editRequest.to)
          onCreateTransition(editRequest.from, editRequest.to);
       onEditComplete?.();
+   });
+   useEffect(() => {
+      handleEditRequest();
    }, [editRequest]);
 
    useEffect(() => {
@@ -344,7 +344,12 @@ function GraphEditor({
       return () => observer.disconnect();
    }, []);
 
-   useEffect(() => {
+   /**
+    * Fits the current diagram to the available viewport.
+    * Takes no input.
+    * @returns No value.
+    */
+   const fitDiagram = useEffectEvent(() => {
       if (size.width <= 0 || size.height <= 0) return;
       const all = [...machine.states, ...machine.notes];
       const minX = all.length ? Math.min(...all.map((item) => item.x)) - 100 : 0;
@@ -363,6 +368,9 @@ function GraphEditor({
       });
       didFit.current = true;
       // A new fit request deliberately fits the current document, not every edit.
+   });
+   useEffect(() => {
+      fitDiagram();
    }, [fitKey, size.width, size.height]);
 
    useEffect(() => {
@@ -395,7 +403,7 @@ function GraphEditor({
       }));
       previousZoom.current = zoom;
       // Canvas resize is handled by fitting; only external zoom changes need recentering.
-   }, [zoom]);
+   }, [zoom, size.width, size.height]);
 
    useEffect(() => {
       const element = svg.current;

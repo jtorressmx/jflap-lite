@@ -1,5 +1,5 @@
-const path = require('node:path');
 const { realpathSync } = require('node:fs');
+const path = require('node:path');
 const { fileURLToPath } = require('node:url');
 
 const MAX_DOCUMENT_BYTES = 32 * 1024 * 1024;
@@ -30,12 +30,18 @@ function format(kind = 'jff') {
    return FORMATS[kind];
 }
 
+/**
+ * Creates a safe filename with an extension matching the requested format.
+ * @param {unknown} name - Requested filename.
+ * @param {string} [kind='jff'] - Supported output format.
+ * @returns {string} The sanitized filename.
+ */
 function filename(name, kind = 'jff') {
    const spec = format(kind);
    const safe =
       path.win32
          .basename(path.posix.basename(typeof name === 'string' ? name : 'Sin título'))
-         .replace(/[<>:"/\\|?*\x00-\x1f]/g, '_')
+         .replace(/[<>:"/\\|?*]|\p{Cc}/gu, '_')
          .replace(/[. ]+$/, '')
          .slice(0, 180) || 'Sin título';
    return spec.extensions.includes(path.extname(safe).slice(1).toLowerCase())

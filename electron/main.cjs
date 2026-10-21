@@ -1,11 +1,14 @@
-const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
-const fs = require('node:fs/promises');
-const { existsSync } = require('node:fs');
 const { randomUUID } = require('node:crypto');
+const { existsSync } = require('node:fs');
+const fs = require('node:fs/promises');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
+
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
+
 const policy = require('./policy.cjs');
 const { shortcutCommand } = require('./shortcuts.cjs');
+
 app.setName('JFLAP Lite');
 if (process.platform === 'win32') app.setAppUserModelId('org.jflap.lite');
 const hasLock = app.requestSingleInstanceLock();
@@ -94,8 +97,13 @@ function pruneRecentFiles() {
       });
    return recentWrite;
 }
+/**
+ * Records a machine file without blocking the document operation on a history failure.
+ * @param {string} file - Absolute path of the opened or saved file.
+ * @returns {Promise<boolean>} Whether the history entry was stored.
+ */
 function rememberFile(file) {
-   if (!/\.(jff|xml)$/i.test(file)) return Promise.resolve();
+   if (!/\.(jff|xml)$/i.test(file)) return Promise.resolve(false);
    recentWrite = recentWrite
       .catch(() => {})
       .then(async () => {
@@ -108,7 +116,10 @@ function rememberFile(file) {
          ].slice(0, 12);
          await writeRecentFiles(entries);
       });
-   return recentWrite.catch((error) => console.error('No se pudo actualizar Recientes:', error));
+   return recentWrite.then(
+      () => true,
+      () => false
+   );
 }
 function removeRecentFile(file) {
    if (typeof file !== 'string' || !path.isAbsolute(file))

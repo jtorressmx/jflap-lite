@@ -28,6 +28,13 @@ export const finiteLayouts: Record<FiniteLayout, string> = {
    rotate: 'Rotar',
    fill: 'Distribuir en el lienzo',
 };
+/**
+ * Arranges a copy of a finite automaton using the selected layout.
+ * @param machine - Source automaton.
+ * @param layout - Layout or transformation to apply.
+ * @param angle - Rotation angle in degrees.
+ * @returns The automaton with updated diagram coordinates.
+ */
 export function layoutFinite(machine: Machine, layout: FiniteLayout, angle = 90): Machine {
    const result = structuredClone(machine),
       states = result.states,
@@ -78,7 +85,7 @@ export function layoutFinite(machine: Machine, layout: FiniteLayout, angle = 90)
                ranks.set(edge.to, ranks.get(queue[i])! + 1);
                queue.push(edge.to);
             }
-      let orphan = Math.max(...ranks.values()) + 1;
+      const orphan = Math.max(...ranks.values()) + 1;
       for (const s of ordered) if (!ranks.has(s.id)) ranks.set(s.id, orphan);
       const columns = new Map<number, number>();
       for (const s of ordered) {

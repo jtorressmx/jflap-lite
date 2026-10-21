@@ -26,6 +26,11 @@ const child = spawn(require('electron'), ['.', ...process.argv.slice(2)], {
    windowsHide: false,
 });
 let closing = false;
+/**
+ * Stops Electron and the development server.
+ * @param {number} [code=0] - Exit status for the development process.
+ * @returns {Promise<void>} Resolves after cleanup or terminates the process.
+ */
 async function close(code = 0) {
    if (closing) return;
    closing = true;
@@ -34,8 +39,13 @@ async function close(code = 0) {
    process.exit(code);
 }
 child.on('exit', (code) => void close(code || 0));
-child.on('error', (error) => {
-   console.error(error);
+/**
+ * Reports a launch failure and stops the development server.
+ * Takes no input.
+ * @returns No value.
+ */
+child.on('error', () => {
+   process.stderr.write('No se pudo iniciar Electron. Comprueba la instalación de dependencias.\n');
    void close(1);
 });
 process.on('SIGINT', () => void close());

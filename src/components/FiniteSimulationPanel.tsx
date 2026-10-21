@@ -1,20 +1,5 @@
-import { useEffect, useId, useRef, useState } from 'react';
-import type { FiniteSession } from '../domain/finite';
-import {
-   canStepFinite,
-   createFiniteSession,
-   finiteAccepts,
-   finiteNondeterminism,
-   finiteStatus,
-   finiteTrace,
-   runFinite,
-   stepFinite,
-} from '../domain/finite';
-import type { Machine } from '../domain/model';
-import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
-import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
-import { download } from '../lib/files';
-import { exportTablePng } from '../lib/tableImage';
+import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
+
 import {
    FiArrowLeft,
    FiArrowRight,
@@ -43,6 +28,22 @@ import { Modal } from './ui/Modal';
 import { ModalBody } from './ui/ModalBody';
 import { ModalFooter } from './ui/ModalFooter';
 import { Select } from './ui/Select';
+import type { FiniteSession } from '../domain/finite';
+import {
+   canStepFinite,
+   createFiniteSession,
+   finiteAccepts,
+   finiteNondeterminism,
+   finiteStatus,
+   finiteTrace,
+   runFinite,
+   stepFinite,
+} from '../domain/finite';
+import type { Machine } from '../domain/model';
+import type { BatchInputItem, BatchTextFile } from '../lib/batchInput';
+import { createBatchInputItem, manualBatchInputs } from '../lib/batchInput';
+import { download } from '../lib/files';
+import { exportTablePng } from '../lib/tableImage';
 
 type Props = {
    machine: Machine;
@@ -136,7 +137,7 @@ export default function FiniteSimulationPanel({
    );
    useEffect(() => {
       onActivity(session?.configurations.map((c) => c.state) ?? [], chosen?.transitionId);
-   }, [session, chosen?.id, onActivity]);
+   }, [session, chosen?.transitionId, onActivity]);
    function begin() {
       const next = createFiniteSession(machine, input, closure);
       setSession(next);
@@ -211,10 +212,16 @@ export default function FiniteSimulationPanel({
          onMessage((error as Error).message);
       }
    }
+   /**
+    * Runs an external command using the current simulation state.
+    * @param action - Requested simulation action.
+    * @returns No value.
+    */
+   const performRequest = useEffectEvent((action: string) => perform(action));
    useEffect(() => {
       if (!request || request.id === handled.current) return;
       handled.current = request.id;
-      perform(request.action);
+      performRequest(request.action);
    }, [request]);
    useEffect(() => {
       if (!playing) return;
@@ -233,7 +240,7 @@ export default function FiniteSimulationPanel({
          setSelectedIds([]);
       }, speed);
       return () => clearTimeout(timer);
-   }, [playing, session, machine, speed, configurationLimit]);
+   }, [playing, session, machine, speed, configurationLimit, onMessage]);
    function back() {
       setPlaying(false);
       if (!session || session.history.length < 2) return;
