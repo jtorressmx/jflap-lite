@@ -39,7 +39,6 @@ Arrastra `JFLAP Lite.app` a Aplicaciones. No requiere Node.js ni Java. La aplica
 Requiere Node.js 24 y npm. Desde la raíz:
 
 ```powershell
-Set-Location desktop
 npm ci
 npm run dev
 ```
@@ -49,19 +48,19 @@ npm run dev
 | `npm run dev` | Electron con recarga del renderer |
 | `npm run build` | Comprobación estricta de TypeScript y compilación del renderer |
 | `npm start` | Electron con la compilación local |
-| `npm run dist` | Compila y genera el portátil de Windows x64 o el DMG de macOS para la arquitectura del equipo en `desktop/release/` |
+| `npm run dist` | Compila y genera el portátil de Windows x64 o el DMG de macOS para la arquitectura del equipo en `release/` |
 
 El empaquetado se ejecuta en el sistema de destino. El workflow `Build macOS` compila y valida los DMG en runners nativos de Apple Silicon e Intel.
 
 ## Estructura
 
-- `desktop/electron/`: proceso principal, preload, atajos y políticas de archivos.
-- `desktop/src/domain/`: modelos, simuladores, conversiones y formato JFF.
-- `desktop/src/components/`: editor, simulación y controles compartidos.
-- `desktop/src/hooks/`: documentos, historial y recuperación.
-- `desktop/src/styles.css`: entrada única de Tailwind y estilos base.
-- `desktop/src/styles/theme.css`: tokens compartidos, temas y paletas.
+- `electron/`: proceso principal, preload, atajos y políticas de archivos.
+- `src/domain/`: modelos, simuladores, conversiones y formato JFF.
+- `src/components/`: editor, simulación y controles compartidos.
+- `src/hooks/`: documentos, historial y recuperación.
+- `src/styles.css`: entrada única de Tailwind y estilos base.
+- `src/styles/theme.css`: tokens compartidos, temas y paletas.
 
 El renderer está aislado de Node.js. El puente nativo gestiona archivos, impresión y recuperación. Las rutas recuperadas de una sesión requieren abrir el archivo o elegir su destino antes de escribirlo.
 
-Derivado de JFLAP 7.1, de Susan H. Rodger y los colaboradores de Duke University. Se conserva su [licencia original](desktop/LICENSE), también incluida en el ejecutable y disponible en Acerca de.
+Derivado de JFLAP 7.1, de Susan H. Rodger y los colaboradores de Duke University. Se conserva su [licencia original](LICENSE), también incluida en el ejecutable y disponible en Acerca de.
