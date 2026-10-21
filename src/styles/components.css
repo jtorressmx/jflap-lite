@@ -1252,6 +1252,9 @@
    .command-spacer {
       @apply flex-1;
    }
+   .machine-kind-indicator {
+      @apply flex-none;
+   }
    .editor-row {
       @apply flex flex-1;
       min-height: var(--canvas-min-height);

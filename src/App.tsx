@@ -72,6 +72,7 @@ import {
    defaultPreferences,
    emptyMachine,
    machineKind,
+   machineTitle,
    movementSymbol,
    nextStateId,
 } from '@/domain/model';
@@ -1309,6 +1310,9 @@ export default function App() {
                            </IconButton>
                         </div>
                         <div className="command-spacer" />
+                        <span className="badge machine-kind-indicator">
+                           {machineTitle(machine)}
+                        </span>
                         <Button
                            variant="primary"
                            aria-expanded={simulationOpen}
