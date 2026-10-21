@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 
-import type { FiniteTool } from '@/components/FiniteTools';
-import FiniteTools, { validateFiniteTool } from '@/components/FiniteTools';
+import FiniteTools from '@/components/FiniteTools';
 import GraphEditor from '@/components/GraphEditor';
 import { HelpDialog } from '@/components/HelpDialog';
 import HomePage from '@/components/HomePage';
@@ -66,6 +65,8 @@ import {
 } from '@/domain/finite';
 import type { FiniteLayout } from '@/domain/finite/layout';
 import { finiteLayouts, layoutFinite } from '@/domain/finite/layout';
+import type { FiniteTool } from '@/domain/finite/tools';
+import { validateFiniteTool } from '@/domain/finite/tools';
 import { parseJff, serializeJff } from '@/domain/jff';
 import type { Machine, MachineKind, Preferences } from '@/domain/model';
 import {

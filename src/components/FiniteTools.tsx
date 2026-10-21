@@ -7,16 +7,10 @@ import { Minimize } from '@/components/finite/Minimize';
 import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
 import type { SubsetConstruction } from '@/domain/finite';
-import {
-   completeDfa,
-   prepareMinimization,
-   regularExpression,
-   regularGrammar,
-   subsetConstruction,
-} from '@/domain/finite';
+import { completeDfa, subsetConstruction } from '@/domain/finite';
+import type { FiniteTool } from '@/domain/finite/tools';
 import type { Machine } from '@/domain/model';
 
-export type FiniteTool = 'dfa' | 'minimize' | 'trap' | 'grammar' | 'regex';
 const titles: Record<FiniteTool, string> = {
    dfa: 'Convertir AFN a AFD',
    minimize: 'Minimizar autómata',
@@ -25,13 +19,6 @@ const titles: Record<FiniteTool, string> = {
    regex: 'Convertir a expresión regular',
 };
 
-export function validateFiniteTool(tool: FiniteTool, machine: Machine): void {
-   if (tool === 'dfa') subsetConstruction(machine);
-   if (tool === 'minimize') prepareMinimization(machine);
-   if (tool === 'trap') completeDfa(machine);
-   if (tool === 'grammar') regularGrammar(machine);
-   if (tool === 'regex') regularExpression(machine);
-}
 /**
  * Shows the selected conversion tool.
  * @param props - Component options.
