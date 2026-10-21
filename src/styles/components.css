@@ -825,6 +825,9 @@
 .home-heading-copy {
    @apply min-w-0;
 }
+.eyebrow {
+   @apply inline-flex items-center min-h-5 border border-solid border-border-strong rounded-full py-1 px-3 bg-accent-soft text-accent text-xs font-semibold whitespace-nowrap;
+}
 .home-heading h1 {
    @apply font-display text-home-title font-semibold mt-4 mb-3;
 }
