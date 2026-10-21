@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { Machine } from '@/domain/model';
+import { sameFilePath } from '@/lib/filePaths';
 import { settingsChanged, storedSettings } from '@/lib/settings';
 
 export type WorkspaceDocument = {
@@ -48,6 +49,69 @@ function makeDocument(machine: Machine, path?: string): WorkspaceDocument {
       path,
    };
 }
+
+/**
+ * Checks whether two documents contain the same machine and history state.
+ * @param left - First workspace document.
+ * @param right - Second workspace document.
+ * @returns Whether both documents can be collapsed without losing edits or history.
+ */
+function sameDocumentState(left: WorkspaceDocument, right: WorkspaceDocument): boolean {
+   return (
+      left.saved === right.saved &&
+      JSON.stringify(left.machine) === JSON.stringify(right.machine) &&
+      JSON.stringify(left.past) === JSON.stringify(right.past) &&
+      JSON.stringify(left.future) === JSON.stringify(right.future)
+   );
+}
+
+/**
+ * Checks whether two workspace documents point to the same file.
+ * @param left - First workspace document.
+ * @param right - Second workspace document.
+ * @param platform - Platform identifier used for path case handling.
+ * @returns Whether both documents have matching file paths.
+ */
+function sameDocumentFile(
+   left: WorkspaceDocument,
+   right: WorkspaceDocument,
+   platform: string
+): boolean {
+   return Boolean(left.path && right.path && sameFilePath(left.path, right.path, platform));
+}
+
+/**
+ * Removes identical copies of documents that point to the same file.
+ * @param documents - Workspace documents to inspect.
+ * @param preferredId - Document identifier to retain when copies are identical.
+ * @param platform - Platform identifier used for path case handling.
+ * @returns Documents with identical copies of the same file collapsed.
+ */
+function deduplicateIdenticalDocuments(
+   documents: WorkspaceDocument[],
+   preferredId: string,
+   platform: string
+): WorkspaceDocument[] {
+   const unique: WorkspaceDocument[] = [];
+   for (const document of documents) {
+      const duplicateIndex = unique.findIndex(
+         (candidate) =>
+            sameDocumentFile(document, candidate, platform) &&
+            sameDocumentState(document, candidate)
+      );
+      if (duplicateIndex < 0) {
+         unique.push(document);
+      } else if (document.id === preferredId) {
+         unique[duplicateIndex] = document;
+      }
+   }
+   return unique;
+}
+
+/**
+ * Creates the document workspace and its editing actions.
+ * @returns Workspace documents, the active document, and editing actions.
+ */
 export function useWorkspace() {
    const [state, setState] = useState<{
       documents: WorkspaceDocument[];
@@ -61,17 +125,29 @@ export function useWorkspace() {
             parsed.documents.every(
                (d: WorkspaceDocument) => typeof d.id === 'string' && validMachine(d.machine)
             )
-         )
+         ) {
+            const restoredDocuments = parsed.documents.map((d: WorkspaceDocument) => ({
+               ...d,
+               past: [],
+               future: [],
+            }));
+            const preferredId = parsed.documents.some(
+               (d: WorkspaceDocument) => d.id === parsed.activeId
+            )
+               ? parsed.activeId
+               : (parsed.documents[0]?.id ?? '');
+            const documents = deduplicateIdenticalDocuments(
+               restoredDocuments,
+               preferredId,
+               window.desktop.platform
+            );
             return {
-               documents: parsed.documents.map((d: WorkspaceDocument) => ({
-                  ...d,
-                  past: [],
-                  future: [],
-               })),
-               activeId: parsed.documents.some((d: WorkspaceDocument) => d.id === parsed.activeId)
-                  ? parsed.activeId
-                  : (parsed.documents[0]?.id ?? ''),
+               documents,
+               activeId: documents.some((d) => d.id === preferredId)
+                  ? preferredId
+                  : (documents[0]?.id ?? ''),
             };
+         }
       } catch {
          /* Start a clean workspace when storage is unavailable or invalid. */
       }
@@ -170,12 +246,43 @@ export function useWorkspace() {
          ),
       }));
    }
-   function open(machine: Machine, path?: string, options?: { unsaved?: boolean }) {
+   /**
+    * Opens a machine or activates its existing document when the path is already open.
+    * @param machine - Machine to open.
+    * @param path - Optional source path for the machine.
+    * @param options - Optional document opening behavior.
+    * @param options.unsaved - Whether to mark the document as unsaved.
+    * @returns No value.
+    */
+   function open(machine: Machine, path?: string, options?: { unsaved?: boolean }): void {
       pending.current = null;
       const doc = makeDocument(machine, path);
       if (options?.unsaved) doc.saved = '';
-      setState((s) => ({ documents: [...s.documents, doc], activeId: doc.id }));
-      return doc.id;
+      setState((current) => {
+         const existing = path
+            ? (current.documents.find(
+                 (candidate) =>
+                    candidate.id === current.activeId &&
+                    candidate.path &&
+                    sameFilePath(candidate.path, path, window.desktop.platform)
+              ) ??
+              current.documents.find(
+                 (candidate) =>
+                    candidate.path && sameFilePath(candidate.path, path, window.desktop.platform)
+              ))
+            : undefined;
+         if (!existing) {
+            return { documents: [...current.documents, doc], activeId: doc.id };
+         }
+         return {
+            documents: deduplicateIdenticalDocuments(
+               current.documents,
+               existing.id,
+               window.desktop.platform
+            ),
+            activeId: existing.id,
+         };
+      });
    }
    function close(id: string) {
       pending.current = null;

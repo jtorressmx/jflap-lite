@@ -3,6 +3,7 @@ import { useCallback, useEffect, useEffectEvent, useState } from 'react';
 import type { Notify, Workspace } from '@/app/types';
 import { parseJff } from '@/domain/jff';
 import type { Machine } from '@/domain/model';
+import { sameFilePath } from '@/lib/filePaths';
 
 let initialDesktopFiles: Promise<DesktopFile[]> | undefined;
 type NativeFileOptions = {
@@ -54,7 +55,7 @@ export function useNativeFiles({
     */
    async function openRecentFile(file: DesktopRecentFile) {
       const document = workspace.documents.find(
-         (doc) => doc.path?.toLowerCase() === file.path.toLowerCase()
+         (doc) => doc.path && sameFilePath(doc.path, file.path, window.desktop.platform)
       );
       if (document) {
          resumeDocument(document.id);

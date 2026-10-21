@@ -6,6 +6,7 @@ import { useNativeFiles } from '@/app/useNativeFiles';
 import { emptyFinite } from '@/domain/finite';
 import type { Machine, MachineKind } from '@/domain/model';
 import { emptyMachine, machineKind } from '@/domain/model';
+import { sameFilePath } from '@/lib/filePaths';
 import { storedSettings } from '@/lib/settings';
 
 type DocumentOptions = {
@@ -243,7 +244,9 @@ export function useDocuments({
       .filter(
          (doc) =>
             (!doc.path ||
-               !recentFiles.some((file) => file.path.toLowerCase() === doc.path?.toLowerCase())) &&
+               !recentFiles.some(
+                  (file) => doc.path && sameFilePath(file.path, doc.path, window.desktop.platform)
+               )) &&
             (doc.machine.states.length ||
                doc.machine.notes.length ||
                doc.path ||
