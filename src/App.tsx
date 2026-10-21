@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 
 import { AppDialogs } from '@/app/dialogs/AppDialogs';
 import { EditorCommandBar } from '@/app/editor/EditorCommandBar';
@@ -56,6 +56,7 @@ export default function App() {
       workspace,
       setHome,
       notify,
+      autoSaveOnBlur: settings.autoSaveOnBlur,
       onCreate: () => simulation.setOpen(false),
       onImportCombine: (machine) => {
          tools.setImportedCombine(machine);
@@ -63,6 +64,44 @@ export default function App() {
       },
       onRequestClose: () => setDialog({ type: 'close' }),
    });
+   /**
+    * Opens the home screen and saves changed files when leaving the editor.
+    * @param nextHome - Whether the home screen should be visible.
+    * @returns No value.
+    */
+   function navigateHome(nextHome: boolean) {
+      if (nextHome && !home && window.desktop.isDesktop && settings.autoSaveOnBlur)
+         void documents.saveOpenDocumentsAutomatically();
+      setHome(nextHome);
+   }
+   /** Saves open files on focus loss when automatic saving is enabled.
+    * Takes no input.
+    * @returns No value.
+    */
+   const saveOnFocusLoss = useEffectEvent(() => {
+      if (window.desktop.isDesktop && settings.autoSaveOnBlur)
+         void documents.saveOpenDocumentsAutomatically();
+   });
+   useEffect(() => {
+      /** Handles the application window losing focus.
+       * Takes no input.
+       * @returns No value.
+       */
+      const handleWindowBlur = () => saveOnFocusLoss();
+      /** Handles the application document becoming hidden.
+       * Takes no input.
+       * @returns No value.
+       */
+      const handleVisibilityChange = () => {
+         if (document.visibilityState === 'hidden') saveOnFocusLoss();
+      };
+      window.addEventListener('blur', handleWindowBlur);
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      return () => {
+         window.removeEventListener('blur', handleWindowBlur);
+         document.removeEventListener('visibilitychange', handleVisibilityChange);
+      };
+   }, []);
    const editor = useGraphEditor({
       documentId: active.id,
       machine,
@@ -90,6 +129,7 @@ export default function App() {
       name: home ? '' : machine.name,
       dirtyCount: workspace.documents.filter((doc) => JSON.stringify(doc.machine) !== doc.saved)
          .length,
+      autoSaveOnBlur: settings.autoSaveOnBlur,
       notify,
       commands: {
          new: () => documents.createDocument(machineKind(machine)),
@@ -112,7 +152,7 @@ export default function App() {
       <div className={'app-shell ' + (settings.grid ? '' : 'no-grid')}>
          <AppMenuBar
             home={home}
-            setHome={setHome}
+            setHome={navigateHome}
             workspace={workspace}
             documents={documents}
             settings={settings}
@@ -122,7 +162,6 @@ export default function App() {
             setDialog={setDialog}
             simulate={simulation.simulate}
             notify={notify}
-            onPrint={() => void print()}
          />
          {home && (
             <HomePage
@@ -130,10 +169,10 @@ export default function App() {
                onOpen={() => void documents.openDialog()}
                onResume={documents.resumeDocument}
                onCloseDocument={documents.closeDocument}
-               recentFiles={documents.recentFiles}
                onRecent={(file) => void documents.openRecentFile(file)}
                onRemoveRecent={(file) => void documents.removeRecentFile(file)}
-               documents={documents.homeDocuments}
+               documents={documents.openDocuments}
+               recentFiles={documents.homeRecentFiles}
             />
          )}
          {workspace.active && (
@@ -141,7 +180,6 @@ export default function App() {
                <main className="main-workspace">
                   <EditorCommandBar
                      active={active}
-                     onOpen={() => void documents.openDialog()}
                      onSave={() => void documents.save()}
                      undo={workspace.undo}
                      redo={workspace.redo}
@@ -182,7 +220,6 @@ export default function App() {
             tools={tools}
             dialog={dialog}
             setDialog={setDialog}
-            fit={() => editor.setFitKey((key) => key + 1)}
             notify={notify}
             onOpenGenerated={(machine) => {
                workspace.open(machine, undefined, { unsaved: true });

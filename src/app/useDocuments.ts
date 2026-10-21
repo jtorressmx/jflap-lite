@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { saveDocumentFile } from '@/app/documentFiles';
 import type { Notify, Workspace } from '@/app/types';
@@ -13,6 +13,7 @@ type DocumentOptions = {
    workspace: Workspace;
    setHome: (home: boolean) => void;
    notify: Notify;
+   autoSaveOnBlur: boolean;
    onCreate: () => void;
    onImportCombine: (machine: Machine) => void;
    onRequestClose: () => void;
@@ -23,6 +24,7 @@ type DocumentOptions = {
  * @param options.workspace - Document storage and history actions.
  * @param options.setHome - Receives the requested home visibility.
  * @param options.notify - Receives a user-facing notification.
+ * @param options.autoSaveOnBlur - Whether desktop files save automatically on navigation.
  * @param options.onCreate - Resets auxiliary tools for a newly created document.
  * @param options.onImportCombine - Receives a parsed machine selected for combination.
  * @param options.onRequestClose - Requests confirmation before closing a dirty document.
@@ -32,6 +34,7 @@ export function useDocuments({
    workspace,
    setHome,
    notify,
+   autoSaveOnBlur,
    onCreate,
    onImportCombine,
    onRequestClose,
@@ -40,6 +43,7 @@ export function useDocuments({
    const active = workspace.active;
    const [renamingDocumentId, setRenamingDocumentId] = useState<string | null>(null);
    const [renameDraft, setRenameDraft] = useState('');
+   const autoSaveInProgress = useRef(new Map<string, Promise<boolean>>());
    /**
     * Opens a blank document and reuses an empty draft of the same type.
     * @param kind - Machine type to open.
@@ -155,6 +159,67 @@ export function useDocuments({
       }
    }
    /**
+    * Saves one changed document to its existing file path.
+    * @param document - Changed workspace document to save.
+    * @returns Whether saving completed successfully.
+    */
+   async function saveDocumentToExistingPath(
+      document: Workspace['documents'][number]
+   ): Promise<boolean> {
+      const path = document.path;
+      if (!path) return false;
+      const pendingSave = autoSaveInProgress.current.get(document.id);
+      if (pendingSave) return pendingSave;
+      const hasDuplicatePath = workspace.documents.some(
+         (candidate) =>
+            candidate.id !== document.id &&
+            candidate.path &&
+            sameFilePath(candidate.path, path, window.desktop.platform)
+      );
+      if (hasDuplicatePath) return false;
+      const savePromise = (async () => {
+         const saved = await saveDocumentFile(window.desktop, document.machine, path, {
+            fallbackToPicker: false,
+         });
+         if (!saved) return false;
+         workspace.markSaved(saved.path ?? path, document.id, saved.machine);
+         return true;
+      })();
+      autoSaveInProgress.current.set(document.id, savePromise);
+      try {
+         return await savePromise;
+      } finally {
+         if (autoSaveInProgress.current.get(document.id) === savePromise)
+            autoSaveInProgress.current.delete(document.id);
+      }
+   }
+   /**
+    * Saves changed documents with existing paths when focus is lost or the editor is left.
+    * Takes no input.
+    * @returns A promise resolved after saving or reporting any failures.
+    */
+   async function saveOpenDocumentsAutomatically(): Promise<void> {
+      const dirtyDocuments = workspace.documents.filter(
+         (document) => document.path && JSON.stringify(document.machine) !== document.saved
+      );
+      if (!dirtyDocuments.length) return;
+      let failed = false;
+      for (const document of dirtyDocuments) {
+         try {
+            if (!(await saveDocumentToExistingPath(document))) failed = true;
+         } catch {
+            failed = true;
+         }
+      }
+      if (failed) {
+         notify(
+            'Algunos archivos no se pudieron guardar automáticamente. Guarda esos cambios manualmente.'
+         );
+      } else {
+         void refreshRecentFiles();
+      }
+   }
+   /**
     * Saves all dirty documents and acknowledges the native close workflow.
     * Takes no input.
     * @returns A promise resolved after saving or reporting cancellation or failure.
@@ -226,12 +291,21 @@ export function useDocuments({
    /**
     * Closes a clean document or requests confirmation for unsaved changes.
     * @param id - Identifier of the document to close.
-    * @returns No value.
+    * @returns A promise resolved after closing or requesting confirmation.
     */
-   function closeDocument(id: string) {
+   async function closeDocument(id: string): Promise<void> {
       const document = workspace.documents.find((doc) => doc.id === id);
       if (!document) return;
       if (JSON.stringify(document.machine) !== document.saved) {
+         if (window.desktop.isDesktop && autoSaveOnBlur && document.path) {
+            const saved = await saveDocumentToExistingPath(document).catch(() => false);
+            if (saved) {
+               void refreshRecentFiles();
+               workspace.close(id);
+               if (workspace.documents.length === 1) setHome(true);
+               return;
+            }
+         }
          if (id !== active?.id) workspace.setActiveId(id);
          onRequestClose();
          return;
@@ -240,26 +314,37 @@ export function useDocuments({
       if (workspace.documents.length === 1) setHome(true);
    }
 
-   const homeDocuments = workspace.documents
-      .filter(
-         (doc) =>
-            (!doc.path ||
-               !recentFiles.some(
-                  (file) => doc.path && sameFilePath(file.path, doc.path, window.desktop.platform)
-               )) &&
-            (doc.machine.states.length ||
-               doc.machine.notes.length ||
-               doc.path ||
-               JSON.stringify(doc.machine) !== doc.saved)
-      )
-      .map((doc) => ({
-         id: doc.id,
-         machine: doc.machine,
-         dirty: JSON.stringify(doc.machine) !== doc.saved,
-      }));
+   /**
+    * Closes clean documents and leaves documents with pending changes open.
+    * @returns No value.
+    */
+   function closeSavedDocuments() {
+      const savedIds = workspace.documents
+         .filter((document) => JSON.stringify(document.machine) === document.saved)
+         .map((document) => document.id);
+      if (!savedIds.length) return;
+      const hasUnsavedDocuments = workspace.documents.some(
+         (document) => JSON.stringify(document.machine) !== document.saved
+      );
+      for (const id of savedIds) workspace.close(id);
+      if (!hasUnsavedDocuments) setHome(true);
+   }
+
+   const openDocuments = workspace.documents.map((doc) => ({
+      id: doc.id,
+      machine: doc.machine,
+      dirty: JSON.stringify(doc.machine) !== doc.saved,
+   }));
+   const homeRecentFiles = recentFiles.filter(
+      (file) =>
+         !workspace.documents.some(
+            (doc) => doc.path && sameFilePath(file.path, doc.path, window.desktop.platform)
+         )
+   );
    return {
       recentFiles,
-      homeDocuments,
+      homeRecentFiles,
+      openDocuments,
       renamingDocumentId,
       renameDraft,
       setRenameDraft,
@@ -272,8 +357,10 @@ export function useDocuments({
       removeRecentFile,
       openDialog,
       save,
+      saveOpenDocumentsAutomatically,
       saveAll,
       closeDocument,
+      closeSavedDocuments,
       confirmClose,
    };
 }

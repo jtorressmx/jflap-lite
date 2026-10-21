@@ -61,8 +61,7 @@ export function HelpDialog({
                      <p>
                         En Convertir puedes construir y comprobar un AFD, refinar el árbol de
                         minimización, añadir un estado trampa y obtener una gramática o expresión
-                        regular. Vista permite guardar, restaurar y transformar la distribución del
-                        grafo.
+                        regular. Vista permite guardar y restaurar la distribución del grafo.
                      </p>
                      <p>
                         JFLAP 7.1 omite el cierre vacío después de un rango. Para aplicar el cierre

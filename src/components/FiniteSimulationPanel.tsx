@@ -1,5 +1,6 @@
 import { useEffect, useEffectEvent, useId, useRef, useState } from 'react';
 
+import type { SimulationAction } from '@/app/types';
 import {
    FiArrowLeft,
    FiArrowRight,
@@ -48,7 +49,7 @@ import { exportTablePng } from '@/lib/tableImage';
 type Props = {
    machine: Machine;
    emptySymbol: 'ε' | 'λ';
-   request?: { id: number; action: string };
+   request?: { id: number; action: SimulationAction };
    onActivity: (states: string[], transition?: string) => void;
    onMessage: (message: string) => void;
    onClose?: () => void;
@@ -159,8 +160,13 @@ export default function FiniteSimulationPanel({
       onActivity([], undefined);
       onClose?.();
    }
-   function perform(action: string) {
+   function perform(action: SimulationAction) {
       try {
+         if (action === 'open') {
+            setTab('simulation');
+            setPlaying(false);
+            return;
+         }
          if (action === 'closure' || action === 'state') {
             const mode = action === 'closure';
             setClosure(mode);
@@ -217,7 +223,7 @@ export default function FiniteSimulationPanel({
     * @param action - Requested simulation action.
     * @returns No value.
     */
-   const performRequest = useEffectEvent((action: string) => perform(action));
+   const performRequest = useEffectEvent((action: SimulationAction) => perform(action));
    useEffect(() => {
       if (!request || request.id === handled.current) return;
       handled.current = request.id;

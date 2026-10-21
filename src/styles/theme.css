@@ -77,6 +77,7 @@
    --spacing-dialog: var(--dialog-width);
    --spacing-dialog-wide: var(--dialog-wide-width);
    --spacing-document-picker: var(--document-picker-width);
+   --spacing-document-tab: var(--document-tab-width);
    --spacing-finite-preview: var(--finite-preview-height);
    --spacing-state-popover: var(--state-popover-width);
    --spacing-transition-popover: var(--transition-popover-width);
@@ -180,6 +181,7 @@
       --transition-input-width: 64px;
       --movement-input-width: 128px;
       --document-picker-width: 280px;
+      --document-tab-width: 200px;
       --home-width: 960px;
       --home-title-size: 32px;
       --home-card-icon: 56px;

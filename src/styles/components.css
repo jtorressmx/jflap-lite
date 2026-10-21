@@ -1404,10 +1404,10 @@
       @apply w-8 h-8;
    }
    .about-body > a {
-      @apply text-sm;
+      @apply inline-flex items-center gap-2 text-sm text-accent transition-opacity hover:opacity-90;
    }
    .about-body > a > svg {
-      @apply w-3;
+      @apply w-icon h-icon;
    }
    .combine-list {
       @apply flex flex-col gap-2;
@@ -1579,43 +1579,77 @@
 .transition-rules-table .icon-button {
    @apply w-6 min-w-6 h-6;
 }
-.active-document {
-   @apply flex items-center gap-1 min-w-0 max-w-document-picker;
+.document-tabs-bar {
+   @apply flex items-center flex-none min-w-0 gap-2 min-h-10 px-3 border-b border-border bg-mica;
 }
-.document-picker {
-   @apply min-w-0 flex-1;
+.document-tabs {
+   @apply flex flex-1 items-center min-w-0 gap-1 py-1 overflow-x-auto;
+   scroll-snap-type: x proximity;
+   scrollbar-width: none;
 }
-.document-picker .menu-trigger {
-   @apply min-w-0 max-w-full py-1 px-2;
+.document-tabs::-webkit-scrollbar {
+   display: none;
 }
-.document-name {
+.document-tab {
+   @apply flex flex-none items-center min-w-0 w-document-tab gap-1 h-8 px-1 border border-solid border-border rounded-md bg-surface;
+   scroll-snap-align: start;
+}
+.document-tab.is-active {
+   @apply bg-accent-soft border-accent;
+}
+.document-tab.is-active .document-tab-select {
+   @apply text-accent font-medium;
+}
+.document-tab-select {
+   @apply flex flex-1 items-center justify-start min-w-0 min-h-0 h-full gap-2 p-1 rounded-sm text-xs font-normal text-foreground;
+}
+.document-tab-select:focus-visible {
+   outline: var(--focus-ring);
+   outline-offset: var(--focus-offset);
+}
+.document-tab-icon {
+   @apply flex-none;
+}
+.document-tab-name {
    @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs min-w-0;
+}
+.document-tab-actions {
+   @apply flex items-center flex-none gap-0;
+}
+.document-tab-actions .icon-button {
+   @apply w-6 min-w-6 min-h-6 h-6 p-0;
+}
+.document-tab-editor {
+   @apply h-full;
+}
+.document-actions-menu .menu-trigger {
+   @apply min-h-7 h-8 gap-1 p-1;
+}
+.document-actions-menu .menu-popover {
+   @apply left-auto right-0;
 }
 .menu-entry-editing {
    @apply w-full;
 }
-.menu-document-editor {
+.document-name-editor {
    @apply flex items-center gap-1 w-full min-w-0 p-1;
 }
-.menu-document-editor input {
+.document-name-editor input {
    @apply flex-1 min-w-0 min-h-7 py-1 px-2 border border-solid border-border-strong rounded-sm bg-surface text-sm text-foreground outline-none;
 }
-.menu-document-editor input:focus-visible {
+.document-name-editor input:focus-visible {
    outline: var(--focus-ring);
    outline-offset: var(--focus-offset);
 }
-.menu-document-editor .icon-button {
+.document-name-editor .icon-button {
    @apply w-7 min-w-7 min-h-7 h-7;
 }
-.active-document .icon-button {
-   @apply w-7 min-h-7 h-7;
+.document-tab-editor input {
+   @apply min-h-6 h-6;
 }
-.document-picker .menu-popover {
-   @apply left-auto right-0;
-   max-height: calc(100vh - var(--space-16));
-   @apply overflow-y-auto;
+.document-tab-editor .icon-button {
+   @apply w-6 min-w-6 min-h-6 h-6 p-0;
 }
-
 /* Adaptación y movimiento reducido */
 @layer responsive {
    @media (max-width: 1250px) {

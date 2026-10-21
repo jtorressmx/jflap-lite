@@ -79,6 +79,33 @@ async function exportFile(request: Parameters<DesktopBridge['exportFile']>[0]) {
 }
 
 /**
+ * Opens the browser print dialog for a machine diagram.
+ * @param svg - Rendered machine diagram.
+ * @param name - Suggested print title.
+ * @returns Whether the print dialog opened successfully.
+ */
+async function print(svg: string, name: string): Promise<{ success: boolean; error?: string }> {
+   const printWindow = window.open('', '_blank');
+   if (!printWindow) return { success: false, error: 'blocked' };
+   const svgDocument = new DOMParser().parseFromString(svg, 'image/svg+xml');
+   if (svgDocument.documentElement.localName !== 'svg') {
+      printWindow.close();
+      return { success: false, error: 'invalid-diagram' };
+   }
+   const printDocument = printWindow.document;
+   printDocument.title = name;
+   const style = printDocument.createElement('style');
+   style.textContent =
+      '@page { size: landscape; margin: 12mm; } body { margin: 0; } svg { display: block; width: 100%; height: auto; max-height: calc(100vh - 24mm); }';
+   printDocument.head.replaceChildren(style);
+   printDocument.body.replaceChildren(printDocument.importNode(svgDocument.documentElement, true));
+   printWindow.addEventListener('afterprint', () => printWindow.close(), { once: true });
+   printWindow.focus();
+   printWindow.print();
+   return { success: true };
+}
+
+/**
  * Rejects operations that require the native application.
  * Takes no input.
  * @returns A promise rejected with a user-facing availability message.
@@ -132,6 +159,7 @@ export function createBrowserPreview(): DesktopBridge {
       if (dirty) event.preventDefault();
    });
    return {
+      isDesktop: false,
       platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'browser',
       getRecentFiles: recentFiles,
       removeRecentFile: recentFiles,
@@ -139,8 +167,15 @@ export function createBrowserPreview(): DesktopBridge {
       openFiles,
       saveFile,
       exportFile,
-      print: requireDesktop,
-      exportPdf: requireDesktop,
+      print,
+      /**
+       * Allows browser downloads to proceed without a native path check.
+       * @param path - Suggested local path, ignored by the browser.
+       * @returns Whether the suggested path can be used.
+       */
+      async authorizeSavePath(path) {
+         return Boolean(path);
+      },
       getInitialFiles: nativeFiles,
       onOpenFiles: subscribe,
       onCommand: subscribe,

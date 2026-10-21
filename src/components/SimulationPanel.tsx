@@ -49,7 +49,7 @@ import { exportTablePng } from '@/lib/tableImage';
 
 type Request = {
    id: number;
-   action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace';
+   action: 'open' | 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace';
 };
 type Props = {
    onClose?: () => void;
@@ -363,6 +363,11 @@ export function SimulationPanel({
     */
    const performRequest = useEffectEvent((action: NonNullable<Props['request']>['action']) => {
       switch (action) {
+         case 'open':
+            setPlaying(false);
+            setDirecting(false);
+            setTab('simulation');
+            break;
          case 'start':
             togglePlay();
             break;
@@ -376,6 +381,8 @@ export function SimulationPanel({
             setTab('batch');
             break;
          case 'batch':
+            setPlaying(false);
+            setDirecting(false);
             setTab('batch');
             break;
          case 'trace':

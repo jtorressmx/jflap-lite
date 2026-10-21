@@ -2,7 +2,6 @@ import { CloseDocumentDialog } from '@/app/dialogs/CloseDocumentDialog';
 import { ExportDialog } from '@/app/dialogs/ExportDialog';
 import { GraphDialogs } from '@/app/dialogs/GraphDialogs';
 import { InformationDialogs } from '@/app/dialogs/InformationDialogs';
-import { LayoutDialog } from '@/app/dialogs/LayoutDialog';
 import { MachineDialogs } from '@/app/dialogs/MachineDialogs';
 import { SettingsDialog } from '@/app/dialogs/SettingsDialog';
 import type { Dialog, Notify, ShowDialog, Workspace } from '@/app/types';
@@ -23,10 +22,9 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props.workspace - Open documents and history settings.
  * @param props.documents - File selection, save, and close actions.
  * @param props.settings - Application appearance and simulation settings.
- * @param props.tools - Conversion and layout dialogs and actions.
+ * @param props.tools - Conversion and machine comparison actions.
  * @param props.dialog - Current application dialog.
  * @param props.setDialog - Receives the requested dialog or null.
- * @param props.fit - Fits the diagram after a layout change.
  * @param props.onOpenGenerated - Opens a generated machine as an unsaved document.
  * @param props.onOpenConverted - Opens a conversion result as a document.
  * @param props.notify - Receives a user-facing notification.
@@ -40,7 +38,6 @@ export function AppDialogs({
    tools,
    dialog,
    setDialog,
-   fit,
    onOpenGenerated,
    onOpenConverted,
    notify,
@@ -52,7 +49,6 @@ export function AppDialogs({
    tools: MachineToolsController;
    dialog: Dialog | null;
    setDialog: ShowDialog;
-   fit: () => void;
    onOpenGenerated: (machine: Machine) => void;
    onOpenConverted: (machine: Machine) => void;
    notify: Notify;
@@ -72,14 +68,6 @@ export function AppDialogs({
                onOpen={onOpenConverted}
             />
          )}
-         <LayoutDialog
-            open={tools.layoutOpen}
-            machine={machine}
-            change={workspace.change}
-            fit={fit}
-            onClose={() => tools.setLayoutOpen(false)}
-            notify={notify}
-         />
          <GraphDialogs
             machine={machine}
             emptySymbol={settings.emptySymbol}

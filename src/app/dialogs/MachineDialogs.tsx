@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
 import { ModalFooter } from '@/components/ui/ModalFooter';
-import { machineKind } from '@/domain/model';
+import { machineKind, machineTitle } from '@/domain/model';
 import type { WorkspaceDocument } from '@/hooks/useWorkspace';
 
 /**
@@ -39,6 +39,8 @@ export function MachineDialogs({
 }) {
    const machine = active.machine;
    const { comparison, compare, openComparison, importedCombine, combine } = tools;
+   const importedCombineMatches =
+      importedCombine && machineKind(importedCombine) === machineKind(machine);
    return (
       <>
          {dialog?.type === 'equivalence' && (
@@ -72,7 +74,7 @@ export function MachineDialogs({
          {dialog?.type === 'combine' && (
             <Modal
                title="Combinar máquinas"
-               subtitle="Crea una máquina nueva con los estados y transiciones de ambas."
+               subtitle="Combina máquinas del mismo tipo en un documento nuevo."
                onClose={() => setDialog(null)}
             >
                <ModalBody>
@@ -93,7 +95,7 @@ export function MachineDialogs({
                               <FiPlus />
                            </button>
                         ))}
-                     {importedCombine && (
+                     {importedCombineMatches && (
                         <button onClick={() => combine(importedCombine)}>
                            <FiFile />
                            <span>{importedCombine.name}</span>
@@ -101,6 +103,24 @@ export function MachineDialogs({
                         </button>
                      )}
                   </div>
+                  {importedCombine && !importedCombineMatches && (
+                     <p role="status" className="simulation-notice">
+                        El archivo seleccionado es «{machineTitle(importedCombine)}» y el documento
+                        activo es «{machineTitle(machine)}». Solo puedes combinar máquinas del mismo
+                        tipo.
+                     </p>
+                  )}
+                  {!documents.some(
+                     (document) =>
+                        document.id !== active.id &&
+                        machineKind(document.machine) === machineKind(machine)
+                  ) &&
+                     !importedCombine && (
+                        <p className="simulation-notice">
+                           No hay otro documento abierto del mismo tipo. Puedes abrir uno para
+                           combinarlo.
+                        </p>
+                     )}
                   <Button onClick={() => void openDialog(true)}>
                      <FiFolder />
                      Abrir otra máquina .jff

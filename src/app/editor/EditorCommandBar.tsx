@@ -1,5 +1,5 @@
 import type { SimulationController } from '@/app/useSimulation';
-import { FiFolder, FiPlay, FiRotateCcw, FiRotateCw, FiSave } from '@/components/icons';
+import { FiPlay, FiRotateCcw, FiRotateCw, FiSave } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { IconButton } from '@/components/ui/IconButton';
 import { machineTitle } from '@/domain/model';
@@ -9,7 +9,6 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * Shows document and history commands above the graph.
  * @param props - Component options.
  * @param props.active - Active document and history.
- * @param props.onOpen - Opens the native machine picker.
  * @param props.onSave - Saves the active document.
  * @param props.undo - Restores the previous machine snapshot.
  * @param props.redo - Restores the next machine snapshot.
@@ -18,14 +17,12 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  */
 export function EditorCommandBar({
    active,
-   onOpen,
    onSave,
    undo,
    redo,
    simulation,
 }: {
    active: WorkspaceDocument;
-   onOpen: () => void;
    onSave: () => void;
    undo: () => void;
    redo: () => void;
@@ -36,10 +33,6 @@ export function EditorCommandBar({
    return (
       <div className="commandbar">
          <div className="command-group">
-            <Button variant="subtle" aria-label="Abrir" onClick={onOpen}>
-               <FiFolder />
-               <span>Abrir</span>
-            </Button>
             <Button variant="subtle" aria-label="Guardar" onClick={onSave}>
                <FiSave />
                <span>Guardar</span>

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
-import { readUiSettings, settingsChanged } from '@/lib/settings';
+import { AUTO_SAVE_ON_BLUR_KEY, readUiSettings, settingsChanged } from '@/lib/settings';
 
 /**
  * Reads validated simulation preferences from local storage.
@@ -35,7 +35,7 @@ function readPreferences(): Preferences {
 /**
  * Owns appearance and simulation preferences and synchronizes their storage.
  * Takes no input.
- * @returns Preference values and their update actions.
+ * @returns Appearance, simulation, and file preferences and their update actions.
  */
 export function useAppSettings() {
    const [uiSettings] = useState(readUiSettings);
@@ -56,6 +56,9 @@ export function useAppSettings() {
    const [palette, setPalette] = useState(
       () => localStorage.getItem('jflap-lite.palette') || 'fluent'
    );
+   const [autoSaveOnBlur, setAutoSaveOnBlur] = useState(
+      () => localStorage.getItem(AUTO_SAVE_ON_BLUR_KEY) === 'true'
+   );
    useEffect(() => {
       localStorage.setItem('jflap-lite.palette', palette);
       localStorage.setItem('jflap-lite.empty-symbol', emptySymbol);
@@ -66,6 +69,10 @@ export function useAppSettings() {
       localStorage.setItem('jflap-lite.preferences.v1', JSON.stringify(preferences));
       settingsChanged();
    }, [preferences]);
+   useEffect(() => {
+      localStorage.setItem(AUTO_SAVE_ON_BLUR_KEY, String(autoSaveOnBlur));
+      settingsChanged();
+   }, [autoSaveOnBlur]);
    useEffect(() => {
       localStorage.setItem('jflap-lite.theme', theme);
       localStorage.setItem('jflap-lite.accent', accent);
@@ -100,6 +107,8 @@ export function useAppSettings() {
       setEmptySymbol,
       palette,
       setPalette,
+      autoSaveOnBlur,
+      setAutoSaveOnBlur,
    };
 }
 export type AppSettings = ReturnType<typeof useAppSettings>;

@@ -23,4 +23,4 @@ export type Dialog =
      };
 export type ShowDialog = (dialog: Dialog | null) => void;
 export type SimulationAction =
-   'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace' | 'closure' | 'state';
+   'open' | 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace' | 'closure' | 'state';

@@ -16,29 +16,38 @@ function documentNameFromPath(filePath: string): string {
    );
 }
 /**
- * Saves a document, retrying with a destination picker when its path is unavailable.
+ * Saves a document, using a destination picker when its path is unavailable.
  * @param desktop - File-saving capability supplied by the runtime.
  * @param machine - Immutable machine snapshot to save.
  * @param path - Existing destination, omitted to request a new one.
+ * @param options - Additional save behavior.
+ * @param options.fallbackToPicker - Whether to request a destination when the current path cannot be used.
  * @returns The saved snapshot and path, or null when the user cancels.
  */
 export async function saveDocumentFile(
-   desktop: Pick<DesktopBridge, 'saveFile'>,
+   desktop: Pick<DesktopBridge, 'authorizeSavePath' | 'isDesktop' | 'saveFile'>,
    machine: Machine,
-   path?: string
+   path?: string,
+   options: { fallbackToPicker?: boolean } = {}
 ): Promise<SavedDocument | null> {
    let snapshot = machine;
-   let choosesPath = !path;
+   let destination = path;
+   let choosesPath = !destination;
    let result: DesktopSaveResult;
+   if (destination && desktop.isDesktop && !(await desktop.authorizeSavePath(destination))) {
+      if (options.fallbackToPicker === false) return null;
+      destination = undefined;
+      choosesPath = true;
+   }
    try {
       result = await desktop.saveFile({
          content: serializeJff(snapshot),
          name: snapshot.name,
-         path,
+         path: destination,
          kind: 'jff',
       });
    } catch (error) {
-      if (!path) throw error;
+      if (!destination || options.fallbackToPicker === false) throw error;
       choosesPath = true;
       result = await desktop.saveFile({
          content: serializeJff(snapshot),

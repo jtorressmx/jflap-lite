@@ -26,14 +26,11 @@ export function CloseDocumentDialog({
    return (
       <Modal
          title="Cerrar documento"
-         subtitle={`«${name}» tiene cambios sin exportar a .jff.`}
+         subtitle={`«${name}» tiene cambios sin guardar.`}
          onClose={onClose}
       >
          <ModalBody>
-            <p>
-               El espacio de trabajo se guarda en este dispositivo. Guarda un archivo .jff para
-               conservar tus cambios.
-            </p>
+            <p>Si cierras ahora, perderás esos cambios.</p>
          </ModalBody>
          <ModalFooter>
             <Button onClick={onClose}>Cancelar</Button>

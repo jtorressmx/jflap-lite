@@ -1,7 +1,7 @@
 import type { Notify, ShowDialog } from '@/app/types';
 import type { GraphController } from '@/app/useGraphEditor';
 import type { MachineToolsController } from '@/app/useMachineTools';
-import { FiActivity, FiLayers } from '@/components/icons';
+import { FiActivity } from '@/components/icons';
 import { Menu } from '@/components/ui/Menu';
 import type { Machine } from '@/domain/model';
 import { machineKind } from '@/domain/model';
@@ -82,53 +82,37 @@ export function MachineMenus({
                   : []),
             ]}
          />
-         <Menu
-            label="Convertir"
-            entries={[
-               ...(finite
-                  ? [
-                       {
-                          label: 'Convertir AFN a AFD',
-                          onClick: () => convert('dfa'),
-                       },
-                       {
-                          label: 'Minimizar autómata',
-                          onClick: () => convert('minimize'),
-                       },
-                       {
-                          label: 'Añadir estado trampa',
-                          onClick: () => convert('trap'),
-                       },
-                       {
-                          label: 'Convertir a gramática regular',
-                          onClick: () => convert('grammar'),
-                       },
-                       {
-                          label: 'Convertir a expresión regular',
-                          onClick: () => convert('regex'),
-                       },
-                       {
-                          label: 'Expandir rangos y cadenas',
-                          onClick: () => {
-                             normalize();
-                          },
-                       },
-                       {
-                          label: 'Comprobar equivalencia…',
-                          onClick: () => {
-                             setComparison('');
-                             setDialog({ type: 'equivalence' });
-                          },
-                       },
-                    ]
-                  : []),
-               {
-                  label: 'Combinar máquinas…',
-                  icon: <FiLayers />,
-                  onClick: () => setDialog({ type: 'combine' }),
-               },
-            ]}
-         />
+         {finite && (
+            <Menu
+               label="Convertir"
+               entries={[
+                  {
+                     label: 'Convertir AFN a AFD',
+                     onClick: () => convert('dfa'),
+                  },
+                  {
+                     label: 'Minimizar autómata',
+                     onClick: () => convert('minimize'),
+                  },
+                  {
+                     label: 'Añadir estado trampa',
+                     onClick: () => convert('trap'),
+                  },
+                  {
+                     label: 'Convertir a gramática regular',
+                     onClick: () => convert('grammar'),
+                  },
+                  {
+                     label: 'Convertir a expresión regular',
+                     onClick: () => convert('regex'),
+                  },
+                  {
+                     label: 'Expandir rangos y cadenas',
+                     onClick: normalize,
+                  },
+               ]}
+            />
+         )}
       </>
    );
 }

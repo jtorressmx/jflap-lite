@@ -17,7 +17,7 @@ if (!hasLock) app.quit();
 let mainWindow = null;
 let rendererReady = false;
 let initialFiles = [];
-let documentState = { name: '', dirty: false, dirtyCount: 0 };
+let documentState = { name: '', dirty: false, dirtyCount: 0, autoSaveOnBlur: false };
 let closePrompt = false;
 let pendingClose = false;
 let workspaceWrite = Promise.resolve();
@@ -48,22 +48,52 @@ async function saveMachineFile(destination, content) {
    }
 }
 const recentFile = () => path.join(app.getPath('userData'), 'recent-files.json');
+/**
+ * Checks the stored shape of a recent-file record.
+ * @param {unknown} value - Candidate record to validate.
+ * @returns {value is {path: string, openedAt?: unknown}} Whether the record has a valid path.
+ */
+function isRecentFileEntry(value) {
+   return (
+      typeof value === 'object' &&
+      value !== null &&
+      'path' in value &&
+      typeof value.path === 'string'
+   );
+}
+/**
+ * Reads and validates the recent-file history.
+ * Takes no input.
+ * @returns {Promise<Array<{path: string, name: string, openedAt?: string}>>} Valid recent files.
+ */
 async function readRecentFiles() {
    try {
-      const entries = JSON.parse(await fs.readFile(recentFile(), 'utf8'));
-      return Array.isArray(entries)
-         ? entries
-              .filter(
-                 (entry) =>
-                    typeof entry?.path === 'string' &&
-                    path.isAbsolute(entry.path) &&
-                    /\.(jff|xml)$/i.test(entry.path)
-              )
-              .map((entry) => ({
-                 path: entry.path,
-                 name: path.basename(entry.path),
-              }))
-         : [];
+      const parsed = /** @type {unknown} */ (JSON.parse(await fs.readFile(recentFile(), 'utf8')));
+      if (!Array.isArray(parsed)) return [];
+      const entries = /** @type {unknown[]} */ (parsed);
+      /** @type {Array<{path: string, name: string, openedAt?: string}>} */
+      const recent = [];
+      for (const entry of entries) {
+         if (
+            !isRecentFileEntry(entry) ||
+            !path.isAbsolute(entry.path) ||
+            !/\.(jff|xml)$/i.test(entry.path)
+         ) {
+            continue;
+         }
+         const openedAt =
+            'openedAt' in entry &&
+            typeof entry.openedAt === 'string' &&
+            Number.isFinite(Date.parse(entry.openedAt))
+               ? entry.openedAt
+               : undefined;
+         recent.push({
+            path: entry.path,
+            name: path.basename(entry.path),
+            ...(openedAt ? { openedAt } : {}),
+         });
+      }
+      return recent;
    } catch (error) {
       if (error.code === 'ENOENT' || error instanceof SyntaxError) return [];
       throw error;
@@ -100,16 +130,25 @@ function pruneRecentFiles() {
 /**
  * Records a machine file without blocking the document operation on a history failure.
  * @param {string} file - Absolute path of the opened or saved file.
+ * @param {boolean} [opened] - Whether this operation opened the file.
  * @returns {Promise<boolean>} Whether the history entry was stored.
  */
-function rememberFile(file) {
+function rememberFile(file, opened = false) {
    if (!/\.(jff|xml)$/i.test(file)) return Promise.resolve(false);
    recentWrite = recentWrite
       .catch(() => {})
       .then(async () => {
          const previous = await readRecentFiles();
+         const previousEntry = previous.find(
+            (entry) => policy.canonicalKey(entry.path) === policy.canonicalKey(file)
+         );
+         const openedAt = opened ? new Date().toISOString() : previousEntry?.openedAt;
          const entries = [
-            { path: file, name: path.basename(file) },
+            {
+               path: file,
+               name: path.basename(file),
+               ...(openedAt ? { openedAt } : {}),
+            },
             ...previous.filter(
                (entry) => policy.canonicalKey(entry.path) !== policy.canonicalKey(file)
             ),
@@ -170,6 +209,11 @@ function handle(channel, listener) {
    });
 }
 
+/**
+ * Reads selected machine files and records their opening time.
+ * @param {string[]} files - Candidate absolute file paths.
+ * @returns {Promise<Array<{path: string, name: string, content: string}>>} Opened machine files.
+ */
 async function readSelected(files) {
    const opened = [];
    for (const candidate of files) {
@@ -180,9 +224,41 @@ async function readSelected(files) {
       const content = await fs.readFile(real, 'utf8');
       selectedPaths.set(policy.canonicalKey(real), real);
       opened.push({ path: real, name: path.basename(real), content });
-      await rememberFile(real);
+      await rememberFile(real, true);
    }
    return opened;
+}
+
+/**
+ * Restores save access for a file previously opened by the application.
+ * @param {unknown} candidate - Candidate path stored in the workspace.
+ * @returns {Promise<boolean>} Whether the path belongs to a recent machine file.
+ */
+async function authorizeSavePath(candidate) {
+   if (
+      typeof candidate !== 'string' ||
+      !path.isAbsolute(candidate) ||
+      !/\.(jff|xml)$/i.test(candidate)
+   ) {
+      return false;
+   }
+   const key = policy.canonicalKey(candidate);
+   if (selectedPaths.has(key)) return true;
+   const recent = await pruneRecentFiles();
+   const entry = recent.find((item) => policy.canonicalKey(item.path) === key);
+   if (!entry) return false;
+   try {
+      const real = await fs.realpath(entry.path);
+      if (!(await fs.stat(real)).isFile()) return false;
+      selectedPaths.set(policy.canonicalKey(real), real);
+      return true;
+   } catch (error) {
+      if (isMissingPathError(error)) {
+         await removeRecentFile(entry.path);
+         return false;
+      }
+      throw error;
+   }
 }
 
 async function receiveFiles(arguments_) {
@@ -290,6 +366,7 @@ function registerBridge() {
          return null;
       }
    });
+   handle('desktop:authorize-save-path', authorizeSavePath);
    handle('desktop:open-files', async (options = {}) => {
       const kind = options?.kind === 'text' ? 'text' : 'machine';
       const result = await dialog.showOpenDialog(mainWindow, {
@@ -312,8 +389,7 @@ function registerBridge() {
       if (request?.path) {
          if (typeof request.path !== 'string') throw new Error('Ruta de guardado no válida.');
          file = selectedPaths.get(policy.canonicalKey(request.path));
-         if (!file)
-            throw new Error('Abre el archivo o utiliza Guardar como para elegir su destino.');
+         if (!file) file = await chooseSave(request?.name, kind);
       } else file = await chooseSave(request?.name, kind);
       if (!file) return { canceled: true };
       if (kind === 'jff' || kind === 'xml') await saveMachineFile(file, content);
@@ -339,28 +415,17 @@ function registerBridge() {
          printWindow.destroy();
       }
    });
-   handle('desktop:export-pdf', async (svg, name) => {
-      const file = await chooseSave(name, 'pdf');
-      if (!file) return { canceled: true };
-      const printWindow = await createPrintWindow(svg, name);
-      try {
-         const pdf = await printWindow.webContents.printToPDF({
-            landscape: true,
-            printBackground: true,
-            preferCSSPageSize: true,
-         });
-         await fs.writeFile(file, pdf);
-         return { path: file, canceled: false };
-      } finally {
-         printWindow.destroy();
-      }
-   });
    handle('desktop:initial-files', () => {
       rendererReady = true;
       const files = initialFiles;
       initialFiles = [];
       return files;
    });
+   /**
+    * Updates the native window status from the renderer workspace.
+    * @param {{name?: unknown, dirty?: unknown, dirtyCount?: unknown, autoSaveOnBlur?: unknown}} state - Renderer document status.
+    * @returns {void} No value.
+    */
    handle('desktop:document-state', (state) => {
       const count =
          Number.isSafeInteger(state?.dirtyCount) && state.dirtyCount >= 0
@@ -372,6 +437,10 @@ function registerBridge() {
          name: policy.text(state?.name ?? '', 1000),
          dirty: state?.dirty === true || count > 0,
          dirtyCount: count,
+         autoSaveOnBlur:
+            typeof state?.autoSaveOnBlur === 'boolean'
+               ? state.autoSaveOnBlur
+               : documentState.autoSaveOnBlur,
       };
       mainWindow.setTitle(
          documentState.name
@@ -462,12 +531,22 @@ async function createWindow() {
       mainWindow.show();
       mainWindow.focus();
    });
+   /**
+    * Resolves automatic saving or prompts before closing a changed workspace.
+    * @param {import('electron').Event} event - Native close event.
+    * @returns {Promise<void>} Resolves after the close decision is processed.
+    */
    mainWindow.on('close', async (event) => {
       if (!documentState.dirty) return;
       event.preventDefault();
       if (closePrompt || pendingClose) return;
       closePrompt = true;
       try {
+         if (documentState.autoSaveOnBlur) {
+            pendingClose = true;
+            command('save-all');
+            return;
+         }
          const message =
             documentState.dirtyCount > 1
                ? `Hay cambios sin guardar en ${documentState.dirtyCount} documentos. ¿Quieres guardarlos antes de salir?`

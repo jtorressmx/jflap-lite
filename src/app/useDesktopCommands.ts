@@ -9,6 +9,7 @@ type DesktopCommands = Record<DesktopCommand, () => void | Promise<unknown>>;
  * @param options.commands - Action for each supported native command.
  * @param options.name - Window document name, empty on the home page.
  * @param options.dirtyCount - Number of open documents with unsaved changes.
+ * @param options.autoSaveOnBlur - Whether the native window saves changed files automatically.
  * @param options.notify - Receives a safe message when a native operation fails.
  * @returns No value.
  */
@@ -16,11 +17,13 @@ export function useDesktopCommands({
    commands,
    name,
    dirtyCount,
+   autoSaveOnBlur,
    notify,
 }: {
    commands: DesktopCommands;
    name: string;
    dirtyCount: number;
+   autoSaveOnBlur: boolean;
    notify: Notify;
 }) {
    const onCommand = useEffectEvent(async (command: DesktopCommand) => {
@@ -39,7 +42,7 @@ export function useDesktopCommands({
    );
    useEffect(() => {
       void window.desktop
-         .setDocumentState({ name, dirty: dirtyCount > 0, dirtyCount })
+         .setDocumentState({ name, dirty: dirtyCount > 0, dirtyCount, autoSaveOnBlur })
          .catch(() => notify('No se pudo actualizar el estado de la ventana.'));
-   }, [name, dirtyCount, notify]);
+   }, [name, dirtyCount, autoSaveOnBlur, notify]);
 }

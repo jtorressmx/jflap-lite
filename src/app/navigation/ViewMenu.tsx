@@ -5,11 +5,11 @@ import type { MenuEntry } from '@/components/ui/Menu';
 import { Menu } from '@/components/ui/Menu';
 
 /**
- * Shows layout, label, and grid commands.
+ * Shows graph layout and display commands.
  * @param props - Component options.
- * @param props.finite - Whether finite-automaton layouts are available.
+ * @param props.finite - Whether finite-automaton layout actions are available.
  * @param props.settings - Label and grid preferences.
- * @param props.tools - Layout snapshot and dialog actions.
+ * @param props.tools - Saved-layout actions.
  * @param props.fit - Fits the graph to its canvas.
  * @returns The rendered interface.
  */
@@ -21,11 +21,11 @@ export function ViewMenu({
 }: {
    finite: boolean;
    settings: Pick<AppSettings, 'showLabels' | 'setShowLabels' | 'grid' | 'setGrid'>;
-   tools: Pick<MachineToolsController, 'saveLayout' | 'restoreSavedLayout' | 'setLayoutOpen'>;
+   tools: Pick<MachineToolsController, 'saveLayout' | 'restoreSavedLayout'>;
    fit: () => void;
 }) {
    const { showLabels, setShowLabels, grid, setGrid } = settings;
-   const { saveLayout, restoreSavedLayout, setLayoutOpen } = tools;
+   const { saveLayout, restoreSavedLayout } = tools;
    const viewMenu: MenuEntry[] = [
       ...(finite
          ? [
@@ -36,10 +36,6 @@ export function ViewMenu({
               {
                  label: 'Restaurar distribución guardada',
                  onClick: restoreSavedLayout,
-              },
-              {
-                 label: 'Distribución y transformaciones…',
-                 onClick: () => setLayoutOpen(true),
               },
            ]
          : []),

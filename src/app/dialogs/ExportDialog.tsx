@@ -4,10 +4,10 @@ import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
 import type { Machine } from '@/domain/model';
-import { exportImage, exportPdf } from '@/lib/files';
+import { exportImage, printMachine } from '@/lib/files';
 
 /**
- * Exports the active machine as an image or PDF.
+ * Exports the active machine as an image or opens the print dialog.
  * @param props - Component options.
  * @param props.machine - Active machine snapshot to export.
  * @param props.onClose - Closes the export dialog.
@@ -26,11 +26,11 @@ export function ExportDialog({
    return (
       <Modal
          title="Exportar diagrama"
-         subtitle="Elige un formato para compartir tu máquina."
+         subtitle="Elige un formato de imagen o imprime el diagrama."
          onClose={onClose}
       >
          <ModalBody className="export-options">
-            {(['svg', 'png', 'jpeg', 'gif', 'bmp'] as const).map((format) => (
+            {(['svg', 'png'] as const).map((format) => (
                <Button
                   key={format}
                   onClick={() => {
@@ -49,32 +49,26 @@ export function ExportDialog({
                   }}
                >
                   <FiDownload />
-                  <span>{format === 'jpeg' ? 'JPG' : format.toUpperCase()}</span>
+                  <span>{format.toUpperCase()}</span>
                   <span className="muted">
-                     {format === 'svg'
-                        ? 'Vectorial · editable'
-                        : format === 'png'
-                          ? 'Imagen · alta resolución'
-                          : 'Imagen'}
+                     {format === 'svg' ? 'Vectorial · editable' : 'Imagen · alta resolución'}
                   </span>
                </Button>
             ))}
             <Button
                onClick={() => {
-                  void exportPdf(machine)
-                     .then((saved) => {
-                        if (saved) onClose();
-                     })
+                  void printMachine(machine)
+                     .then(onClose)
                      .catch(() =>
                         notify(
-                           'No se pudo exportar el diagrama. Elige otra ubicación e inténtalo de nuevo.'
+                           'No se pudo abrir el diálogo de impresión. Permite las ventanas emergentes e inténtalo de nuevo.'
                         )
                      );
                }}
             >
                <FiPrinter />
                <span>PDF</span>
-               <span className="muted">Usar el diálogo de impresión</span>
+               <span className="muted">Imprimir o guardar como PDF</span>
             </Button>
          </ModalBody>
       </Modal>

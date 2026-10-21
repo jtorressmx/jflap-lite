@@ -11,14 +11,15 @@ function subscribe(channel, callback) {
 contextBridge.exposeInMainWorld(
    'desktop',
    Object.freeze({
+      isDesktop: true,
       platform: process.platform,
       openFiles: (options) => ipcRenderer.invoke('desktop:open-files', options),
       getRecentFiles: () => ipcRenderer.invoke('desktop:recent-files'),
       removeRecentFile: (path) => ipcRenderer.invoke('desktop:remove-recent-file', path),
       openRecentFile: (path) => ipcRenderer.invoke('desktop:open-recent-file', path),
       saveFile: (request) => ipcRenderer.invoke('desktop:save-file', request),
+      authorizeSavePath: (path) => ipcRenderer.invoke('desktop:authorize-save-path', path),
       exportFile: (request) => ipcRenderer.invoke('desktop:export-file', request),
-      exportPdf: (svg, name) => ipcRenderer.invoke('desktop:export-pdf', svg, name),
       print: (svg, name) => ipcRenderer.invoke('desktop:print', svg, name),
       getInitialFiles: () => ipcRenderer.invoke('desktop:initial-files'),
       onOpenFiles: (callback) => subscribe('desktop:open-files', callback),

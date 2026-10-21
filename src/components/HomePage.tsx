@@ -1,3 +1,5 @@
+import type { ReactElement } from 'react';
+
 import { DocumentListItem } from '@/components/DocumentListItem';
 import { FiCpu, FiFolder, FiGitBranch, FiTrash2, FiX } from '@/components/icons';
 import { ActionCard } from '@/components/ui/ActionCard';
@@ -10,13 +12,16 @@ import { machineTitle } from '@/domain/model';
  * @param props - Component options.
  * @param props.onCreate - Receives the machine kind whose document should be created.
  * @param props.onOpen - Requests opening the file picker; receives no arguments.
- * @param props.documents - Open documents available to resume.
+ * @param props.documents - Documents currently open in the workspace.
  * @param props.documents[].id - Open document identifier.
  * @param props.documents[].machine - Machine contained in the document.
  * @param props.documents[].dirty - Whether the document contains unsaved changes.
  * @param props.onResume - Receives the identifier of the document to activate.
  * @param props.onCloseDocument - Receives the identifier of the document to close.
  * @param props.recentFiles - Recent files available to open.
+ * @param props.recentFiles[].path - File path used to identify the recent file.
+ * @param props.recentFiles[].name - Display name of the recent file.
+ * @param props.recentFiles[].openedAt - Time when the file was last opened, when known.
  * @param props.onRecent - Receives the recent file requested for opening.
  * @param props.onRemoveRecent - Receives the file to remove from the recent list.
  * @returns The home page with available editors and documents.
@@ -40,6 +45,41 @@ export default function HomePage({
    onRecent: (file: DesktopRecentFile) => void;
    onRemoveRecent: (file: DesktopRecentFile) => void;
 }) {
+   /** Renders a recent file row with its last opening time when available.
+    * @param file - Recent file to display.
+    * @param file.path - File path used to identify and open the file.
+    * @param file.name - Display name of the file.
+    * @param file.openedAt - ISO timestamp of the latest opening, when known.
+    * @returns The recent file row.
+    */
+   function renderRecentFile(file: DesktopRecentFile): ReactElement {
+      const date = file.openedAt ? new Date(file.openedAt) : null;
+      const openedAt =
+         date && Number.isFinite(date.getTime())
+            ? new Intl.DateTimeFormat('es-MX', { dateStyle: 'medium', timeStyle: 'short' }).format(
+                 date
+              )
+            : undefined;
+      return (
+         <DocumentListItem
+            key={file.path}
+            className="home-recent-row"
+            name={file.name}
+            detail={
+               openedAt ? (
+                  <time dateTime={file.openedAt}>{`Abierto el ${openedAt}`}</time>
+               ) : undefined
+            }
+            title={file.path}
+            onOpen={() => onRecent(file)}
+            onRemove={() => onRemoveRecent(file)}
+            removeLabel={`Quitar ${file.name} de recientes`}
+            removeIcon={<FiTrash2 />}
+            removeVariant="danger"
+         />
+      );
+   }
+
    return (
       <main className="home-page">
          <header className="home-heading">
@@ -67,27 +107,9 @@ export default function HomePage({
                onClick={() => onCreate('turing')}
             />
          </div>
-         {recentFiles.length > 0 && (
-            <section className="home-documents home-recents" aria-label="Archivos recientes">
-               <h2>Recientes</h2>
-               {recentFiles.map((file) => (
-                  <DocumentListItem
-                     key={file.path}
-                     className="home-recent-row"
-                     name={file.name}
-                     title={file.path}
-                     onOpen={() => onRecent(file)}
-                     onRemove={() => onRemoveRecent(file)}
-                     removeLabel={`Quitar ${file.name} de recientes`}
-                     removeIcon={<FiTrash2 />}
-                     removeVariant="danger"
-                  />
-               ))}
-            </section>
-         )}
          {documents.length > 0 && (
-            <section className="home-documents" aria-label="Continuar trabajando">
-               <h2>Continuar trabajando</h2>
+            <section className="home-documents" aria-label="Abiertos ahora">
+               <h2>Abiertos ahora</h2>
                {documents.map((doc) => (
                   <DocumentListItem
                      key={doc.id}
@@ -104,6 +126,12 @@ export default function HomePage({
                      removeIcon={<FiX />}
                   />
                ))}
+            </section>
+         )}
+         {recentFiles.length > 0 && (
+            <section className="home-documents home-recents" aria-label="Archivos recientes">
+               <h2>Recientes</h2>
+               {recentFiles.map(renderRecentFile)}
             </section>
          )}
       </main>

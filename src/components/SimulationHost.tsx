@@ -1,5 +1,6 @@
 import { useCallback } from 'react';
 
+import type { SimulationAction } from '@/app/types';
 import FiniteSimulationPanel from '@/components/FiniteSimulationPanel';
 import SimulationPanel, { type SimulationGuide } from '@/components/SimulationPanel';
 import { machineKind } from '@/domain/model';
@@ -27,7 +28,7 @@ export function SimulationHost({
    enabled: boolean;
    request?: {
       id: number;
-      action: 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace' | 'closure' | 'state';
+      action: SimulationAction;
    };
 }) {
    const report = useCallback(

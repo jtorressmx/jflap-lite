@@ -264,50 +264,12 @@ async function rasterize(machine: Machine): Promise<HTMLCanvasElement> {
       URL.revokeObjectURL(url);
    }
 }
-export async function exportImage(
-   machine: Machine,
-   format: 'svg' | 'png' | 'jpeg' | 'bmp' | 'gif'
-) {
+export async function exportImage(machine: Machine, format: 'svg' | 'png') {
    const name = machine.name.replace(/\.jff$/i, '');
    if (format === 'svg') {
       return download(machineSvg(machine), `${name}.svg`, 'image/svg+xml');
    }
    const canvas = await rasterize(machine);
-   if (format === 'bmp') {
-      const { width: w, height: h } = canvas;
-      const data = canvas.getContext('2d')!.getImageData(0, 0, w, h).data;
-      const stride = (w * 3 + 3) & ~3;
-      const buffer = new ArrayBuffer(54 + stride * h);
-      const view = new DataView(buffer);
-      view.setUint16(0, 0x4d42, true);
-      view.setUint32(2, buffer.byteLength, true);
-      view.setUint32(10, 54, true);
-      view.setUint32(14, 40, true);
-      view.setInt32(18, w, true);
-      view.setInt32(22, h, true);
-      view.setUint16(26, 1, true);
-      view.setUint16(28, 24, true);
-      for (let y = 0; y < h; y++)
-         for (let x = 0; x < w; x++) {
-            const p = (y * w + x) * 4,
-               o = 54 + (h - 1 - y) * stride + x * 3;
-            view.setUint8(o, data[p + 2]);
-            view.setUint8(o + 1, data[p + 1]);
-            view.setUint8(o + 2, data[p]);
-         }
-      return download(buffer, `${name}.bmp`, 'image/bmp');
-   }
-   if (format === 'gif') {
-      const { GIFEncoder, quantize, applyPalette } = await import('gifenc');
-      const pixels = canvas.getContext('2d')!.getImageData(0, 0, canvas.width, canvas.height).data;
-      const palette = quantize(pixels, 256);
-      const gif = GIFEncoder();
-      gif.writeFrame(applyPalette(pixels, palette), canvas.width, canvas.height, {
-         palette,
-      });
-      gif.finish();
-      return download(new Uint8Array(gif.bytes()).buffer, `${name}.gif`, 'image/gif');
-   }
    const blob = await new Promise<Blob>((resolve, reject) =>
       canvas.toBlob(
          (b) => (b ? resolve(b) : reject(new Error('No se pudo generar la imagen.'))),
@@ -315,13 +277,10 @@ export async function exportImage(
          0.95
       )
    );
-   return download(blob, `${name}.${format === 'jpeg' ? 'jpg' : format}`, blob.type);
+   return download(blob, `${name}.png`, blob.type);
 }
 export async function printMachine(machine: Machine) {
    const result = await window.desktop.print(machineSvg(machine), machine.name);
    if (!result.success && result.error && result.error !== 'cancelled')
       throw new Error(result.error);
-}
-export async function exportPdf(machine: Machine) {
-   return !(await window.desktop.exportPdf(machineSvg(machine), machine.name)).canceled;
 }

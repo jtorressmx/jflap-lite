@@ -10,11 +10,6 @@ const FORMATS = {
    txt: { name: 'Texto', extensions: ['txt'] },
    svg: { name: 'Imagen SVG', extensions: ['svg'] },
    png: { name: 'Imagen PNG', extensions: ['png'] },
-   jpeg: { name: 'Imagen JPEG', extensions: ['jpg', 'jpeg'] },
-   jpg: { name: 'Imagen JPEG', extensions: ['jpg', 'jpeg'] },
-   gif: { name: 'Imagen GIF', extensions: ['gif'] },
-   bmp: { name: 'Imagen BMP', extensions: ['bmp'] },
-   pdf: { name: 'Documento PDF', extensions: ['pdf'] },
 };
 
 function text(value, maximum = MAX_DOCUMENT_BYTES) {
@@ -114,12 +109,19 @@ function devServer(value) {
    return url.href;
 }
 
+/**
+ * Checks whether a URL may be opened outside the application.
+ * @param {unknown} value - URL requested by the renderer.
+ * @returns {boolean} Whether the URL belongs to an approved site.
+ */
 function externalLink(value) {
+   if (typeof value !== 'string') return false;
    try {
       const url = new URL(value);
       return (
          url.protocol === 'https:' &&
-         ['jflap.org', 'www.jflap.org'].includes(url.hostname) &&
+         (['jflap.org', 'www.jflap.org'].includes(url.hostname) ||
+            (url.hostname === 'github.com' && url.pathname === '/jtorressmx/jflap-lite')) &&
          !url.username &&
          !url.password
       );

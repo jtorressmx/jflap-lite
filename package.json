@@ -25,7 +25,6 @@
       "electron-builder": "^26.15.3",
       "eslint": "^10.13.0",
       "eslint-plugin-react-hooks": "^7.1.1",
-      "gifenc": "^1.0.3",
       "globals": "^17.13.0",
       "prettier": "^3.9.10",
       "react": "^19.2.0",

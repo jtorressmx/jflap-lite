@@ -13,7 +13,27 @@ import { defaultPreferences } from '@/domain/model';
  * Shows appearance and execution preferences.
  * @param props - Component options.
  * @param props.finite - Whether finite-automaton settings are active.
- * @param props.settings - Appearance and simulation preferences and setters.
+ * @param props.settings - Appearance, simulation, and file preferences and setters.
+ * @param props.settings.preferences - Machine execution behavior.
+ * @param props.settings.setPreferences - Receives the next machine execution behavior.
+ * @param props.settings.theme - Selected application theme.
+ * @param props.settings.setTheme - Receives the requested application theme.
+ * @param props.settings.accent - Selected accent color.
+ * @param props.settings.setAccent - Receives the requested accent color.
+ * @param props.settings.showLabels - Whether state labels are visible.
+ * @param props.settings.setShowLabels - Receives the requested label visibility.
+ * @param props.settings.grid - Whether the canvas grid is visible.
+ * @param props.settings.setGrid - Receives the requested grid visibility.
+ * @param props.settings.autoZoom - Whether the graph view adjusts automatically.
+ * @param props.settings.setAutoZoom - Receives the requested automatic zoom behavior.
+ * @param props.settings.palette - Selected graph palette.
+ * @param props.settings.setPalette - Receives the requested graph palette.
+ * @param props.settings.emptySymbol - Selected empty-string symbol.
+ * @param props.settings.setEmptySymbol - Receives the requested empty-string symbol.
+ * @param props.settings.stateScale - Current state size multiplier.
+ * @param props.settings.setStateScale - Receives the requested state size multiplier.
+ * @param props.settings.autoSaveOnBlur - Whether changed files save when the app loses focus.
+ * @param props.settings.setAutoSaveOnBlur - Receives the requested automatic-save behavior.
  * @param props.historyLimit - Maximum retained undo actions.
  * @param props.setHistoryLimit - Receives the requested undo history limit.
  * @param props.onClose - Closes the preferences dialog.
@@ -51,6 +71,8 @@ export function SettingsDialog({
       setEmptySymbol,
       stateScale,
       setStateScale,
+      autoSaveOnBlur,
+      setAutoSaveOnBlur,
    } = settings;
    return (
       <Modal
@@ -60,6 +82,19 @@ export function SettingsDialog({
          size="fullscreen"
       >
          <ModalBody className="settings-body">
+            {window.desktop.isDesktop && (
+               <section className="settings-section">
+                  <h3>Archivos</h3>
+                  <div className="settings-options">
+                     <Toggle
+                        label="Guardar al cambiar de pantalla"
+                        description="Guarda automáticamente al salir del editor o cambiar a otra aplicación."
+                        checked={autoSaveOnBlur}
+                        onChange={setAutoSaveOnBlur}
+                     />
+                  </div>
+               </section>
+            )}
             {!finite && (
                <section className="settings-section">
                   <h3>Máquina de Turing</h3>

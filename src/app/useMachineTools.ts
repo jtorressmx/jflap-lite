@@ -19,7 +19,7 @@ type MachineToolOptions = {
    emptySymbol: string;
 };
 /**
- * Coordinates machine conversions, equivalence, combination, and layout snapshots.
+ * Coordinates machine conversions, equivalence, and combination.
  * @param options - Machine tool dependencies.
  * @param options.active - Active document or inactive workspace fallback.
  * @param options.change - Receives an updated machine.
@@ -41,7 +41,6 @@ export function useMachineTools({
    const [finiteTool, setFiniteTool] = useState<FiniteTool | null>(null);
    const [comparison, setComparison] = useState('');
    const [importedCombine, setImportedCombine] = useState<Machine | null>(null);
-   const [layoutOpen, setLayoutOpen] = useState(false);
    const savedLayouts = useRef(new Map<string, Machine>());
    /**
     * Opens a conversion after validating its source automaton.
@@ -159,8 +158,6 @@ export function useMachineTools({
       setComparison,
       importedCombine,
       setImportedCombine,
-      layoutOpen,
-      setLayoutOpen,
       convert,
       compare,
       openComparison,

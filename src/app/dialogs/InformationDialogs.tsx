@@ -56,6 +56,14 @@ export function InformationDialogs({
                      Esta migración parte del código de JFLAP 7.1 de Susan H. Rodger y los
                      colaboradores de Duke University. Copyright © 2002–2009.
                   </p>
+                  <p>Migración a escritorio por José G. Torres.</p>
+                  <a
+                     href="https://github.com/jtorressmx/jflap-lite"
+                     target="_blank"
+                     rel="noreferrer"
+                  >
+                     Código fuente en GitHub <FiExternalLink />
+                  </a>
                   <Button variant="subtle" onClick={() => setDialog({ type: 'license' })}>
                      Leer la licencia original <FiExternalLink />
                   </Button>

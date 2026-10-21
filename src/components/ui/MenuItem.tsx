@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { useEffect, useRef } from 'react';
 
-import { FiCheck, FiX } from '@/components/icons';
+import { FiCheck } from '@/components/icons';
+import { DocumentNameEditor } from '@/components/ui/DocumentNameEditor';
 import { IconButton } from '@/components/ui/IconButton';
 import { shortcutLabel } from '@/lib/shortcuts';
 
@@ -74,33 +75,7 @@ export function MenuItem({ entry, onClose }: { entry: MenuAction; onClose: () =>
             role="none"
             onContextMenu={(event) => event.preventDefault()}
          >
-            <form
-               className="menu-document-editor"
-               aria-label="Renombrar archivo"
-               onSubmit={(event) => {
-                  event.preventDefault();
-                  entry.editor?.onSave();
-               }}
-            >
-               <input
-                  aria-label="Nombre del archivo; se conserva la extensión .jff"
-                  autoFocus
-                  value={entry.editor.value}
-                  onChange={(event) => entry.editor?.onChange(event.currentTarget.value)}
-                  onKeyDown={(event) => {
-                     if (event.key !== 'Escape') return;
-                     event.preventDefault();
-                     event.stopPropagation();
-                     entry.editor?.onCancel();
-                  }}
-               />
-               <IconButton label="Guardar nombre" type="submit">
-                  <FiCheck />
-               </IconButton>
-               <IconButton label="Cancelar renombrado" onClick={entry.editor.onCancel}>
-                  <FiX />
-               </IconButton>
-            </form>
+            <DocumentNameEditor {...entry.editor} />
          </div>
       );
    }
