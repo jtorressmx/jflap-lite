@@ -1116,7 +1116,13 @@
       @apply text-danger bg-danger-soft;
    }
    .menu-item-icon {
-      @apply flex w-5 text-secondary;
+      @apply flex w-5 shrink-0 items-center text-secondary;
+   }
+   .menu-item-icon.has-selection-marker {
+      @apply w-10 gap-1;
+   }
+   .menu-item-selection-marker {
+      @apply block flex-none w-1 h-1 rounded-full bg-accent;
    }
    .menu-popover kbd {
       @apply ml-auto pl-6;
@@ -1581,6 +1587,22 @@
 }
 .document-name {
    @apply overflow-hidden text-ellipsis whitespace-nowrap text-xs min-w-0;
+}
+.menu-entry-editing {
+   @apply w-full;
+}
+.menu-document-editor {
+   @apply flex items-center gap-1 w-full min-w-0 p-1;
+}
+.menu-document-editor input {
+   @apply flex-1 min-w-0 min-h-7 py-1 px-2 border border-solid border-border-strong rounded-sm bg-surface text-sm text-foreground outline-none;
+}
+.menu-document-editor input:focus-visible {
+   outline: var(--focus-ring);
+   outline-offset: var(--focus-offset);
+}
+.menu-document-editor .icon-button {
+   @apply w-7 min-w-7 min-h-7 h-7;
 }
 .active-document .icon-button {
    @apply w-7 min-h-7 h-7;

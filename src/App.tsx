@@ -12,6 +12,7 @@ import {
    FiCircle,
    FiCode,
    FiCopy,
+   FiCpu,
    FiDownload,
    FiEdit2,
    FiExternalLink,
@@ -143,14 +144,82 @@ export default function App() {
    const machine = active.machine;
    const finite = machineKind(machine) === 'fa';
    const [home, setHome] = useState(true);
+   const [renamingDocumentId, setRenamingDocumentId] = useState<string | null>(null);
+   const [renameDraft, setRenameDraft] = useState('');
    const [comparison, setComparison] = useState('');
    const [recentFiles, setRecentFiles] = useState<DesktopRecentFile[]>([]);
+   /**
+    * Opens a blank document and reuses an empty draft of the same type.
+    * @param kind - Machine type to open.
+    * @returns No value.
+    */
    function createDocument(kind: MachineKind) {
-      workspace.open(kind === 'fa' ? emptyFinite() : emptyMachine('Sin título'));
+      const emptyDraft = workspace.documents.find(
+         (doc) =>
+            !doc.path &&
+            machineKind(doc.machine) === kind &&
+            doc.machine.states.length === 0 &&
+            doc.machine.transitions.length === 0 &&
+            doc.machine.notes.length === 0
+      );
+      if (emptyDraft) workspace.setActiveId(emptyDraft.id);
+      else workspace.open(kind === 'fa' ? emptyFinite() : emptyMachine('Sin título'));
       setHome(false);
       setSimulationOpen(false);
    }
+   /**
+    * Starts inline renaming for a document.
+    * @param id - Identifier of the document to rename.
+    * @returns No value.
+    */
+   function startRenamingDocument(id: string) {
+      const document = workspace.documents.find((doc) => doc.id === id);
+      if (!document) return;
+      workspace.setActiveId(id);
+      setHome(false);
+      setRenamingDocumentId(id);
+      setRenameDraft(document.machine.name.replace(/\.jff$/i, ''));
+   }
+   /**
+    * Saves an inline document name after removing whitespace and its file extension.
+    * @param id - Identifier of the document being renamed.
+    * @param name - Requested document name.
+    * @returns No value.
+    */
+   function saveDocumentName(id: string, name: string) {
+      const document = workspace.documents.find((doc) => doc.id === id);
+      if (!document) {
+         setRenamingDocumentId(null);
+         return;
+      }
+      const normalizedName = name.trim().replace(/\.jff$/i, '');
+      if (!normalizedName) {
+         notify('Escribe un nombre para el archivo.');
+         return;
+      }
+      if (document.id !== workspace.active?.id) return;
+      change({ ...document.machine, name: normalizedName });
+      setRenamingDocumentId(null);
+      setRenameDraft('');
+   }
+   /**
+    * Cancels inline document renaming.
+    * @param id - Identifier of the document being renamed.
+    * @returns No value.
+    */
+   function cancelDocumentRename(id: string) {
+      if (renamingDocumentId !== id) return;
+      setRenamingDocumentId(null);
+      setRenameDraft('');
+   }
+   /**
+    * Activates a document and returns to its editor.
+    * @param id - Identifier of the document to resume.
+    * @returns No value.
+    */
    function resumeDocument(id: string) {
+      setRenamingDocumentId(null);
+      setRenameDraft('');
       workspace.setActiveId(id);
       setHome(false);
    }
@@ -976,7 +1045,6 @@ export default function App() {
               transition.to === transitionRulesTarget.to
         )
       : [];
-
    return (
       <div className={`app-shell ${grid ? '' : 'no-grid'}`}>
          <div className="menubar" role="navigation" aria-label="Menú de la aplicación">
@@ -1128,26 +1196,42 @@ export default function App() {
                            doc.machine.name.replace(/\.jff$/i, '') +
                            '.jff' +
                            (JSON.stringify(doc.machine) !== doc.saved ? ' •' : ''),
-                        icon: <FiFile />,
+                        icon: machineKind(doc.machine) === 'fa' ? <FiGitBranch /> : <FiCpu />,
                         checked: doc.id === active.id,
                         onClick: () => resumeDocument(doc.id),
-                        action: {
-                           label: `Cerrar ${doc.machine.name}`,
-                           icon: <FiX />,
-                           onClick: () => closeDocument(doc.id),
-                        },
+                        onDoubleClick: () => startRenamingDocument(doc.id),
+                        onContextMenu: () => startRenamingDocument(doc.id),
+                        editor:
+                           renamingDocumentId === doc.id
+                              ? {
+                                   value: renameDraft,
+                                   onChange: setRenameDraft,
+                                   onSave: () => saveDocumentName(doc.id, renameDraft),
+                                   onCancel: () => cancelDocumentRename(doc.id),
+                                }
+                              : undefined,
+                        actions: [
+                           {
+                              label: `Renombrar ${doc.machine.name}`,
+                              icon: <FiEdit2 />,
+                              onClick: () => startRenamingDocument(doc.id),
+                              keepOpen: true,
+                           },
+                           {
+                              label: `Cerrar ${doc.machine.name}`,
+                              icon: <FiX />,
+                              onClick: () => closeDocument(doc.id),
+                           },
+                        ],
                      }))}
                   >
-                     <FiFile />
+                     {finite ? <FiGitBranch /> : <FiCpu />}
                      <span className="document-name" title={active.path || machine.name}>
                         {machine.name.replace(/\.jff$/i, '')}.jff
                      </span>
                      {dirty && <span className="dirty-dot" aria-label="Cambios sin guardar" />}
                   </Menu>
-                  <IconButton
-                     label="Nueva máquina"
-                     onClick={() => createDocument(machineKind(machine))}
-                  >
+                  <IconButton label="Ir al inicio" onClick={() => setHome(true)}>
                      <FiPlus />
                   </IconButton>
                </div>

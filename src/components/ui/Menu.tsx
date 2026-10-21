@@ -14,12 +14,20 @@ export type MenuEntry = MenuAction | { separator: true };
  * @param [props.entries[].icon] - Optional action icon.
  * @param [props.entries[].shortcut] - Optional shortcut displayed using platform-specific keys.
  * @param props.entries[].onClick - Runs the selected action; receives no arguments.
+ * @param [props.entries[].onDoubleClick] - Runs after a double-click on the action; receives no arguments.
+ * @param [props.entries[].onContextMenu] - Runs after a right-click on the row; receives no arguments.
  * @param [props.entries[].disabled] - Disables the action when enabled.
- * @param [props.entries[].checked] - Shows a selection mark when enabled.
- * @param [props.entries[].action] - Optional secondary action for the entry.
- * @param props.entries[].action.label - Accessible name of the secondary action.
- * @param props.entries[].action.icon - Secondary action icon.
- * @param props.entries[].action.onClick - Runs the secondary action; receives no arguments.
+ * @param [props.entries[].checked] - Shows a check or a marker beside the icon.
+ * @param [props.entries[].editor] - Inline editing state displayed in place of the action.
+ * @param props.entries[].editor.value - Current text in the inline editor.
+ * @param props.entries[].editor.onChange - Receives the new text entered in the editor.
+ * @param props.entries[].editor.onSave - Saves the edited text; receives no arguments.
+ * @param props.entries[].editor.onCancel - Cancels editing; receives no arguments.
+ * @param [props.entries[].actions] - Optional secondary actions for the entry.
+ * @param props.entries[].actions[].label - Accessible name of the secondary action.
+ * @param props.entries[].actions[].icon - Secondary action icon.
+ * @param props.entries[].actions[].onClick - Runs the action; receives no arguments.
+ * @param [props.entries[].actions[].keepOpen] - Keeps the menu open while running the action.
  * @param [props.className] - Additional classes for the container.
  * @param [props.children] - Custom content for the menu trigger.
  * @returns The action menu.
