@@ -1,4 +1,5 @@
 export const AUTO_SAVE_ON_BLUR_KEY = 'jflap-lite.auto-save-on-blur';
+export type SimulationPosition = 'left' | 'right' | 'bottom';
 const keys = [
    AUTO_SAVE_ON_BLUR_KEY,
    'jflap-lite.preferences.v1',

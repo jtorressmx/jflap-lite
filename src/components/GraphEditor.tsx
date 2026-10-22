@@ -43,6 +43,7 @@ type Props = {
    followedTransitions?: string[];
    highlightStates?: string[];
    showLabels: boolean;
+   highlightInitialFinalStates?: boolean;
    zoom: number;
    onZoom: (zoom: number) => void;
    fitKey: number;
@@ -179,6 +180,7 @@ function connectionPreviewPath(
  * @param [props.followedTransitions] - Identifiers of transitions to follow; none by default.
  * @param [props.highlightStates] - Identifiers of highlighted states; none by default.
  * @param props.showLabels - Whether state labels are displayed.
+ * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
  * @param props.zoom - Current diagram zoom factor.
  * @param props.onZoom - Receives the requested zoom factor.
  * @param props.fitKey - Changing this value requests fitting the diagram to the available area.
@@ -205,6 +207,7 @@ function GraphEditor({
    followedTransitions = [],
    highlightStates = [],
    showLabels,
+   highlightInitialFinalStates = false,
    zoom,
    onZoom,
    fitKey,
@@ -1082,7 +1085,7 @@ function GraphEditor({
                   <g
                      key={state.id}
                      transform={`translate(${state.x} ${state.y})`}
-                     className={`graph-state${selected.includes(state.id) ? ' is-selected' : ''}${activeStates.includes(state.id) ? ' is-active' : ''}${highlightStates.includes(state.id) ? ' is-highlighted' : ''}${transitionFrom === state.id ? ' is-transition-source' : ''}`}
+                     className={`graph-state${selected.includes(state.id) ? ' is-selected' : ''}${activeStates.includes(state.id) ? ' is-active' : ''}${highlightStates.includes(state.id) ? ' is-highlighted' : ''}${transitionFrom === state.id ? ' is-transition-source' : ''}${highlightInitialFinalStates && state.initial ? ' is-initial-emphasized' : ''}${highlightInitialFinalStates && state.final ? ' is-final-emphasized' : ''}`}
                      role="button"
                      tabIndex={0}
                      aria-label={`${state.name}${state.initial ? ', inicial' : ''}${state.final ? ', final' : ''}${state.label ? `, ${state.label}` : ''}. Intro para editar.`}

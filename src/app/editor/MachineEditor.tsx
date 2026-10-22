@@ -22,6 +22,7 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props - Component options.
  * @param props.active - Active document.
  * @param props.settings - Graph appearance and simulation preferences.
+ * @param props.settings.highlightInitialFinalStates - Whether initial and final states use distinct colors.
  * @param props.editor - Selection, camera, and tool state.
  * @param props.simulation - Current simulator graph activity.
  * @param props.dialog - Requested graph edit dialog.
@@ -47,7 +48,14 @@ export function MachineEditor({
    change: Workspace['change'];
 }) {
    const machine = active.machine;
-   const { emptySymbol, preferences, autoZoom, showLabels, stateScale } = settings;
+   const {
+      emptySymbol,
+      preferences,
+      autoZoom,
+      showLabels,
+      highlightInitialFinalStates,
+      stateScale,
+   } = settings;
    const { tool, toggleTool, selected, setSelected, highlights, zoom, setZoom, fitKey, setFitKey } =
       editor;
    const { activeStates, activeTransition, guide: simulationGuide } = simulation;
@@ -90,6 +98,7 @@ export function MachineEditor({
                   followedTransitions={simulationGuide?.transitions}
                   highlightStates={highlights}
                   showLabels={showLabels}
+                  highlightInitialFinalStates={highlightInitialFinalStates}
                   stateScale={stateScale}
                   zoom={zoom}
                   onZoom={setZoom}

@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
 import { AUTO_SAVE_ON_BLUR_KEY, readUiSettings, settingsChanged } from '@/lib/settings';
+import type { SimulationPosition } from '@/lib/settings';
 
 /**
  * Reads validated simulation preferences from local storage.
@@ -33,7 +34,7 @@ function readPreferences(): Preferences {
    }
 }
 /**
- * Owns appearance and simulation preferences and synchronizes their storage.
+ * Owns graph appearance and simulation preferences and synchronizes their storage.
  * Takes no input.
  * @returns Appearance, simulation, and file preferences and their update actions.
  */
@@ -43,7 +44,15 @@ export function useAppSettings() {
    const [theme, setTheme] = useState(() => localStorage.getItem('jflap-lite.theme') || 'light');
    const [accent, setAccent] = useState(() => localStorage.getItem('jflap-lite.accent') || 'blue');
    const [showLabels, setShowLabels] = useState(uiSettings.showLabels !== false);
+   const [highlightInitialFinalStates, setHighlightInitialFinalStates] = useState(
+      uiSettings.highlightInitialFinalStates !== false
+   );
    const [grid, setGrid] = useState(uiSettings.grid !== false);
+   const [simulationPosition, setSimulationPosition] = useState<SimulationPosition>(
+      uiSettings.simulationPosition === 'left' || uiSettings.simulationPosition === 'right'
+         ? uiSettings.simulationPosition
+         : 'bottom'
+   );
    const [autoZoom, setAutoZoom] = useState(uiSettings.autoZoom === true);
    const [stateScale, setStateScale] = useState(
       typeof uiSettings.stateScale === 'number'
@@ -83,10 +92,17 @@ export function useAppSettings() {
    useEffect(() => {
       localStorage.setItem(
          'jflap-lite.ui.v1',
-         JSON.stringify({ showLabels, grid, autoZoom, stateScale })
+         JSON.stringify({
+            showLabels,
+            highlightInitialFinalStates,
+            grid,
+            autoZoom,
+            stateScale,
+            simulationPosition,
+         })
       );
       settingsChanged();
-   }, [showLabels, grid, autoZoom, stateScale]);
+   }, [showLabels, highlightInitialFinalStates, grid, autoZoom, stateScale, simulationPosition]);
 
    return {
       preferences,
@@ -97,8 +113,12 @@ export function useAppSettings() {
       setAccent,
       showLabels,
       setShowLabels,
+      highlightInitialFinalStates,
+      setHighlightInitialFinalStates,
       grid,
       setGrid,
+      simulationPosition,
+      setSimulationPosition,
       autoZoom,
       setAutoZoom,
       stateScale,

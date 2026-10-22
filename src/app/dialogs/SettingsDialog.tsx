@@ -22,6 +22,8 @@ import { defaultPreferences } from '@/domain/model';
  * @param props.settings.setAccent - Receives the requested accent color.
  * @param props.settings.showLabels - Whether state labels are visible.
  * @param props.settings.setShowLabels - Receives the requested label visibility.
+ * @param props.settings.highlightInitialFinalStates - Whether initial and final states use distinct colors.
+ * @param props.settings.setHighlightInitialFinalStates - Receives the requested state highlighting preference.
  * @param props.settings.grid - Whether the canvas grid is visible.
  * @param props.settings.setGrid - Receives the requested grid visibility.
  * @param props.settings.autoZoom - Whether the graph view adjusts automatically.
@@ -61,6 +63,8 @@ export function SettingsDialog({
       setAccent,
       showLabels,
       setShowLabels,
+      highlightInitialFinalStates,
+      setHighlightInitialFinalStates,
       grid,
       setGrid,
       autoZoom,
@@ -154,6 +158,12 @@ export function SettingsDialog({
                      label="Mostrar etiquetas de estados"
                      checked={showLabels}
                      onChange={setShowLabels}
+                  />
+                  <Toggle
+                     label="Resaltar estados iniciales y finales"
+                     description="Trazo fucsia para el inicial y verde para el anillo final."
+                     checked={highlightInitialFinalStates}
+                     onChange={setHighlightInitialFinalStates}
                   />
                   <Toggle label="Mostrar cuadrícula" checked={grid} onChange={setGrid} />
                   <Toggle

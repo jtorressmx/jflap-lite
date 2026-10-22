@@ -129,6 +129,20 @@
 .state-label {
    @apply fill-secondary font-sans text-xs pointer-events-none;
 }
+.graph-state.is-initial-emphasized .state-body {
+   fill: var(--graph-state-initial-fill);
+   stroke: var(--graph-state-initial-stroke);
+}
+.graph-state.is-final-emphasized:not(.is-initial-emphasized) .state-body {
+   fill: var(--graph-state-final-fill);
+   stroke: var(--graph-state-final-stroke);
+}
+.graph-state.is-final-emphasized .state-final {
+   stroke: var(--graph-state-final-stroke);
+}
+.graph-state.is-initial-emphasized .initial-arrow {
+   stroke: var(--graph-state-initial-stroke);
+}
 .graph-state:hover .state-body,
 .graph-state:focus-visible .state-body,
 .graph-state.is-selected .state-body,
