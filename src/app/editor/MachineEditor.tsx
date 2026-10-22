@@ -42,7 +42,7 @@ export function MachineEditor({
    active: WorkspaceDocument;
    settings: AppSettings;
    editor: GraphController;
-   simulation: Pick<SimulationController, 'activeStates' | 'activeTransition' | 'guide'>;
+   simulation: Pick<SimulationController, 'activeStates' | 'activeTransition' | 'guide' | 'open'>;
    dialog: Dialog | null;
    setDialog: ShowDialog;
    change: Workspace['change'];
@@ -93,6 +93,7 @@ export function MachineEditor({
                   activeStates={activeStates}
                   activeTransition={activeTransition}
                   followCamera={simulationGuide !== null}
+                  simulationOpen={simulation.open}
                   followState={simulationGuide?.state}
                   followedTransitions={simulationGuide?.transitions}
                   highlightStates={highlights}

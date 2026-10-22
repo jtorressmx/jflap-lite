@@ -41,6 +41,7 @@ type Props = {
    activeStates?: string[];
    activeTransition?: string;
    followCamera?: boolean;
+   simulationOpen?: boolean;
    followState?: string;
    followedTransitions?: string[];
    highlightStates?: string[];
@@ -228,6 +229,7 @@ function connectionPreviewPath(
  * @param props.showLabels - Whether state labels are displayed.
  * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
  * @param props.zoom - Current diagram zoom factor.
+ * @param [props.simulationOpen=false] - Keeps simulation framing at a readable scale.
  * @param props.onZoom - Receives the requested zoom factor.
  * @param props.fitKey - Changing this value requests fitting the diagram to the available area.
  * @param [props.stateScale=1] - State size multiplier.
@@ -254,6 +256,7 @@ function GraphEditor({
    showLabels,
    highlightInitialFinalStates = false,
    zoom,
+   simulationOpen = false,
    onZoom,
    fitKey,
    stateScale = 1,
@@ -330,6 +333,8 @@ function GraphEditor({
    const space = useRef(false);
    const didFit = useRef(false);
    const previousZoom = useRef(zoom);
+   const previousSize = useRef({ width: 0, height: 0 });
+   const previousFitKey = useRef(fitKey);
    const [pan, setPan] = useState<Point>({ x: 0, y: 0 });
    const [size, setSize] = useState({ width: 0, height: 0 });
    const [transitionFrom, setTransitionFrom] = useState<string | null>(null);
@@ -415,10 +420,12 @@ function GraphEditor({
       const maxX = all.length ? Math.max(...all.map((item) => item.x)) + 100 : 800;
       const minY = all.length ? Math.min(...all.map((item) => item.y)) - 90 : 0;
       const maxY = all.length ? Math.max(...all.map((item) => item.y)) + 65 : 500;
-      const nextZoom = Math.min(
+      const fittedZoom = Math.min(
          1.35,
          Math.max(0.25, Math.min(size.width / (maxX - minX), size.height / (maxY - minY)) * 0.88)
       );
+      const nextZoom =
+         simulationOpen && !didFit.current ? Math.max(0.75, Math.min(1, fittedZoom)) : fittedZoom;
       previousZoom.current = nextZoom;
       onZoom(nextZoom);
       setPan({
@@ -428,30 +435,35 @@ function GraphEditor({
       didFit.current = true;
       // A new fit request deliberately fits the current document, not every edit.
    });
+   /** Preserves the viewed diagram center when the viewport changes.
+    * @returns No value.
+    */
+   const resizeViewport = useEffectEvent(() => {
+      if (size.width <= 0 || size.height <= 0) return;
+      if (!didFit.current || previousFitKey.current !== fitKey) {
+         previousFitKey.current = fitKey;
+         fitDiagram();
+      } else {
+         const before = previousSize.current;
+         setPan((current) => ({
+            x: current.x + (size.width - before.width) / 2,
+            y: current.y + (size.height - before.height) / 2,
+         }));
+      }
+      previousSize.current = size;
+   });
    useEffect(() => {
-      fitDiagram();
+      resizeViewport();
    }, [fitKey, size.width, size.height]);
-
+   /** Enters simulation at a readable scale without fitting the whole graph.
+    * @returns No value.
+    */
+   const frameSimulation = useEffectEvent(() => {
+      if (simulationOpen && didFit.current) onZoom(Math.max(0.75, Math.min(1, zoom)));
+   });
    useEffect(() => {
-      if (followCamera && zoom < 1) onZoom(1);
-   }, [followCamera, onZoom, zoom]);
-
-   useEffect(() => {
-      const width = Math.max(size.width, svg.current?.clientWidth ?? 0);
-      const height = Math.max(size.height, svg.current?.clientHeight ?? 0);
-      if (!followCamera || !followState || !width || !height) return;
-      const state = machine.states.find((item) => item.id === followState);
-      if (!state) return;
-      const nextPan = {
-         x: width / 2 - state.x * zoom,
-         y: height / 2 - state.y * zoom,
-      };
-      setPan((current) =>
-         Math.abs(current.x - nextPan.x) < 0.5 && Math.abs(current.y - nextPan.y) < 0.5
-            ? current
-            : nextPan
-      );
-   }, [followCamera, followState, machine.states, size.width, size.height, zoom]);
+      frameSimulation();
+   }, [simulationOpen]);
 
    useEffect(() => {
       if (!didFit.current || previousZoom.current === zoom) return;
@@ -461,8 +473,24 @@ function GraphEditor({
          y: size.height / 2 - (size.height / 2 - point.y) * factor,
       }));
       previousZoom.current = zoom;
-      // Canvas resize is handled by fitting; only external zoom changes need recentering.
    }, [zoom, size.width, size.height]);
+
+   useEffect(() => {
+      const width = Math.max(size.width, svg.current?.clientWidth ?? 0);
+      const height = Math.max(size.height, svg.current?.clientHeight ?? 0);
+      if (!followCamera || !followState || !width || !height) return;
+      const state = machine.states.find((item) => item.id === followState);
+      if (!state) return;
+      setPan((current) => {
+         const screenX = state.x * zoom + current.x;
+         const screenY = state.y * zoom + current.y;
+         const dx = Math.max(width * 0.25, Math.min(width * 0.75, screenX)) - screenX;
+         const dy = Math.max(height * 0.4, Math.min(height * 0.6, screenY)) - screenY;
+         return Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5
+            ? current
+            : { x: current.x + dx, y: current.y + dy };
+      });
+   }, [followCamera, followState, machine.states, size.width, size.height, zoom]);
 
    useEffect(() => {
       const element = svg.current;

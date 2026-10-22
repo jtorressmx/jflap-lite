@@ -176,6 +176,7 @@
       --control-height: 32px;
       --menubar-height: 32px;
       --simulation-height: 380px;
+      --simulation-sidebar-width: 480px;
       --canvas-min-height: 180px;
       --dialog-width: 500px;
       --dialog-wide-width: 760px;
@@ -207,7 +208,7 @@
       --app-min-width: 640px;
       --dirty-dot-size: 6px;
       --simulation-input-width: 245px;
-      --simulation-speed-width: 85px;
+      --simulation-speed-width: 300px;
       --simulation-state-width: 115px;
       --simulation-state-narrow-width: 90px;
       --batch-input-min-height: 70px;

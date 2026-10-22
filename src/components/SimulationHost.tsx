@@ -11,6 +11,8 @@ import { machineKind } from '@/domain/model';
  * @param props.enabled - Whether the simulator is visible and its activity updates are reported.
  * @param props.machine - Machine used by the component.
  * @param props.preferences - Turing machine execution preferences.
+ * @param props.position - Current location of the simulator.
+ * @param props.onPositionChange - Receives the requested simulator location.
  * @param [props.request] - Optional external simulation action request.
  * @param props.request.id - Identifier that distinguishes this request from previous requests.
  * @param props.request.action - Requested simulation action.
@@ -43,6 +45,8 @@ export function SimulationHost({
             <FiniteSimulationPanel
                machine={props.machine}
                emptySymbol={props.emptySymbol ?? 'ε'}
+               position={props.position}
+               onPositionChange={props.onPositionChange}
                request={props.request}
                onActivity={report}
                onMessage={props.onMessage}

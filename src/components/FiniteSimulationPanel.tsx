@@ -9,7 +9,6 @@ import {
    FiPause,
    FiPlay,
    FiRotateCcw,
-   FiSkipForward,
    FiTrash2,
    FiZap,
 } from '@/components/icons';
@@ -18,7 +17,10 @@ import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
 import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
-import { SimulationWindowActions } from '@/components/simulation/SimulationWindowActions';
+import {
+   SimulationWindowActions,
+   type SimulationPlacementProps,
+} from '@/components/simulation/SimulationWindowActions';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { DataTable } from '@/components/ui/DataTable';
@@ -46,7 +48,7 @@ import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
 import { download } from '@/lib/files';
 import { exportTablePng } from '@/lib/tableImage';
 
-type Props = {
+type Props = SimulationPlacementProps & {
    machine: Machine;
    emptySymbol: 'ε' | 'λ';
    request?: { id: number; action: SimulationAction };
@@ -82,6 +84,8 @@ function parseBatchLine(line: string) {
  * @param props - Component options.
  * @param props.machine - Machine used by the component.
  * @param props.emptySymbol - Symbol used to display the empty string.
+ * @param props.position - Current location of the simulator.
+ * @param props.onPositionChange - Receives the requested simulator location.
  * @param [props.request] - Optional external simulation action request.
  * @param props.request.id - Identifier that distinguishes this request from previous requests.
  * @param props.request.action - Requested simulation action.
@@ -93,6 +97,8 @@ function parseBatchLine(line: string) {
 export default function FiniteSimulationPanel({
    machine,
    emptySymbol,
+   position,
+   onPositionChange,
    request,
    onActivity,
    onMessage,
@@ -146,12 +152,15 @@ export default function FiniteSimulationPanel({
       setSelectedIds([]);
       return next;
    }
+   /**
+    * Closes the simulator and clears its temporary results.
+    * @returns No value.
+    */
    function closeSimulation() {
       setSession(null);
       setSelectedId(undefined);
       setSelectedIds([]);
       setPlaying(false);
-      setInput('');
       setResults([]);
       setResult(null);
       setBatchItems([createBatchInputItem()]);
@@ -160,6 +169,10 @@ export default function FiniteSimulationPanel({
       onActivity([], undefined);
       onClose?.();
    }
+   /** Applies a requested finite automaton simulation action.
+    * @param action - Action requested by the user or application.
+    * @returns No value.
+    */
    function perform(action: SimulationAction) {
       try {
          if (action === 'open') {
@@ -188,11 +201,13 @@ export default function FiniteSimulationPanel({
          }
          setTab('simulation');
          if (action === 'fast' || action === 'output') {
+            if (action === 'fast') setResult(null);
             setSession(runFinite(machine, input, closure, configurationLimit));
             setPlaying(false);
             setSelectedId(undefined);
             setSelectedIds([]);
          } else if (action === 'step') {
+            setPlaying(false);
             setSession(
                stepFinite(
                   machine,
@@ -247,6 +262,10 @@ export default function FiniteSimulationPanel({
       }, speed);
       return () => clearTimeout(timer);
    }, [playing, session, machine, speed, configurationLimit, onMessage]);
+   /**
+    * Restores the previous finite automaton configuration.
+    * @returns No value.
+    */
    function back() {
       setPlaying(false);
       if (!session || session.history.length < 2) return;
@@ -264,6 +283,7 @@ export default function FiniteSimulationPanel({
          frozenIds: [],
       });
       setSelectedId(undefined);
+      setSelectedIds([]);
    }
    function runBatch() {
       try {
@@ -360,7 +380,11 @@ export default function FiniteSimulationPanel({
             <div className="simulation-tab-status">
                <Badge>{finiteNondeterminism(machine).length ? 'AFN' : 'AFD'}</Badge>
             </div>
-            <SimulationWindowActions onHide={onClose} onClose={closeSimulation} />
+            <SimulationWindowActions
+               onClose={closeSimulation}
+               position={position}
+               onPositionChange={onPositionChange}
+            />
          </div>
          {tab === 'simulation' && (
             <div
@@ -402,6 +426,22 @@ export default function FiniteSimulationPanel({
                      <option value={100000}>100 000</option>
                   </Select>
                   <div className="simulation-buttons">
+                     <IconButton
+                        label="Atrás"
+                        tooltip
+                        onClick={back}
+                        disabled={!session || session.history.length < 2}
+                     >
+                        <FiArrowLeft />
+                     </IconButton>
+                     <IconButton
+                        label="Adelante"
+                        tooltip
+                        onClick={() => perform('step')}
+                        disabled={!!session && !canStepFinite(machine, session)}
+                     >
+                        <FiArrowRight />
+                     </IconButton>
                      <Button
                         variant="primary"
                         onClick={() => (playing ? setPlaying(false) : perform('start'))}
@@ -409,18 +449,6 @@ export default function FiniteSimulationPanel({
                         {playing ? <FiPause /> : <FiPlay />}
                         {playing ? 'Pausar' : 'Ejecutar'}
                      </Button>
-                     <Button onClick={() => perform('step')} disabled={playing}>
-                        <FiSkipForward />
-                        Paso
-                     </Button>
-                     <IconButton
-                        label="Retroceder un paso"
-                        tooltip
-                        onClick={back}
-                        disabled={!session || session.history.length < 2}
-                     >
-                        <FiArrowLeft />
-                     </IconButton>
                      <IconButton
                         label="Reiniciar simulación"
                         tooltip
@@ -447,7 +475,9 @@ export default function FiniteSimulationPanel({
                      step="100"
                      value={1700 - speed}
                      onChange={(e) => setSpeed(1700 - Number(e.target.value))}
-                  ></SimulationSpeed>
+                  >
+                     <span>{(1000 / speed).toFixed(1)} pasos/s</span>
+                  </SimulationSpeed>
                </div>
                {session && chosen && (
                   <>

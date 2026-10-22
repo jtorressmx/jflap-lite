@@ -1,6 +1,7 @@
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
 import {
+   FiArrowLeft,
    FiArrowRight,
    FiCheckCircle,
    FiCrosshair,
@@ -10,7 +11,6 @@ import {
    FiPauseCircle,
    FiPlay,
    FiRotateCcw,
-   FiSkipForward,
    FiTrash2,
    FiXCircle,
    FiZap,
@@ -21,7 +21,10 @@ import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
 import { SelectableOutput } from '@/components/simulation/SelectableOutput';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
-import { SimulationWindowActions } from '@/components/simulation/SimulationWindowActions';
+import {
+   SimulationWindowActions,
+   type SimulationPlacementProps,
+} from '@/components/simulation/SimulationWindowActions';
 import { Tape } from '@/components/simulation/Tape';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -51,7 +54,7 @@ type Request = {
    id: number;
    action: 'open' | 'start' | 'step' | 'fast' | 'batch' | 'output' | 'trace';
 };
-type Props = {
+type Props = SimulationPlacementProps & {
    onClose?: () => void;
    machine: Machine;
    preferences: Preferences;
@@ -150,6 +153,8 @@ function traceText(machine: Machine, session: Session, id?: string, emptySymbol:
  * @param [props.onClose] - Requests closing the component; receives no arguments.
  * @param props.machine - Machine used by the component.
  * @param props.preferences - Machine execution and acceptance preferences.
+ * @param props.position - Current location of the simulator.
+ * @param props.onPositionChange - Receives the requested simulator location.
  * @param [props.request] - Optional external simulation action request.
  * @param props.request.id - Identifier that distinguishes this request from previous requests.
  * @param props.request.action - Requested simulation action.
@@ -162,6 +167,8 @@ export function SimulationPanel({
    onClose,
    machine,
    preferences,
+   position,
+   onPositionChange,
    request,
    onActivity,
    onMessage,
@@ -250,11 +257,14 @@ export function SimulationPanel({
          return null;
       }
    }
+   /**
+    * Closes the simulator and clears its temporary results.
+    * @returns No value.
+    */
    function closeSimulation() {
       setSession(null);
       setPlaying(false);
       setDirecting(false);
-      setInput('');
       setNotice('');
       setTab('simulation');
       setTraceId(undefined);
@@ -266,7 +276,50 @@ export function SimulationPanel({
       onActivity([], undefined);
       onClose?.();
    }
+   /**
+    * Restores the previous Turing machine configuration.
+    * @returns No value.
+    */
+   function back() {
+      setPlaying(false);
+      setDirecting(false);
+      if (!session || session.history.length < 2) return;
+      const history = session.history.slice(0, -1);
+      const configurations = history.at(-1) ?? [];
+      const selected = chosen(session)?.parentId;
+      const active = configurations.some((config) => !isRejected(config));
+      const isAccepted = configurations.some((config) =>
+         isConfigurationAccepted(machine, config, preferences)
+      );
+      const status = isAccepted
+         ? 'accepted'
+         : active
+           ? history.length === 1
+              ? 'ready'
+              : 'running'
+           : 'rejected';
+      setSession({
+         ...session,
+         configurations,
+         history,
+         steps: Math.max(0, session.steps - 1),
+         status,
+         selectedId:
+            configurations.find((config) => config.id === selected)?.id ?? configurations[0]?.id,
+         frozenIds: session.frozenIds?.filter((id) =>
+            configurations.some((config) => config.id === id)
+         ),
+         message: undefined,
+      });
+      setNotice('');
+      setTraceId(undefined);
+   }
+   /** Advances the simulation by one step and pauses continuous execution.
+    * Takes no input.
+    * @returns No value.
+    */
    function step() {
+      setPlaying(false);
       try {
          const current = session ?? createSession(machine, input, preferences);
          const stepped = stepInteractiveSession(machine, current, preferences, configurationLimit);
@@ -279,7 +332,12 @@ export function SimulationPanel({
          onMessage((error as Error).message);
       }
    }
+   /** Runs the simulation to completion and displays its result in the panel.
+    * Takes no input.
+    * @returns No value.
+    */
    function fast() {
+      setResultModal(null);
       try {
          setDirecting(false);
          const next = focusAccepted(
@@ -290,7 +348,6 @@ export function SimulationPanel({
          setNotice(next.message ?? '');
          setTraceId(undefined);
          setTab('simulation');
-         setResultModal({ machine, session: next });
       } catch (error) {
          onMessage((error as Error).message);
       }
@@ -303,15 +360,19 @@ export function SimulationPanel({
       const current = !session || terminal(session) ? begin() : session;
       if (current && !terminal(current)) setPlaying(true);
    }
+   /** Toggles guidance while keeping the current simulation position.
+    * @returns No value.
+    */
    function toggleDirecting() {
       if (directing) {
          setDirecting(false);
          return;
       }
-      const current = !session || terminal(session) ? begin() : session;
+      const current = session ?? begin();
+      if (!current) return;
       setSpeed((currentSpeed) => Math.max(currentSpeed, MIN_DIRECT_INTERVAL));
       setDirecting(true);
-      if (current && !terminal(current)) setPlaying(true);
+      if (!terminal(current)) setPlaying(true);
    }
    function focusAccepted(next: Session) {
       if (next.status !== 'accepted') return next;
@@ -568,7 +629,13 @@ export function SimulationPanel({
          onMessage((error as Error).message);
       }
    }
-   function continueExecution(target: Machine, previous: Session) {
+   /** Continues a limited run with expanded execution limits.
+    * @param target - Machine whose execution should continue.
+    * @param previous - Limited session being resumed.
+    * @param [showResult=false] - Whether to update the open result dialog.
+    * @returns No value.
+    */
+   function continueExecution(target: Machine, previous: Session, showResult = false) {
       const maxSteps = Math.max(stepLimit * 2, previous.steps + 1000);
       const maxConfigurations = configurationLimit * 2;
       setStepLimit(maxSteps);
@@ -583,7 +650,7 @@ export function SimulationPanel({
          setResults((rows) =>
             rows.map((row) => (row.session === previous ? { ...row, session: next } : row))
          );
-         setResultModal({ machine: target, session: next });
+         if (showResult) setResultModal({ machine: target, session: next });
       } catch (error) {
          onMessage((error as Error).message);
       }
@@ -591,19 +658,29 @@ export function SimulationPanel({
 
    return (
       <section className="simulation-panel" aria-label="Simulación y pruebas de la máquina">
-         <div className="simulation-tabs" role="tablist" aria-label="Herramientas de simulación">
-            <SimulationTabs
-               selected={tab}
-               onSelect={setTab}
-               tabId={(id) => `${panelId}-tab-${id}`}
-               panelId={(id) => `${panelId}-simulation-${id}`}
-            />
+         <div className="simulation-tabs">
+            <div
+               className="simulation-tab-buttons"
+               role="tablist"
+               aria-label="Herramientas de simulación"
+            >
+               <SimulationTabs
+                  selected={tab}
+                  onSelect={setTab}
+                  tabId={(id) => `${panelId}-tab-${id}`}
+                  panelId={(id) => `${panelId}-simulation-${id}`}
+               />
+            </div>
             <div className="simulation-tab-status">
                {session?.status === 'limit' && (
                   <Badge tone="warning">{statusNames[session.status]}</Badge>
                )}
             </div>
-            <SimulationWindowActions onHide={onClose} onClose={closeSimulation} />
+            <SimulationWindowActions
+               onClose={closeSimulation}
+               position={position}
+               onPositionChange={onPositionChange}
+            />
          </div>
          {tab === 'simulation' && (
             <div
@@ -633,9 +710,22 @@ export function SimulationPanel({
                      <IconButton label="Reiniciar simulación" tooltip onClick={begin}>
                         <FiRotateCcw />
                      </IconButton>
-                     <Button onClick={step} disabled={session?.status === 'limit'}>
-                        <FiSkipForward /> Paso
-                     </Button>
+                     <IconButton
+                        label="Atrás"
+                        tooltip
+                        onClick={back}
+                        disabled={!session || session.history.length < 2}
+                     >
+                        <FiArrowLeft />
+                     </IconButton>
+                     <IconButton
+                        label="Adelante"
+                        tooltip
+                        onClick={step}
+                        disabled={!!session && terminal(session)}
+                     >
+                        <FiArrowRight />
+                     </IconButton>
                      <Button variant="primary" onClick={togglePlay}>
                         {playing ? <FiPause /> : <FiPlay />}
                         {playing ? 'Pausar' : 'Ejecutar'}
@@ -933,7 +1023,9 @@ export function SimulationPanel({
                   )}
                   {resultModal.session.status === 'limit' && (
                      <Button
-                        onClick={() => continueExecution(resultModal.machine, resultModal.session)}
+                        onClick={() =>
+                           continueExecution(resultModal.machine, resultModal.session, true)
+                        }
                      >
                         <FiPlay /> Continuar con límites mayores
                      </Button>

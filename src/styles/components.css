@@ -230,7 +230,7 @@
 }
 
 .batch-input-table-wrap {
-   @apply flex-1 min-h-control overflow-auto border border-solid border-border rounded-md bg-surface;
+   @apply flex-1 min-h-control overflow-auto border border-solid border-border rounded-md bg-canvas;
 }
 
 .batch-input-table {
@@ -239,13 +239,22 @@
 
 .batch-input-table th,
 .batch-input-table td {
-   @apply py-2 px-3 border-b border-b-border;
+   @apply py-2 px-3 border-b border-b-border align-middle;
 }
 
 .batch-input-table th {
    @apply sticky top-0;
    z-index: 1;
-   @apply bg-surface text-secondary font-medium;
+   @apply bg-canvas text-secondary text-xs font-semibold;
+}
+
+.batch-input-table th:last-child,
+.batch-input-table td:last-child {
+   @apply w-control text-center;
+}
+
+.batch-input-table tbody tr:hover td:not(.batch-input-empty-state) {
+   @apply bg-surface-hover;
 }
 
 .batch-input-table tr:last-child td {
@@ -257,7 +266,20 @@
 }
 
 .batch-input-table input {
-   @apply font-mono;
+   @apply block w-full min-w-0 min-h-control py-1 px-2 border border-solid border-border-strong rounded-sm bg-surface text-foreground text-sm font-mono outline-none;
+   transition:
+      background var(--duration),
+      border-color var(--duration);
+}
+
+.batch-input-table input:hover {
+   @apply border-tertiary;
+}
+
+.batch-input-table input:focus-visible {
+   @apply border-accent;
+   outline: var(--focus-ring);
+   outline-offset: var(--focus-offset);
 }
 
 .batch-input-table .icon-button {
@@ -313,6 +335,16 @@
 .simulation-tab-status {
    @apply flex items-center gap-3 ml-auto text-secondary text-xs whitespace-nowrap;
 }
+.simulation-window-actions {
+   @apply flex items-center flex-none gap-1;
+}
+.simulation-position-menu .menu-trigger {
+   @apply w-control h-control min-h-control p-0 text-secondary;
+}
+.simulation-position-menu .menu-trigger:hover,
+.simulation-position-menu .menu-trigger[aria-expanded='true'] {
+   @apply text-foreground;
+}
 .simulation-content {
    @apply flex flex-1 flex-col gap-3 py-3 px-5 overflow-auto min-h-0 overscroll-contain;
 }
@@ -335,10 +367,28 @@
    @apply whitespace-nowrap;
 }
 .simulation-speed {
-   @apply flex items-center gap-2 ml-auto pb-3 text-secondary text-xs whitespace-nowrap;
+   @apply flex flex-col gap-1 ml-auto w-simulation-speed;
+   flex: 0 0 var(--simulation-speed-width);
+}
+.simulation-speed-heading {
+   @apply flex items-center justify-between gap-2 text-secondary text-xs whitespace-nowrap;
+}
+.simulation-speed output {
+   @apply text-foreground font-mono text-xs;
 }
 .simulation-speed input {
-   @apply w-simulation-speed accent-accent;
+   @apply block w-full accent-accent;
+   height: var(--control-height);
+   margin: 0;
+   cursor: pointer;
+}
+.simulation-speed input:focus-visible {
+   outline: var(--focus-ring);
+   outline-offset: var(--focus-offset);
+}
+.simulation-speed input:disabled {
+   opacity: var(--opacity-disabled);
+   cursor: not-allowed;
 }
 .simulation-tape-row {
    @apply flex items-center gap-5 flex-none;
@@ -614,18 +664,18 @@
    font: var(--font-size-xs) var(--font-mono);
    @apply rounded-md;
 }
-@media (max-width: 1000px) {
+@container simulation (max-width: 1000px) {
    .simulation-controls {
       @apply flex-wrap;
    }
    .simulation-speed {
-      @apply flex ml-0 pb-1;
+      @apply ml-0;
    }
    .simulation-state-info {
       width: var(--simulation-state-narrow-width);
    }
 }
-@media (max-width: 650px) {
+@container simulation (max-width: 650px) {
    .simulation-tabs {
       @apply gap-0 py-0 px-2;
    }
@@ -642,13 +692,27 @@
       @apply flex-wrap gap-2;
    }
    .simulation-input {
-      @apply flex-1 w-auto;
+      @apply w-full;
+      flex: 1 1 100%;
+   }
+   .simulation-buttons {
+      @apply flex-wrap;
+   }
+   .simulation-speed {
+      @apply w-full max-w-full;
+      flex: 1 1 var(--simulation-speed-width);
    }
    .simulation-buttons .button {
       @apply p-2;
    }
+   .simulation-tape-row {
+      @apply flex-wrap gap-3;
+   }
+   .simulation-tape-main {
+      flex-basis: 100%;
+   }
    .simulation-state-info {
-      @apply hidden;
+      @apply flex-row w-full justify-between;
    }
    .batch-content {
       @apply p-3;
@@ -661,11 +725,17 @@
    .batch-entry textarea {
       @apply min-h-batch-input-narrow;
    }
+   .batch-input-table-wrap {
+      min-height: calc(var(--control-height) * 2 + var(--space-6));
+   }
    .batch-results {
       @apply min-h-batch-results overflow-auto;
    }
    .trace-content {
       @apply p-3;
+   }
+   .trace-toolbar {
+      @apply flex-wrap;
    }
    .trace-step {
       @apply p-2 gap-2;
@@ -677,6 +747,21 @@
 
 .simulation-tab-buttons {
    @apply flex self-stretch gap-2;
+}
+
+@container simulation (max-width: 480px) {
+   .simulation-tabs {
+      @apply flex-wrap gap-0;
+   }
+   .simulation-tab-buttons {
+      @apply order-1 w-full justify-between gap-0;
+   }
+   .simulation-tab-status {
+      @apply ml-0 mr-auto;
+   }
+   .simulation-window-actions {
+      @apply ml-auto py-1;
+   }
 }
 
 /* FiniteSimulationPanel */
@@ -754,7 +839,7 @@
 .finite-simulation th {
    @apply text-secondary font-medium;
 }
-@media (max-width: 1000px) {
+@container simulation (max-width: 1000px) {
    .finite-simulation .simulation-controls {
       @apply flex-wrap;
    }
@@ -1360,7 +1445,7 @@
       bottom: calc(100% + var(--space-2));
       transform: translate(-50%, var(--space-1));
    }
-   .simulation-tabs > .icon-button[data-tooltip]::after {
+   .simulation-window-actions > .icon-button[data-tooltip]::after {
       top: calc(100% + var(--space-2));
       @apply bottom-auto;
       transform: translate(-50%, 0);
@@ -1483,6 +1568,7 @@
 }
 .simulation-stack {
    @apply flex-none min-h-0;
+   container: simulation / inline-size;
 }
 .simulation-host[hidden] {
    @apply hidden;
@@ -1491,7 +1577,30 @@
    @apply hidden;
 }
 .editor-row {
-   @apply min-h-0;
+   @apply min-w-0 min-h-0;
+}
+.editor-layout {
+   @apply flex flex-1 flex-col min-w-0 min-h-0 overflow-hidden;
+}
+.editor-layout:not([data-simulation-position='bottom']) {
+   @apply flex-row;
+}
+.editor-layout:not([data-simulation-position='bottom']) .simulation-stack {
+   @apply h-full;
+   width: min(var(--simulation-sidebar-width), 50%);
+}
+.editor-layout:not([data-simulation-position='bottom']) .simulation-host,
+.editor-layout:not([data-simulation-position='bottom']) .simulation-panel {
+   @apply h-full;
+}
+.editor-layout:not([data-simulation-position='bottom']) .simulation-panel {
+   @apply border-t-0;
+}
+.editor-layout[data-simulation-position='left'] .simulation-stack {
+   @apply order-first border-r border-r-border;
+}
+.editor-layout[data-simulation-position='right'] .simulation-stack {
+   @apply border-l border-l-border;
 }
 .canvas-tools {
    @apply left-4;

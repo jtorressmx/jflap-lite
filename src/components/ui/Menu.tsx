@@ -9,6 +9,7 @@ export type MenuEntry = MenuAction | { separator: true };
  * Shows an action menu with keyboard navigation.
  * @param props - Component options.
  * @param props.label - Accessible menu name and trigger text when no custom content is supplied.
+ * @param [props.title] - Optional native help text for the menu trigger.
  * @param props.entries - Actions and separators in display order.
  * @param [props.entries[].separator] - Marks a separator entry without action fields.
  * @param props.entries[].label - Visible action text.
@@ -37,6 +38,7 @@ export type MenuEntry = MenuAction | { separator: true };
  */
 export function Menu({
    label,
+   title,
    entries,
    className = '',
    showChevron = true,
@@ -44,6 +46,7 @@ export function Menu({
    children,
 }: {
    label: string;
+   title?: string;
    entries: MenuEntry[];
    className?: string;
    showChevron?: boolean;
@@ -55,6 +58,14 @@ export function Menu({
    const ref = useRef<HTMLDivElement>(null);
    const triggerRef = useRef<HTMLButtonElement>(null);
    const popoverRef = useRef<HTMLDivElement>(null);
+   /**
+    * Closes the menu and returns focus to its trigger without inputs.
+    * @returns No value.
+    */
+   function closeMenu(): void {
+      setOpen(false);
+      triggerRef.current?.focus();
+   }
    useEffect(() => {
       if (!open) return;
       const close = (e: PointerEvent) => {
@@ -67,7 +78,7 @@ export function Menu({
          }
       };
       const esc = (e: KeyboardEvent) => {
-         if (e.key === 'Escape') setOpen(false);
+         if (e.key === 'Escape') closeMenu();
       };
       document.addEventListener('pointerdown', close);
       document.addEventListener('keydown', esc);
@@ -140,7 +151,7 @@ export function Menu({
             'separator' in entry ? (
                <div key={i} className="menu-separator" role="separator" />
             ) : (
-               <MenuItem key={i} entry={entry} onClose={() => setOpen(false)} />
+               <MenuItem key={i} entry={entry} onClose={closeMenu} />
             )
          )}
       </div>
@@ -152,6 +163,7 @@ export function Menu({
             className="menu-trigger"
             ref={triggerRef}
             aria-label={label}
+            title={title}
             aria-haspopup="menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}

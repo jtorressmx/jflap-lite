@@ -8,6 +8,8 @@ import { SimulationHost } from '@/components/SimulationHost';
  * @param props - Component options.
  * @param props.workspace - Open documents and the active identifier.
  * @param props.settings - Simulator preferences and empty-string symbol.
+ * @param props.settings.simulationPosition - Current location of the simulator.
+ * @param props.settings.setSimulationPosition - Receives the requested simulator location.
  * @param props.simulation - Simulation visibility, requests, and activity callback.
  * @param props.notify - Receives simulator notifications.
  * @returns The rendered interface.
@@ -19,11 +21,14 @@ export function WorkspaceSimulations({
    notify,
 }: {
    workspace: Pick<Workspace, 'documents' | 'activeId'>;
-   settings: Pick<AppSettings, 'preferences' | 'emptySymbol'>;
+   settings: Pick<
+      AppSettings,
+      'preferences' | 'emptySymbol' | 'simulationPosition' | 'setSimulationPosition'
+   >;
    simulation: SimulationController;
    notify: Notify;
 }) {
-   const { preferences, emptySymbol } = settings;
+   const { preferences, emptySymbol, simulationPosition, setSimulationPosition } = settings;
    const { open, setOpen, request, onActivity } = simulation;
    return (
       <div id="simulation-tools" className="simulation-stack" hidden={!open}>
@@ -33,6 +38,8 @@ export function WorkspaceSimulations({
                enabled={doc.id === workspace.activeId}
                machine={doc.machine}
                preferences={preferences}
+               position={simulationPosition}
+               onPositionChange={setSimulationPosition}
                onClose={() => setOpen(false)}
                emptySymbol={emptySymbol}
                request={request?.docId === doc.id ? request : undefined}

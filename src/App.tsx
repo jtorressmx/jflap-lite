@@ -184,21 +184,26 @@ export default function App() {
                      redo={workspace.redo}
                      simulation={simulation}
                   />
-                  <MachineEditor
-                     active={active}
-                     settings={settings}
-                     editor={editor}
-                     simulation={simulation}
-                     dialog={dialog}
-                     setDialog={setDialog}
-                     change={workspace.change}
-                  />
-                  <WorkspaceSimulations
-                     workspace={workspace}
-                     settings={settings}
-                     simulation={simulation}
-                     notify={notify}
-                  />
+                  <div
+                     className="editor-layout"
+                     data-simulation-position={settings.simulationPosition}
+                  >
+                     <MachineEditor
+                        active={active}
+                        settings={settings}
+                        editor={editor}
+                        simulation={simulation}
+                        dialog={dialog}
+                        setDialog={setDialog}
+                        change={workspace.change}
+                     />
+                     <WorkspaceSimulations
+                        workspace={workspace}
+                        settings={settings}
+                        simulation={simulation}
+                        notify={notify}
+                     />
+                  </div>
                </main>
             </div>
          )}
