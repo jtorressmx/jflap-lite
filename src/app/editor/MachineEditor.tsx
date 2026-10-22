@@ -89,7 +89,6 @@ export function MachineEditor({
                      change(m, commit);
                      if (autoZoom && commit !== false) setFitKey((k) => k + 1);
                   }}
-                  onViewTransitionRules={(id) => setDialog({ type: 'transition-rules', id })}
                   onEditNote={(id) => setDialog({ type: 'note', id })}
                   activeStates={activeStates}
                   activeTransition={activeTransition}

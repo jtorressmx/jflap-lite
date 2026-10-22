@@ -108,7 +108,6 @@ export default function App() {
       change: workspace.change,
       undo: workspace.undo,
       redo: workspace.redo,
-      setDialog,
       notify,
    });
 

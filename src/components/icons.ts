@@ -1,7 +1,9 @@
 export {
    FiActivity,
+   FiArrowDown,
    FiArrowLeft,
    FiArrowRight,
+   FiArrowUp,
    FiBookOpen,
    FiCheck,
    FiCheckCircle,
@@ -14,7 +16,6 @@ export {
    FiDownload,
    FiEdit2,
    FiExternalLink,
-   FiEye,
    FiFile,
    FiFilePlus,
    FiFileText,
@@ -48,3 +49,4 @@ export {
    FiXCircle,
    FiZap,
 } from 'react-icons/fi';
+export { LuGripVertical, LuPanelBottom, LuPanelLeft, LuPanelRight } from 'react-icons/lu';

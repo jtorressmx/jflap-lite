@@ -40,7 +40,11 @@ export function Modal({
          className={`modal ${size === 'default' ? '' : `modal-${size}`}`}
          ref={ref}
          aria-labelledby={id}
-         onCancel={onClose}
+         onCancel={(event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            onClose();
+         }}
          onClick={(e) => {
             if (e.target === e.currentTarget) {
                const r = e.currentTarget.getBoundingClientRect();

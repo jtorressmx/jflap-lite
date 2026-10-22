@@ -7,7 +7,6 @@ import {
    FiArrowRight,
    FiChevronDown,
    FiCpu,
-   FiEdit2,
    FiFilePlus,
    FiFolder,
    FiGitBranch,
@@ -145,7 +144,7 @@ export function DocumentPicker({
                               className="document-tab-select"
                               aria-label={`${name}${dirty ? ', cambios sin guardar' : ''}`}
                               aria-current={doc.id === active.id ? 'page' : undefined}
-                              title={doc.path || name}
+                              title={`${doc.path || name} · Doble clic para renombrar`}
                               onClick={() => resumeDocument(doc.id)}
                               onDoubleClick={() => startRenamingDocument(doc.id)}
                               onContextMenu={(event) => {
@@ -160,12 +159,6 @@ export function DocumentPicker({
                               {dirty && <span className="dirty-dot" aria-hidden="true" />}
                            </Button>
                            <div className="document-tab-actions">
-                              <IconButton
-                                 label={`Renombrar ${name}`}
-                                 onClick={() => startRenamingDocument(doc.id)}
-                              >
-                                 <FiEdit2 />
-                              </IconButton>
                               <IconButton
                                  label={`Cerrar ${name}`}
                                  onClick={() => void closeDocument(doc.id)}

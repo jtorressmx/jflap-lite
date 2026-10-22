@@ -6,7 +6,6 @@ export type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 export type Dialog =
    | { type: 'state'; id: string }
    | { type: 'transition'; id?: string; from?: string; to?: string }
-   | { type: 'transition-rules'; id: string }
    | { type: 'note'; id: string }
    | {
         type:

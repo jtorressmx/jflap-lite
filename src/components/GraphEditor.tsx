@@ -2,7 +2,10 @@ import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerE
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
 import { StateProperties } from '@/components/graph/StateProperties';
-import { TransitionProperties } from '@/components/graph/TransitionProperties';
+import {
+   TransitionProperties,
+   type TransitionEditorHandle,
+} from '@/components/graph/TransitionProperties';
 import { Popover } from '@/components/ui/Popover';
 import type { Machine, Preferences } from '@/domain/model';
 import {
@@ -34,7 +37,6 @@ type Props = {
    selected: string[];
    onSelect: (ids: string[]) => void;
    onChange: (machine: Machine, commit?: boolean) => void;
-   onViewTransitionRules?: (id: string) => void;
    onEditNote: (id: string) => void;
    activeStates?: string[];
    activeTransition?: string;
@@ -63,6 +65,51 @@ type Drag = {
 };
 
 const symbol = (value: string) => (value === '' ? '□' : value);
+/** Replaces an edited finite transition or an ordered Turing rule group.
+ * @param machine - Current machine snapshot.
+ * @param updates - Ordered rules to save; an empty list leaves transitions unchanged.
+ * @param editedId - Finite transition identifier being replaced, if any.
+ * @returns Updated transitions with unrelated groups and rule identifiers retained.
+ */
+function replaceTransitionRules(
+   machine: Machine,
+   updates: Transition[],
+   editedId?: string
+): Transition[] {
+   const target = updates[0];
+   if (!target) return machine.transitions;
+   const finite = machineKind(machine) === 'fa';
+   let inserted = false;
+   const next = machine.transitions.flatMap((item) => {
+      const matches = finite
+         ? item.id === editedId
+         : item.from === target.from && item.to === target.to;
+      if (!matches) return [item];
+      if (inserted) return [];
+      inserted = true;
+      return updates;
+   });
+   return inserted ? next : [...next, ...updates];
+}
+/** Wraps note paragraphs without changing their stored text.
+ * @param text - Original note content.
+ * @param columns - Maximum approximate characters per line.
+ * @returns Display lines with explicit paragraph breaks preserved.
+ */
+function wrapNote(text: string, columns: number): string[] {
+   if (!text.trim()) return ['Nota'];
+   return text.split('\n').flatMap((paragraph) => {
+      const lines: string[] = [];
+      let remaining = paragraph;
+      while (remaining.length > columns) {
+         const space = remaining.lastIndexOf(' ', columns);
+         const boundary = space > 0 ? space : columns;
+         lines.push(remaining.slice(0, boundary));
+         remaining = remaining.slice(boundary).trimStart();
+      }
+      return [...lines, remaining];
+   });
+}
 function transitionText(transition: Transition, finite = false, emptySymbol = 'ε') {
    if (finite) return transition.read || emptySymbol;
    const read = Array.isArray(transition.read) ? transition.read : [transition.read];
@@ -164,7 +211,6 @@ function connectionPreviewPath(
  * @param props.selected - Identifiers of selected elements; none by default.
  * @param props.onSelect - Receives the identifiers of the newly selected elements.
  * @param props.onChange - Receives the updated machine and an optional flag confirming the change.
- * @param [props.onViewTransitionRules] - Receives the identifier of the transition whose rules are requested.
  * @param props.onEditNote - Receives the identifier of the note requested for editing.
  * @param [props.editRequest] - Optional external edit request; null means no request.
  * @param props.editRequest.type - Kind of element requested for editing.
@@ -195,7 +241,6 @@ function GraphEditor({
    selected,
    onSelect,
    onChange,
-   onViewTransitionRules,
    onEditNote,
    editRequest,
    onEditComplete,
@@ -223,6 +268,7 @@ function GraphEditor({
    } | null>(null);
    const [preview, setPreview] = useState<Point | null>(null);
    const suppressContext = useRef(false);
+   const transitionEditor = useRef<TransitionEditorHandle>(null);
    function anchor(location: Point) {
       return {
          x: location.x * zoom + pan.x + stateRadius * zoom,
@@ -306,6 +352,16 @@ function GraphEditor({
       []
    );
    const stateRadius = radius * stateScale;
+   const noteLayout = useMemo(() => {
+      const style = getComputedStyle(document.documentElement);
+      return {
+         maxWidth: parseFloat(style.getPropertyValue('--graph-note-max-width')),
+         padding: parseFloat(style.getPropertyValue('--graph-note-padding')),
+         lineHeight: parseFloat(style.getPropertyValue('--graph-note-line-height')),
+         fontSize: parseFloat(style.getPropertyValue('--font-size-sm')),
+         radius: parseFloat(style.getPropertyValue('--radius-md')),
+      };
+   }, []);
    const live = useRef({
       machine,
       selected,
@@ -1016,6 +1072,13 @@ function GraphEditor({
                                     <text x={0} y={1} textAnchor="middle">
                                        {label}
                                     </text>
+                                    <line
+                                       className="edge-label-underline"
+                                       x1={-label.length * 3.7}
+                                       x2={label.length * 3.7}
+                                       y1={7}
+                                       y2={7}
+                                    />
                                  </g>
                               </g>
                            );
@@ -1042,8 +1105,21 @@ function GraphEditor({
                      );
                   })()}
                {machine.notes.map((note) => {
-                  const lines = note.text.split('\n');
-                  const width = Math.max(90, ...lines.map((line) => line.length * 7 + 24));
+                  const characterWidth = noteLayout.fontSize * 0.6;
+                  const columns = Math.max(
+                     1,
+                     Math.floor((noteLayout.maxWidth - noteLayout.padding * 2) / characterWidth)
+                  );
+                  const lines = wrapNote(note.text, columns);
+                  const width = Math.min(
+                     noteLayout.maxWidth,
+                     Math.max(
+                        noteLayout.padding * 6,
+                        ...lines.map(
+                           (line) => line.length * characterWidth + noteLayout.padding * 2
+                        )
+                     )
+                  );
                   return (
                      <g
                         key={note.id}
@@ -1065,15 +1141,19 @@ function GraphEditor({
                         onKeyDown={(event) => objectKeyboard(event, note.id, onEditNote)}
                      >
                         <rect
-                           x={-12}
-                           y={-20}
+                           x={-noteLayout.padding}
+                           y={-noteLayout.fontSize - noteLayout.padding}
                            width={width}
-                           height={lines.length * 21 + 16}
-                           rx={6}
+                           height={
+                              noteLayout.fontSize +
+                              noteLayout.padding * 2 +
+                              (lines.length - 1) * noteLayout.lineHeight
+                           }
+                           rx={noteLayout.radius}
                         />
                         <text>
                            {lines.map((line, index) => (
-                              <tspan key={index} x={0} y={index * 21}>
+                              <tspan key={index} x={0} y={index * noteLayout.lineHeight}>
                                  {line || ' '}
                               </tspan>
                            ))}
@@ -1153,7 +1233,12 @@ function GraphEditor({
                x={editor.x}
                y={editor.y}
                className={editor.kind === 'state' ? 'state-popover' : 'transition-popover'}
-               onClose={() => setEditor(null)}
+               draggable={editor.kind === 'transition'}
+               blockOutsidePointer={editor.kind === 'transition'}
+               onClose={() => {
+                  if (editor.kind === 'transition') transitionEditor.current?.requestClose();
+                  else setEditor(null);
+               }}
             >
                {editor.kind === 'state' ? (
                   <StateProperties
@@ -1179,6 +1264,7 @@ function GraphEditor({
                   />
                ) : (
                   <TransitionProperties
+                     ref={transitionEditor}
                      machine={machine}
                      preferences={preferences}
                      transition={machine.transitions.find((t) => t.id === editor.id)}
@@ -1188,11 +1274,7 @@ function GraphEditor({
                         const current = live.current.machine;
                         onChange({
                            ...current,
-                           transitions: editor.id
-                              ? current.transitions.flatMap((t) =>
-                                   t.id === editor.id ? updates : [t]
-                                )
-                              : [...current.transitions, ...updates],
+                           transitions: replaceTransitionRules(current, updates, editor.id),
                         });
                         onSelect(updates.map((transition) => transition.id));
                         setEditor(
@@ -1216,7 +1298,6 @@ function GraphEditor({
                      }
                      onStraighten={editor.id ? () => straightenTransition(editor.id!) : undefined}
                      onClose={() => setEditor(null)}
-                     onViewRules={onViewTransitionRules}
                   />
                )}
             </Popover>

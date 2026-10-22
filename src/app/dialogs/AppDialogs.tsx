@@ -70,7 +70,6 @@ export function AppDialogs({
          )}
          <GraphDialogs
             machine={machine}
-            emptySymbol={settings.emptySymbol}
             dialog={dialog}
             setDialog={setDialog}
             change={workspace.change}

@@ -181,11 +181,22 @@
       --dialog-wide-width: 760px;
       --finite-preview-height: 240px;
       --state-popover-width: 230px;
-      --transition-popover-width: 360px;
+      --transition-popover-width: 420px;
       --transition-input-width: 64px;
+      --character-input-width: var(--space-10);
+      --transition-movement-button-size: calc(var(--space-8) + var(--space-1));
+      --transition-movement-column-width: calc(
+         var(--transition-movement-button-size) * 2 + var(--space-1) + var(--space-4)
+      );
+      --transition-movement-column-width-stay: calc(
+         var(--transition-movement-button-size) * 3 + var(--space-1) * 2 + var(--space-4)
+      );
       --movement-input-width: 128px;
       --document-picker-width: 280px;
-      --document-tab-width: 200px;
+      --document-tab-width: 180px;
+      --graph-note-max-width: 260px;
+      --graph-note-line-height: 20px;
+      --graph-note-padding: 12px;
       --home-width: 960px;
       --home-title-size: 32px;
       --home-card-icon: 56px;
@@ -195,7 +206,6 @@
       --empty-copy-max-width: 320px;
       --app-min-width: 640px;
       --dirty-dot-size: 6px;
-      --transition-view-max-height: 560px;
       --simulation-input-width: 245px;
       --simulation-speed-width: 85px;
       --simulation-state-width: 115px;

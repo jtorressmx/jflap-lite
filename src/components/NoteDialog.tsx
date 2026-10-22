@@ -2,9 +2,11 @@ import { useState } from 'react';
 
 import { FiTrash2 } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
+import { IconButton } from '@/components/ui/IconButton';
 import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
 import { ModalFooter } from '@/components/ui/ModalFooter';
+import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
 import type { Machine } from '@/domain/model';
 
 /**
@@ -28,8 +30,16 @@ export function NoteDialog({
    onDelete: () => void;
 }) {
    const [text, setText] = useState(note?.text || '');
+   const [confirmClose, setConfirmClose] = useState(false);
+   /** Requests dismissal while preserving an edited note.
+    * @returns No value.
+    */
+   function requestClose() {
+      if (text !== (note?.text ?? '')) setConfirmClose(true);
+      else onClose();
+   }
    return (
-      <Modal title="Nota del diagrama" onClose={onClose}>
+      <Modal title="Nota" onClose={requestClose}>
          <form
             onSubmit={(e) => {
                e.preventDefault();
@@ -38,10 +48,10 @@ export function NoteDialog({
          >
             <ModalBody>
                <label className="field">
-                  <span>Texto</span>
                   <textarea
+                     aria-label="Contenido de la nota"
                      autoFocus
-                     rows={5}
+                     rows={3}
                      value={text}
                      onChange={(e) => setText(e.target.value)}
                      placeholder="Describe qué hace esta parte de la máquina…"
@@ -49,16 +59,22 @@ export function NoteDialog({
                </label>
             </ModalBody>
             <ModalFooter>
-               <Button variant="subtle" onClick={onDelete}>
+               <IconButton label="Eliminar nota" className="note-delete" onClick={onDelete}>
                   <FiTrash2 />
-                  Eliminar
-               </Button>
-               <Button onClick={onClose}>Cancelar</Button>
+               </IconButton>
+               <Button onClick={requestClose}>Cancelar</Button>
                <Button type="submit" variant="primary">
-                  Guardar nota
+                  Guardar
                </Button>
             </ModalFooter>
          </form>
+         {confirmClose && (
+            <UnsavedChangesDialog
+               onSave={() => onSave(text)}
+               onDiscard={onClose}
+               onCancel={() => setConfirmClose(false)}
+            />
+         )}
       </Modal>
    );
 }

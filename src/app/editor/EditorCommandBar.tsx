@@ -40,10 +40,20 @@ export function EditorCommandBar({
          </div>
          <span className="command-divider" />
          <div className="command-group">
-            <IconButton label="Deshacer (Ctrl+Z)" disabled={!active.past.length} onClick={undo}>
+            <IconButton
+               label="Deshacer (Ctrl+Z)"
+               tooltip
+               disabled={!active.past.length}
+               onClick={undo}
+            >
                <FiRotateCcw />
             </IconButton>
-            <IconButton label="Rehacer (Ctrl+Y)" disabled={!active.future.length} onClick={redo}>
+            <IconButton
+               label="Rehacer (Ctrl+Y)"
+               tooltip
+               disabled={!active.future.length}
+               onClick={redo}
+            >
                <FiRotateCw />
             </IconButton>
          </div>

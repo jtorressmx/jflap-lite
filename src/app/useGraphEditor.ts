@@ -1,6 +1,6 @@
 import { useEffect, useEffectEvent, useMemo, useState } from 'react';
 
-import type { Notify, ShowDialog, Tool, Workspace } from '@/app/types';
+import type { Notify, Tool, Workspace } from '@/app/types';
 import { finiteNondeterminism } from '@/domain/finite';
 import { deleteElements, duplicateElements } from '@/domain/graphEditing';
 import type { Machine } from '@/domain/model';
@@ -13,7 +13,6 @@ type GraphOptions = {
    change: Workspace['change'];
    undo: Workspace['undo'];
    redo: Workspace['redo'];
-   setDialog: ShowDialog;
    notify: Notify;
 };
 /**
@@ -24,19 +23,10 @@ type GraphOptions = {
  * @param options.change - Receives an updated machine and optional history commit flag.
  * @param options.undo - Restores the previous machine snapshot.
  * @param options.redo - Restores the next machine snapshot.
- * @param options.setDialog - Receives a requested graph dialog or null.
  * @param options.notify - Receives a user-facing notification.
  * @returns Graph state and editing actions.
  */
-export function useGraphEditor({
-   documentId,
-   machine,
-   change,
-   undo,
-   redo,
-   setDialog,
-   notify,
-}: GraphOptions) {
+export function useGraphEditor({ documentId, machine, change, undo, redo, notify }: GraphOptions) {
    const [tool, setTool] = useState<Tool>('select');
    const [selected, setSelected] = useState<string[]>([]);
    const [highlights, setHighlights] = useState<string[]>([]);
@@ -119,20 +109,6 @@ export function useGraphEditor({
       const target = e.target;
       if (!(target instanceof Element)) return;
       const ctrl = e.ctrlKey || e.metaKey;
-      if (ctrl && e.key.toLowerCase() === 'r') {
-         e.preventDefault();
-         if (!target.closest('dialog')) {
-            const selectedTransition = machine.transitions.find((transition) =>
-               selected.includes(transition.id)
-            );
-            if (selectedTransition)
-               setDialog({
-                  type: 'transition-rules',
-                  id: selectedTransition.id,
-               });
-         }
-         return;
-      }
       if (target.closest('input,textarea,select,[contenteditable="true"],dialog')) return;
       if (ctrl) {
          const k = e.key.toLowerCase();
