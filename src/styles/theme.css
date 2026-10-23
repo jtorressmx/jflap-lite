@@ -196,12 +196,8 @@
       --transition-input-width: 64px;
       --character-input-width: var(--space-10);
       --transition-movement-button-size: calc(var(--space-8) + var(--space-1));
-      --transition-movement-column-width: calc(
-         var(--transition-movement-button-size) * 2 + var(--space-1) + var(--space-4)
-      );
-      --transition-movement-column-width-stay: calc(
-         var(--transition-movement-button-size) * 3 + var(--space-1) * 2 + var(--space-4)
-      );
+      --transition-rule-row-height: calc(var(--transition-movement-button-size) + var(--space-3));
+      --transition-visible-rule-count: 5;
       --movement-input-width: 128px;
       --document-picker-width: 280px;
       --document-tab-width: 180px;

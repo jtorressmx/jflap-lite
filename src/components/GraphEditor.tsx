@@ -1338,7 +1338,16 @@ function GraphEditor({
                            ...current,
                            transitions: replaceTransitionRules(current, updates, editor.id),
                         });
-                        onSelect(updates.map((transition) => transition.id));
+                        const editedTransition = editor.id
+                           ? updates.find((transition) => transition.id === editor.id)
+                           : updates.at(-1);
+                        onSelect(
+                           machineKind(current) === 'fa'
+                              ? updates.map((transition) => transition.id)
+                              : editedTransition
+                                ? [editedTransition.id]
+                                : []
+                        );
                         setEditor(
                            repeat
                               ? {

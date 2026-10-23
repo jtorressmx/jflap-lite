@@ -1,4 +1,4 @@
-import type { DragEvent, Ref } from 'react';
+import type { DragEvent, KeyboardEvent, Ref } from 'react';
 import { useImperativeHandle, useRef, useState } from 'react';
 
 import {
@@ -15,7 +15,6 @@ import {
 } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
 import { CharacterInput } from '@/components/ui/CharacterInput';
-import { DataTable } from '@/components/ui/DataTable';
 import { IconButton } from '@/components/ui/IconButton';
 import { PopoverHeading } from '@/components/ui/PopoverHeading';
 import { UnsavedChangesDialog } from '@/components/ui/UnsavedChangesDialog';
@@ -168,65 +167,81 @@ export function TransitionProperties({
       else onClose();
    }
    useImperativeHandle(ref, () => ({ requestClose }));
-   /** Moves a draft rule without changing the compact editor selection.
-    * @param fromIndex - Existing rule position.
-    * @param toIndex - Requested rule position.
+   const hasCurvature = machine.transitions.some(
+      (item) => item.from === a && item.to === b && item.control
+   );
+   const saveLabel = `${rules.length > 1 ? `Guardar ${rules.length} transiciones` : 'Guardar transición'}${!finite && dirty ? ' (cambios sin guardar)' : ''}`;
+   const saveClassName = `transition-save${dirty ? ' has-changes' : ''}`;
+   /** Moves a rule to another rule's position while retaining draft identifiers.
+    * @param sourceKey - Stable key of the rule to move.
+    * @param targetKey - Stable key of the destination rule.
     * @returns No value.
     */
-   function reorderRule(fromIndex: number, toIndex: number) {
-      if (fromIndex < 0 || toIndex < 0 || toIndex >= rules.length || fromIndex === toIndex) return;
-      const next = [...rules];
-      const [moved] = next.splice(fromIndex, 1);
-      next.splice(toIndex, 0, moved);
-      setRules(next);
+   function reorderRule(sourceKey: string, targetKey: string): void {
+      setRules((current) => {
+         const sourceIndex = current.findIndex((rule) => rule.key === sourceKey);
+         const targetIndex = current.findIndex((rule) => rule.key === targetKey);
+         if (sourceIndex < 0 || targetIndex < 0 || sourceIndex === targetIndex) return current;
+         const next = [...current];
+         const [moved] = next.splice(sourceIndex, 1);
+         next.splice(targetIndex, 0, moved);
+         return next;
+      });
+      setError('');
    }
-   /** Starts a drag reorder from a rule handle.
-    * @param event - Drag event from the rule handle.
+   /** Starts dragging a rule from its reorder handle.
+    * @param event - Drag event from the handle.
     * @param ruleKey - Stable key of the dragged rule.
     * @returns No value.
     */
-   function startRuleDrag(event: DragEvent<HTMLButtonElement>, ruleKey: string) {
+   function startRuleDrag(event: DragEvent<HTMLButtonElement>, ruleKey: string): void {
       draggedRule.current = ruleKey;
       setDraggingRule(ruleKey);
       event.dataTransfer.effectAllowed = 'move';
       event.dataTransfer.setData('text/plain', ruleKey);
    }
-   /** Allows a dragged rule to be placed on a table row.
-    * @param event - Drag event over a destination row.
+   /** Marks a rule as a destination for an active reorder.
+    * @param event - Drag event over the destination row.
     * @param ruleKey - Stable key of the destination rule.
     * @returns No value.
     */
-   function allowRuleDrop(event: DragEvent<HTMLTableRowElement>, ruleKey: string) {
+   function allowRuleDrop(event: DragEvent<HTMLDivElement>, ruleKey: string): void {
       if (!draggedRule.current) return;
       event.preventDefault();
       event.dataTransfer.dropEffect = 'move';
       setDropTargetRule(ruleKey);
    }
-   /** Reorders a dragged rule and clears the drag state.
-    * @param event - Drag event released on a destination row.
-    * @param index - Destination position in the ordered rules.
+   /** Clears an active rule drag without inputs.
     * @returns No value.
     */
-   function dropRule(event: DragEvent<HTMLTableRowElement>, index: number) {
+   function finishRuleDrag(): void {
+      draggedRule.current = null;
+      setDraggingRule(null);
+      setDropTargetRule(null);
+   }
+   /** Applies an active drag to its destination row.
+    * @param event - Drop event on the destination row.
+    * @param ruleKey - Stable key of the destination rule.
+    * @returns No value.
+    */
+   function dropRule(event: DragEvent<HTMLDivElement>, ruleKey: string): void {
+      if (!draggedRule.current) return;
       event.preventDefault();
-      const fromIndex = rules.findIndex((rule) => rule.key === draggedRule.current);
-      reorderRule(fromIndex, index);
-      draggedRule.current = null;
-      setDraggingRule(null);
-      setDropTargetRule(null);
+      reorderRule(draggedRule.current, ruleKey);
+      finishRuleDrag();
    }
-   /** Clears the visual drag state after a reorder ends.
+   /** Reorders a rule with the vertical arrow keys.
+    * @param event - Keyboard event from the reorder handle.
+    * @param ruleKey - Stable key of the focused rule.
     * @returns No value.
     */
-   function finishRuleDrag() {
-      draggedRule.current = null;
-      setDraggingRule(null);
-      setDropTargetRule(null);
+   function handleReorderKeyDown(event: KeyboardEvent<HTMLButtonElement>, ruleKey: string): void {
+      if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+      event.preventDefault();
+      const index = rules.findIndex((rule) => rule.key === ruleKey);
+      const target = rules[index + (event.key === 'ArrowUp' ? -1 : 1)];
+      if (target) reorderRule(ruleKey, target.key);
    }
-   const hasCurvature = machine.transitions.some(
-      (item) => item.from === a && item.to === b && item.control
-   );
-   const hasStayMovement = preferences.allowStay || rules.some((rule) => rule.move === 'S');
    /** Updates a rule in either editor presentation.
     * @param index - Rule position in the ordered draft.
     * @param update - Edited rule fields.
@@ -237,7 +252,7 @@ export function TransitionProperties({
          current.map((rule, ruleIndex) => (ruleIndex === index ? { ...rule, ...update } : rule))
       );
    }
-   /** Switches between compact and table editing without changing the draft.
+   /** Switches between compact and multiple-rule editing without changing the draft.
     * @returns No value.
     */
    function showMultipleRules() {
@@ -359,7 +374,10 @@ export function TransitionProperties({
             save();
          }}
       >
-         <PopoverHeading data-popover-drag-handle>
+         <PopoverHeading
+            data-popover-drag-handle
+            className={multipleRules ? 'transition-heading-separated' : ''}
+         >
             <span className="transition-endpoints">
                <span className="transition-endpoint">
                   {machine.states.find((s) => s.id === a)?.name}
@@ -423,11 +441,8 @@ export function TransitionProperties({
                      </>
                   )}
                   <IconButton
-                     label={
-                        rules.length > 1
-                           ? `Guardar ${rules.length} transiciones`
-                           : 'Guardar transición'
-                     }
+                     label={saveLabel}
+                     className={finite ? undefined : saveClassName}
                      onClick={() => save()}
                   >
                      <FiCheck />
@@ -458,104 +473,77 @@ export function TransitionProperties({
                      Agregar fila
                   </Button>
                </div>
-               <div className="transition-rules-scroll">
-                  <DataTable
-                     className={`transition-rules-table${hasStayMovement ? ' has-stay-movement' : ''}`}
-                     caption="Reglas de transición"
-                     columns={[
-                        { id: 'remove', header: <span className="sr-only">Eliminar</span> },
-                        { id: 'read', header: 'Lee' },
-                        { id: 'write', header: 'Escribe' },
-                        { id: 'movement', header: 'Movimiento' },
-                        { id: 'order', header: <span className="sr-only">Orden</span> },
-                     ]}
-                  >
-                     {rules.map((rule, index) => (
-                        <tr
-                           key={rule.key}
-                           data-dragging={draggingRule === rule.key || undefined}
-                           data-drop-target={dropTargetRule === rule.key || undefined}
-                           onDragOver={(event) => allowRuleDrop(event, rule.key)}
-                           onDrop={(event) => dropRule(event, index)}
+               <div
+                  className="transition-rules-scroll"
+                  role="group"
+                  aria-label="Reglas de transición"
+               >
+                  {rules.map((rule, index) => (
+                     <div
+                        key={rule.key}
+                        className="transition-expression transition-rule-row"
+                        role="group"
+                        aria-label={`Regla ${index + 1}`}
+                        data-dragging={draggingRule === rule.key || undefined}
+                        data-drop-target={dropTargetRule === rule.key || undefined}
+                        onDragOver={(event) => allowRuleDrop(event, rule.key)}
+                        onDrop={(event) => dropRule(event, rule.key)}
+                     >
+                        <CharacterInput
+                           aria-label={`Leer regla ${index + 1}`}
+                           autoFocus={index === 0}
+                           value={rule.read}
+                           placeholder="□"
+                           spellCheck={false}
+                           onChange={(e) => changeRule(index, { read: e.target.value })}
+                        />
+                        <span>;</span>
+                        <CharacterInput
+                           aria-label={`Escribir regla ${index + 1}`}
+                           value={rule.write}
+                           placeholder="□"
+                           spellCheck={false}
+                           onChange={(e) => changeRule(index, { write: e.target.value })}
+                        />
+                        <span>,</span>
+                        <MovementControl
+                           label={`Movimiento regla ${index + 1}`}
+                           value={rule.move}
+                           allowStay={preferences.allowStay}
+                           onChange={(value) => changeRule(index, { move: value })}
+                        />
+                        <IconButton
+                           label={`Reordenar regla ${index + 1}`}
+                           className="rule-drag-handle"
+                           aria-keyshortcuts="ArrowUp ArrowDown"
+                           disabled={rules.length === 1}
+                           draggable={rules.length > 1}
+                           onDragStart={(event) => startRuleDrag(event, rule.key)}
+                           onDragEnd={finishRuleDrag}
+                           onKeyDown={(event) => handleReorderKeyDown(event, rule.key)}
                         >
-                           <td>
-                              <IconButton
-                                 label={`Eliminar regla ${index + 1}`}
-                                 disabled={rules.length === 1}
-                                 onClick={() => removeRule(index)}
-                              >
-                                 <FiX />
-                              </IconButton>
-                           </td>
-
-                           <td>
-                              <CharacterInput
-                                 aria-label={`Leer regla ${index + 1}`}
-                                 autoFocus={index === 0}
-                                 value={rule.read}
-                                 onChange={(e) => changeRule(index, { read: e.target.value })}
-                              />
-                           </td>
-                           <td>
-                              <CharacterInput
-                                 aria-label={`Escribir regla ${index + 1}`}
-                                 value={rule.write}
-                                 onChange={(e) => changeRule(index, { write: e.target.value })}
-                              />
-                           </td>
-                           <td>
-                              <MovementControl
-                                 label={`Movimiento regla ${index + 1}`}
-                                 value={rule.move}
-                                 allowStay={preferences.allowStay}
-                                 onChange={(value) => changeRule(index, { move: value })}
-                              />
-                           </td>
-                           <td>
-                              <IconButton
-                                 className="rule-drag-handle"
-                                 label={`Reordenar regla ${index + 1}`}
-                                 disabled={rules.length === 1}
-                                 draggable={rules.length > 1}
-                                 onDragStart={(event) => startRuleDrag(event, rule.key)}
-                                 onDragEnd={finishRuleDrag}
-                                 onKeyDown={(event) => {
-                                    if (event.key === 'ArrowUp' && index > 0) {
-                                       event.preventDefault();
-                                       reorderRule(index, index - 1);
-                                    } else if (
-                                       event.key === 'ArrowDown' &&
-                                       index < rules.length - 1
-                                    ) {
-                                       event.preventDefault();
-                                       reorderRule(index, index + 1);
-                                    }
-                                 }}
-                              >
-                                 <LuGripVertical />
-                              </IconButton>
-                           </td>
-                        </tr>
-                     ))}
-                  </DataTable>
+                           <LuGripVertical />
+                        </IconButton>
+                        <IconButton
+                           label={`Eliminar regla ${index + 1}`}
+                           disabled={rules.length === 1}
+                           onClick={() => removeRule(index)}
+                        >
+                           <FiX />
+                        </IconButton>
+                     </div>
+                  ))}
                </div>
                <div className="transition-multiple-actions">
                   {hasCurvature && onStraighten && (
-                     <Button variant="subtle" onClick={onStraighten}>
+                     <Button variant="subtle" className="mr-auto" onClick={onStraighten}>
                         <FiMinus />
                         Quitar curvatura
                      </Button>
                   )}
-                  <IconButton
-                     label={
-                        rules.length > 1
-                           ? `Guardar ${rules.length} transiciones`
-                           : 'Guardar transición'
-                     }
-                     onClick={() => save()}
-                  >
-                     <FiCheck />
-                  </IconButton>
+                  <Button type="submit" variant="primary">
+                     Guardar cambios
+                  </Button>
                </div>
             </>
          )}
