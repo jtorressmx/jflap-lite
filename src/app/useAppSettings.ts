@@ -54,6 +54,9 @@ export function useAppSettings() {
          : 'bottom'
    );
    const [autoZoom, setAutoZoom] = useState(uiSettings.autoZoom === true);
+   const [createStatesOnDoubleClick, setCreateStatesOnDoubleClick] = useState(
+      uiSettings.createStatesOnDoubleClick !== false
+   );
    const [stateScale, setStateScale] = useState(
       typeof uiSettings.stateScale === 'number'
          ? Math.max(0.7, Math.min(1.5, uiSettings.stateScale))
@@ -97,12 +100,21 @@ export function useAppSettings() {
             highlightInitialFinalStates,
             grid,
             autoZoom,
+            createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
          })
       );
       settingsChanged();
-   }, [showLabels, highlightInitialFinalStates, grid, autoZoom, stateScale, simulationPosition]);
+   }, [
+      showLabels,
+      highlightInitialFinalStates,
+      grid,
+      autoZoom,
+      createStatesOnDoubleClick,
+      stateScale,
+      simulationPosition,
+   ]);
 
    return {
       preferences,
@@ -121,6 +133,8 @@ export function useAppSettings() {
       setSimulationPosition,
       autoZoom,
       setAutoZoom,
+      createStatesOnDoubleClick,
+      setCreateStatesOnDoubleClick,
       stateScale,
       setStateScale,
       emptySymbol,

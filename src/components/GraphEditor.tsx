@@ -1,4 +1,8 @@
-import type { KeyboardEvent as ReactKeyboardEvent, PointerEvent as ReactPointerEvent } from 'react';
+import type {
+   KeyboardEvent as ReactKeyboardEvent,
+   MouseEvent as ReactMouseEvent,
+   PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
 
 import { StateProperties } from '@/components/graph/StateProperties';
@@ -47,6 +51,7 @@ type Props = {
    highlightStates?: string[];
    showLabels: boolean;
    highlightInitialFinalStates?: boolean;
+   createStatesOnDoubleClick?: boolean;
    zoom: number;
    onZoom: (zoom: number) => void;
    fitKey: number;
@@ -228,6 +233,7 @@ function connectionPreviewPath(
  * @param [props.highlightStates] - Identifiers of highlighted states; none by default.
  * @param props.showLabels - Whether state labels are displayed.
  * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
+ * @param [props.createStatesOnDoubleClick=true] - Whether a background double-click creates a state.
  * @param props.zoom - Current diagram zoom factor.
  * @param [props.simulationOpen=false] - Keeps simulation framing at a readable scale.
  * @param props.onZoom - Receives the requested zoom factor.
@@ -255,6 +261,7 @@ function GraphEditor({
    highlightStates = [],
    showLabels,
    highlightInitialFinalStates = false,
+   createStatesOnDoubleClick = true,
    zoom,
    simulationOpen = false,
    onZoom,
@@ -695,7 +702,46 @@ function GraphEditor({
             kind === 'transition' ? [id] : ids
          );
    }
-   function backgroundDown(event: ReactPointerEvent<SVGSVGElement>) {
+   /**
+    * Adds a named state at the requested graph position.
+    * @param location - Position in graph coordinates.
+    * @returns No value.
+    */
+   function createState(location: Point): void {
+      if (readOnly) return;
+      let index = 0;
+      while (machine.states.some((state) => state.name === `q${index}`)) index++;
+      const state: State = {
+         id: nextStateId(machine),
+         name: `q${index}`,
+         label: '',
+         ...location,
+         initial: false,
+         final: false,
+      };
+      onChange({ ...machine, states: [...machine.states, state] });
+      onSelect([state.id]);
+   }
+   /**
+    * Creates a state when double-click creation is enabled on the empty canvas.
+    * @param event - Double-click event from the graph canvas.
+    * @returns No value.
+    */
+   function backgroundDoubleClick(event: ReactMouseEvent<SVGSVGElement>): void {
+      if (readOnly || !createStatesOnDoubleClick || tool !== 'select' || event.button !== 0) return;
+      if (
+         event.target !== svg.current &&
+         !(event.target instanceof SVGRectElement && event.target.dataset.background)
+      )
+         return;
+      createState(point(event));
+   }
+   /**
+    * Starts the selected canvas interaction.
+    * @param event - Pointer event from the empty graph canvas.
+    * @returns No value.
+    */
+   function backgroundDown(event: ReactPointerEvent<SVGSVGElement>): void {
       if (event.button === 2) {
          suppressContext.current = false;
          setEditor(null);
@@ -714,19 +760,7 @@ function GraphEditor({
       if (event.button !== 0) return;
       const location = point(event);
       if (tool === 'state') {
-         let index = 0;
-         while (machine.states.some((state) => state.name === `q${index}`)) index++;
-         const state = {
-            id: nextStateId(machine),
-            name: `q${index}`,
-            label: '',
-            x: location.x,
-            y: location.y,
-            initial: false,
-            final: false,
-         };
-         onChange({ ...machine, states: [...machine.states, state] });
-         onSelect([state.id]);
+         createState(location);
       } else if (tool === 'note') {
          const note = {
             id: crypto.randomUUID(),
@@ -948,28 +982,7 @@ function GraphEditor({
             onPointerCancel={pointerUp}
             onKeyDown={keyboard}
             onContextMenu={(event) => event.preventDefault()}
-            onDoubleClick={(event) => {
-               if (readOnly) return;
-               if (
-                  event.target !== svg.current &&
-                  !(event.target instanceof SVGRectElement && event.target.dataset.background)
-               )
-                  return;
-               if (tool !== 'select') return;
-               const location = point(event);
-               let index = 0;
-               while (machine.states.some((state) => state.name === `q${index}`)) index++;
-               const state = {
-                  id: crypto.randomUUID(),
-                  name: `q${index}`,
-                  label: '',
-                  ...location,
-                  initial: false,
-                  final: false,
-               };
-               onChange({ ...machine, states: [...machine.states, state] });
-               onSelect([state.id]);
-            }}
+            onDoubleClick={backgroundDoubleClick}
          >
             <defs>
                <pattern

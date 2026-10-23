@@ -1371,19 +1371,34 @@
       grid-template-columns: 1fr 1fr;
       @apply gap-4;
    }
+   .settings-page {
+      @apply flex-1 min-h-0 overflow-y-auto bg-canvas py-6 px-8;
+   }
+   .settings-content {
+      @apply w-full max-w-home mx-auto;
+   }
+   .settings-heading {
+      @apply mb-6;
+   }
+   .settings-heading h1 {
+      @apply text-xl;
+   }
    .settings-body {
       @apply grid;
       grid-template-columns:
          minmax(var(--settings-section-min-width), 0.8fr)
          minmax(0, 1.2fr);
       align-content: start;
-      @apply gap-8 py-6 px-8 overflow-auto;
+      @apply gap-8;
    }
    .settings-section {
       @apply flex flex-col gap-4 min-w-0;
    }
-   .settings-section h3 {
+   .settings-section h2 {
       @apply m-0 text-md;
+   }
+   .settings-section > .button {
+      @apply self-start;
    }
    .settings-section-wide {
       grid-column: 1 / -1;
@@ -2050,7 +2065,10 @@
       }
       .settings-body {
          grid-template-columns: 1fr;
-         @apply gap-6 p-4;
+         @apply gap-6;
+      }
+      .settings-page {
+         @apply p-4;
       }
       .settings-section-wide {
          grid-column: auto;

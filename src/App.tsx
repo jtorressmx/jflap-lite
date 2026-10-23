@@ -6,7 +6,8 @@ import { EditorCommandBar } from '@/app/editor/EditorCommandBar';
 import { MachineEditor } from '@/app/editor/MachineEditor';
 import { WorkspaceSimulations } from '@/app/editor/WorkspaceSimulations';
 import { AppMenuBar } from '@/app/navigation/AppMenuBar';
-import type { Dialog } from '@/app/types';
+import { SettingsPage } from '@/app/SettingsPage';
+import type { AppView, Dialog } from '@/app/types';
 import { useAppSettings } from '@/app/useAppSettings';
 import { useDesktopCommands } from '@/app/useDesktopCommands';
 import { useDocuments } from '@/app/useDocuments';
@@ -49,7 +50,9 @@ export default function App() {
    const workspace = useWorkspace();
    const active = workspace.active ?? inactiveDocument;
    const machine = active.machine;
-   const [home, setHome] = useState(true);
+   const [view, setView] = useState<AppView>('home');
+   const [settingsOpen, setSettingsOpen] = useState(false);
+   const home = view === 'home';
    const [dialog, setDialog] = useState<Dialog | null>(null);
    const [fileDropActive, setFileDropActive] = useState(false);
    const [notificationHost, setNotificationHost] = useState<HTMLElement | null>(null);
@@ -156,14 +159,46 @@ export default function App() {
       void documents.openDroppedFiles(Array.from(event.dataTransfer.files));
    }
    /**
-    * Opens the home screen and saves changed files when leaving the editor.
-    * @param nextHome - Whether the home screen should be visible.
+    * Updates document navigation while retaining an active settings tab after documents close.
+    * @param nextHome - Whether the document workflow has returned to the home screen.
     * @returns No value.
     */
-   function navigateHome(nextHome: boolean) {
-      if (nextHome && !home && window.desktop.isDesktop && settings.autoSaveOnBlur)
+   function setHome(nextHome: boolean): void {
+      setView((current) =>
+         nextHome && current === 'settings' ? current : nextHome ? 'home' : 'document'
+      );
+   }
+   /**
+    * Navigates between workspace pages and saves changed files when leaving the editor.
+    * @param nextView - Workspace page to display.
+    * @returns No value.
+    */
+   function navigateView(nextView: AppView): void {
+      if (
+         view === 'document' &&
+         nextView !== view &&
+         window.desktop.isDesktop &&
+         settings.autoSaveOnBlur
+      )
          void documents.saveOpenDocumentsAutomatically();
-      setHome(nextHome);
+      setView(nextView);
+   }
+   /**
+    * Opens or activates the single settings tab without inputs.
+    * @returns No value.
+    */
+   function openSettings(): void {
+      updateDialog(null);
+      setSettingsOpen(true);
+      navigateView('settings');
+   }
+   /**
+    * Closes the settings tab and restores the active document or home page without inputs.
+    * @returns No value.
+    */
+   function closeSettings(): void {
+      setSettingsOpen(false);
+      if (view === 'settings') navigateView(workspace.active ? 'document' : 'home');
    }
    /** Saves open files on focus loss when automatic saving is enabled.
     * Takes no input.
@@ -194,6 +229,7 @@ export default function App() {
       };
    }, []);
    const editor = useGraphEditor({
+      enabled: view === 'document',
       documentId: active.id,
       machine,
       change: workspace.change,
@@ -208,7 +244,7 @@ export default function App() {
     * @returns A promise resolved after printing or reporting failure.
     */
    async function print() {
-      if (!workspace.active) return;
+      if (view !== 'document' || !workspace.active) return;
       try {
          await printMachine(machine);
       } catch {
@@ -216,7 +252,7 @@ export default function App() {
       }
    }
    useDesktopCommands({
-      name: home ? '' : machine.name,
+      name: view === 'settings' ? 'Ajustes' : home ? '' : machine.name,
       dirtyCount: workspace.documents.filter((doc) => JSON.stringify(doc.machine) !== doc.saved)
          .length,
       autoSaveOnBlur: settings.autoSaveOnBlur,
@@ -224,17 +260,17 @@ export default function App() {
       commands: {
          new: () => documents.createDocument(machineKind(machine)),
          open: () => documents.openDialog(),
-         save: () => documents.save(),
-         'save-as': () => documents.save(true),
+         save: () => (view === 'document' ? documents.save() : undefined),
+         'save-as': () => (view === 'document' ? documents.save(true) : undefined),
          'save-all': documents.saveAll,
-         close: () => documents.closeDocument(active.id),
+         close: () => (view === 'settings' ? closeSettings() : documents.closeDocument(active.id)),
          print,
          start: () => simulation.simulate('start'),
          step: () => simulation.simulate('step'),
          fast: () => simulation.simulate('fast'),
          batch: () => simulation.simulate('batch'),
          output: () => simulation.simulate('output'),
-         preferences: () => updateDialog({ type: 'settings' }),
+         preferences: openSettings,
          help: () => updateDialog({ type: 'help' }),
       },
    });
@@ -249,8 +285,11 @@ export default function App() {
          onDrop={homeDropEnabled ? handleFileDrop : undefined}
       >
          <AppMenuBar
-            home={home}
-            setHome={navigateHome}
+            view={view}
+            onHome={() => navigateView('home')}
+            settingsOpen={settingsOpen}
+            onSettings={openSettings}
+            onCloseSettings={closeSettings}
             workspace={workspace}
             documents={documents}
             settings={settings}
@@ -261,6 +300,13 @@ export default function App() {
             simulate={simulation.simulate}
             notify={notify}
          />
+         {view === 'settings' && (
+            <SettingsPage
+               settings={settings}
+               historyLimit={workspace.historyLimit}
+               setHistoryLimit={workspace.setHistoryLimit}
+            />
+         )}
          {home && (
             <HomePage
                onCreate={documents.createDocument}
@@ -278,7 +324,7 @@ export default function App() {
             </div>
          )}
          {workspace.active && (
-            <div className="app-body" hidden={home}>
+            <div className="app-body" hidden={view !== 'document'}>
                <main className="main-workspace">
                   <EditorCommandBar
                      active={active}

@@ -4,7 +4,6 @@ import { GraphDialogs } from '@/app/dialogs/GraphDialogs';
 import { InformationDialogs } from '@/app/dialogs/InformationDialogs';
 import { MachineDialogs } from '@/app/dialogs/MachineDialogs';
 import { RenameDocumentDialog } from '@/app/dialogs/RenameDocumentDialog';
-import { SettingsDialog } from '@/app/dialogs/SettingsDialog';
 import type { Dialog, Notify, ShowDialog, Workspace } from '@/app/types';
 import type { AppSettings } from '@/app/useAppSettings';
 import type { DocumentController } from '@/app/useDocuments';
@@ -13,7 +12,6 @@ import FiniteTools from '@/components/FiniteTools';
 import { HelpDialog } from '@/components/HelpDialog';
 import ManualCodeDialog from '@/components/ManualCodeDialog';
 import type { Machine } from '@/domain/model';
-import { machineKind } from '@/domain/model';
 import type { WorkspaceDocument } from '@/hooks/useWorkspace';
 
 /**
@@ -69,7 +67,6 @@ export function AppDialogs({
    notify: Notify;
 }) {
    const machine = active.machine;
-   const finite = machineKind(machine) === 'fa';
    const onClose = () => setDialog(null);
    return (
       <>
@@ -89,15 +86,6 @@ export function AppDialogs({
             setDialog={setDialog}
             change={workspace.change}
          />
-         {dialog?.type === 'settings' && (
-            <SettingsDialog
-               finite={finite}
-               settings={settings}
-               historyLimit={workspace.historyLimit}
-               setHistoryLimit={workspace.setHistoryLimit}
-               onClose={onClose}
-            />
-         )}
          {dialog?.type === 'rename-document' && (
             <RenameDocumentDialog
                key={dialog.id}

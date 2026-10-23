@@ -2,6 +2,7 @@ import type { useWorkspace } from '@/hooks/useWorkspace';
 
 export type Workspace = ReturnType<typeof useWorkspace>;
 export type Notify = (message: string) => void;
+export type AppView = 'home' | 'document' | 'settings';
 export type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
 export type Dialog =
    | { type: 'state'; id: string }
@@ -10,7 +11,6 @@ export type Dialog =
    | { type: 'rename-document'; id: string; name: string }
    | {
         type:
-           | 'settings'
            | 'help'
            | 'special-functions'
            | 'manual-code'

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-import type { Workspace } from '@/app/types';
+import type { AppView, Workspace } from '@/app/types';
 import type { DocumentController } from '@/app/useDocuments';
 import {
    FiArrowLeft,
@@ -11,6 +11,7 @@ import {
    FiHome,
    FiMoreHorizontal,
    FiPlus,
+   FiSettings,
    FiX,
 } from '@/components/icons';
 import { Button } from '@/components/ui/Button';
@@ -19,10 +20,13 @@ import { Menu } from '@/components/ui/Menu';
 import { machineKind } from '@/domain/model';
 
 /**
- * Shows open document tabs and file actions.
+ * Shows open document and settings tabs with file actions.
  * @param props - Component options.
  * @param props.workspace - Open documents and active-document state.
- * @param props.home - Whether the home page is visible.
+ * @param props.view - Active workspace page.
+ * @param props.settingsOpen - Whether the settings tab is open.
+ * @param props.onSettings - Opens or activates settings without inputs.
+ * @param props.onCloseSettings - Closes settings without inputs.
  * @param props.documents - Document selection, creation, and closing actions.
  * @param props.onHome - Returns to the home page.
  * @param props.onRenameDocument - Opens the rename dialog for a document identifier.
@@ -37,12 +41,18 @@ import { machineKind } from '@/domain/model';
 export function DocumentPicker({
    workspace,
    documents,
-   home,
+   view,
+   settingsOpen,
+   onSettings,
+   onCloseSettings,
    onHome,
    onRenameDocument,
 }: {
    workspace: Workspace;
-   home: boolean;
+   view: AppView;
+   settingsOpen: boolean;
+   onSettings: () => void;
+   onCloseSettings: () => void;
    onHome: () => void;
    onRenameDocument: (id: string) => void;
    documents: Pick<
@@ -66,8 +76,9 @@ export function DocumentPicker({
       saveAllDocuments,
       createDocument,
    } = documents;
-   const activeId = home ? undefined : active?.id;
+   const activeId = view === 'document' ? active?.id : view === 'settings' ? 'settings' : undefined;
    const documentCount = workspace.documents.length;
+   const tabCount = documentCount + Number(settingsOpen);
    const hasSavedDocuments = workspace.documents.some(
       (document) => JSON.stringify(document.machine) === document.saved
    );
@@ -103,7 +114,7 @@ export function DocumentPicker({
          observer.disconnect();
          tabs.removeEventListener('scroll', updateScrollEdges);
       };
-   }, [activeId, documentCount]);
+   }, [activeId, tabCount]);
    const overflowing = scrollEdges.before || scrollEdges.after;
    return (
       <div className="document-tabs-bar">
@@ -111,7 +122,7 @@ export function DocumentPicker({
             className="document-tabs-home"
             label="Inicio"
             tooltip
-            active={home}
+            active={view === 'home'}
             onClick={onHome}
          >
             <FiHome />
@@ -129,7 +140,7 @@ export function DocumentPicker({
                <FiArrowLeft />
             </IconButton>
          )}
-         <nav className="document-tabs" aria-label="Documentos abiertos">
+         <nav className="document-tabs" aria-label="Pestañas abiertas">
             <div className="document-tabs-list" ref={tabsRef}>
                {workspace.documents.map((doc) => {
                   const name = doc.machine.name.replace(/\.(?:jff|xml)$/i, '');
@@ -176,9 +187,33 @@ export function DocumentPicker({
                      </Menu>
                   );
                })}
+               {settingsOpen && (
+                  <div className={`document-tab ${view === 'settings' ? 'is-active' : ''}`}>
+                     <Button
+                        variant="subtle"
+                        className="document-tab-select"
+                        aria-current={view === 'settings' ? 'page' : undefined}
+                        onClick={onSettings}
+                     >
+                        <span className="document-tab-icon" aria-hidden="true">
+                           <FiSettings />
+                        </span>
+                        <span className="document-tab-name">Ajustes</span>
+                     </Button>
+                     <div className="document-tab-actions">
+                        <IconButton
+                           label="Cerrar Ajustes"
+                           hoverStyle="icon"
+                           onClick={onCloseSettings}
+                        >
+                           <FiX />
+                        </IconButton>
+                     </div>
+                  </div>
+               )}
             </div>
             <Menu
-               className={`document-actions-menu ${documentCount > 0 ? 'has-open-documents' : ''}`}
+               className={`document-actions-menu ${tabCount > 0 ? 'has-open-documents' : ''}`}
                label="Nuevo documento"
                tooltip
                showChevron={false}

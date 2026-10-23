@@ -8,6 +8,7 @@ import { machineKind } from '@/domain/model';
 import { nondeterministicStates } from '@/domain/turing';
 
 type GraphOptions = {
+   enabled: boolean;
    documentId: string;
    machine: Machine;
    change: Workspace['change'];
@@ -18,6 +19,7 @@ type GraphOptions = {
 /**
  * Manages graph selection, editing commands, camera state, and keyboard shortcuts.
  * @param options - Graph editing dependencies.
+ * @param options.enabled - Whether the editor can handle application shortcuts.
  * @param options.documentId - Active document identifier.
  * @param options.machine - Active machine snapshot.
  * @param options.change - Receives an updated machine and optional history commit flag.
@@ -26,7 +28,15 @@ type GraphOptions = {
  * @param options.notify - Receives a user-facing notification.
  * @returns Graph state and editing actions.
  */
-export function useGraphEditor({ documentId, machine, change, undo, redo, notify }: GraphOptions) {
+export function useGraphEditor({
+   enabled,
+   documentId,
+   machine,
+   change,
+   undo,
+   redo,
+   notify,
+}: GraphOptions) {
    const [tool, setTool] = useState<Tool>('select');
    const [selected, setSelected] = useState<string[]>([]);
    const [highlights, setHighlights] = useState<string[]>([]);
@@ -106,6 +116,7 @@ export function useGraphEditor({ documentId, machine, change, undo, redo, notify
     * @returns No value.
     */
    const onKeyDown = useEffectEvent((e: KeyboardEvent) => {
+      if (!enabled) return;
       const target = e.target;
       if (!(target instanceof Element)) return;
       const ctrl = e.ctrlKey || e.metaKey;

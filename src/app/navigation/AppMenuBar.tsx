@@ -4,7 +4,7 @@ import { FileMenu } from '@/app/navigation/FileMenu';
 import { MachineMenus } from '@/app/navigation/MachineMenus';
 import { SimulationMenu } from '@/app/navigation/SimulationMenu';
 import { ViewMenu } from '@/app/navigation/ViewMenu';
-import type { Notify, ShowDialog, SimulationAction, Workspace } from '@/app/types';
+import type { AppView, Notify, ShowDialog, SimulationAction, Workspace } from '@/app/types';
 import type { AppSettings } from '@/app/useAppSettings';
 import type { DocumentController } from '@/app/useDocuments';
 import type { GraphController } from '@/app/useGraphEditor';
@@ -18,8 +18,11 @@ import { machineKind } from '@/domain/model';
 /**
  * Composes application navigation and document controls.
  * @param props - Component options.
- * @param props.home - Whether the home page is visible.
- * @param props.setHome - Receives the requested home visibility.
+ * @param props.view - Active workspace page.
+ * @param props.onHome - Opens the home page without inputs.
+ * @param props.settingsOpen - Whether the settings tab is open.
+ * @param props.onSettings - Opens or activates settings without inputs.
+ * @param props.onCloseSettings - Closes the settings tab without inputs.
  * @param props.workspace - Workspace documents and history actions.
  * @param props.documents - Document navigation and file actions.
  * @param props.documents.startRenamingDocument - Selects a document and returns its current name.
@@ -33,8 +36,11 @@ import { machineKind } from '@/domain/model';
  * @returns The rendered interface.
  */
 export function AppMenuBar({
-   home,
-   setHome,
+   view,
+   onHome,
+   settingsOpen,
+   onSettings,
+   onCloseSettings,
    workspace,
    documents,
    settings,
@@ -45,8 +51,11 @@ export function AppMenuBar({
    simulate,
    notify,
 }: {
-   home: boolean;
-   setHome: (home: boolean) => void;
+   view: AppView;
+   onHome: () => void;
+   settingsOpen: boolean;
+   onSettings: () => void;
+   onCloseSettings: () => void;
    workspace: Workspace;
    documents: DocumentController;
    settings: AppSettings;
@@ -73,12 +82,12 @@ export function AppMenuBar({
       <>
          <div className="menubar" role="navigation" aria-label="Menú de la aplicación">
             <FileMenu
-               home={home}
+               home={view !== 'document'}
                workspace={workspace}
                documents={documents}
                setDialog={setDialog}
             />
-            {!home && workspace.active && (
+            {view === 'document' && workspace.active && (
                <>
                   <EditMenu
                      active={workspace.active}
@@ -125,19 +134,18 @@ export function AppMenuBar({
                ]}
             />
             <div className="menubar-spacer" />
-            <IconButton
-               label="Preferencias"
-               tooltip
-               onClick={() => setDialog({ type: 'settings' })}
-            >
+            <IconButton label="Ajustes" tooltip onClick={onSettings}>
                <FiSettings />
             </IconButton>
          </div>
          <DocumentPicker
             workspace={workspace}
             documents={documents}
-            home={home}
-            onHome={() => setHome(true)}
+            view={view}
+            onHome={onHome}
+            settingsOpen={settingsOpen}
+            onSettings={onSettings}
+            onCloseSettings={onCloseSettings}
             onRenameDocument={handleRenameDocument}
          />
       </>
