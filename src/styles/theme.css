@@ -175,6 +175,7 @@
       --focus-ring: 2px solid var(--accent);
       --duration: 140ms;
       --icon-size: 16px;
+      --icon-stroke-width-emphasis: 2.5;
       --control-height: 32px;
       --menubar-height: 32px;
       --simulation-height: 380px;

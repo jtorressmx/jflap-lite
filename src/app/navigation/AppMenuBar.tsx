@@ -9,7 +9,7 @@ import type { AppSettings } from '@/app/useAppSettings';
 import type { DocumentController } from '@/app/useDocuments';
 import type { GraphController } from '@/app/useGraphEditor';
 import type { MachineToolsController } from '@/app/useMachineTools';
-import { FiBookOpen, FiCode, FiHome, FiInfo, FiSettings } from '@/components/icons';
+import { FiBookOpen, FiCode, FiInfo, FiSettings } from '@/components/icons';
 import { IconButton } from '@/components/ui/IconButton';
 import { Menu } from '@/components/ui/Menu';
 import type { Machine } from '@/domain/model';
@@ -22,6 +22,7 @@ import { machineKind } from '@/domain/model';
  * @param props.setHome - Receives the requested home visibility.
  * @param props.workspace - Workspace documents and history actions.
  * @param props.documents - Document navigation and file actions.
+ * @param props.documents.startRenamingDocument - Selects a document and returns its current name.
  * @param props.settings - Appearance and simulation preferences.
  * @param props.editor - Graph editing and selection actions.
  * @param props.tools - Machine conversion actions.
@@ -58,12 +59,19 @@ export function AppMenuBar({
 }) {
    const finite = machineKind(machine) === 'fa';
    const { emptySymbol } = settings;
+   /**
+    * Selects a document and opens the rename dialog with its current name.
+    * @param id - Identifier of the document to rename.
+    * @returns No value.
+    */
+   function handleRenameDocument(id: string): void {
+      const name = documents.startRenamingDocument(id);
+      if (name === null) return;
+      setDialog({ type: 'rename-document', id, name });
+   }
    return (
       <>
          <div className="menubar" role="navigation" aria-label="Menú de la aplicación">
-            <IconButton label="Inicio" active={home} onClick={() => setHome(true)}>
-               <FiHome />
-            </IconButton>
             <FileMenu
                home={home}
                workspace={workspace}
@@ -117,11 +125,21 @@ export function AppMenuBar({
                ]}
             />
             <div className="menubar-spacer" />
-            <IconButton label="Preferencias" onClick={() => setDialog({ type: 'settings' })}>
+            <IconButton
+               label="Preferencias"
+               tooltip
+               onClick={() => setDialog({ type: 'settings' })}
+            >
                <FiSettings />
             </IconButton>
          </div>
-         {!home && <DocumentPicker workspace={workspace} documents={documents} />}
+         <DocumentPicker
+            workspace={workspace}
+            documents={documents}
+            home={home}
+            onHome={() => setHome(true)}
+            onRenameDocument={handleRenameDocument}
+         />
       </>
    );
 }

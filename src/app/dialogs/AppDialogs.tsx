@@ -3,6 +3,7 @@ import { ExportDialog } from '@/app/dialogs/ExportDialog';
 import { GraphDialogs } from '@/app/dialogs/GraphDialogs';
 import { InformationDialogs } from '@/app/dialogs/InformationDialogs';
 import { MachineDialogs } from '@/app/dialogs/MachineDialogs';
+import { RenameDocumentDialog } from '@/app/dialogs/RenameDocumentDialog';
 import { SettingsDialog } from '@/app/dialogs/SettingsDialog';
 import type { Dialog, Notify, ShowDialog, Workspace } from '@/app/types';
 import type { AppSettings } from '@/app/useAppSettings';
@@ -26,6 +27,7 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props.documents.confirmClose - Closes the active document after confirmation.
  * @param props.documents.confirmCloseAllDocuments - Closes all open documents after confirmation.
  * @param props.documents.saveAndCloseAllDocuments - Saves and closes all open documents.
+ * @param props.documents.saveDocumentName - Saves a document name and reports whether its dialog can close.
  * @param props.settings - Application appearance and simulation settings.
  * @param props.tools - Conversion and machine comparison actions.
  * @param props.dialog - Current application dialog.
@@ -56,6 +58,7 @@ export function AppDialogs({
       | 'confirmClose'
       | 'confirmCloseAllDocuments'
       | 'saveAndCloseAllDocuments'
+      | 'saveDocumentName'
    >;
    settings: AppSettings;
    tools: MachineToolsController;
@@ -92,6 +95,14 @@ export function AppDialogs({
                settings={settings}
                historyLimit={workspace.historyLimit}
                setHistoryLimit={workspace.setHistoryLimit}
+               onClose={onClose}
+            />
+         )}
+         {dialog?.type === 'rename-document' && (
+            <RenameDocumentDialog
+               key={dialog.id}
+               initialName={dialog.name}
+               onSave={(name) => documents.saveDocumentName(dialog.id, name)}
                onClose={onClose}
             />
          )}

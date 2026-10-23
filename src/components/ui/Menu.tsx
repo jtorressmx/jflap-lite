@@ -1,5 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 import { FiChevronDown } from '@/components/icons';
@@ -10,6 +10,7 @@ export type MenuEntry = MenuAction | { separator: true };
  * @param props - Component options.
  * @param props.label - Accessible menu name and trigger text when no custom content is supplied.
  * @param [props.title] - Optional native help text for the menu trigger.
+ * @param [props.tooltip=false] - Shows a custom tooltip instead of the native title.
  * @param props.entries - Actions and separators in display order.
  * @param [props.entries[].separator] - Marks a separator entry without action fields.
  * @param props.entries[].label - Visible action text.
@@ -19,63 +20,82 @@ export type MenuEntry = MenuAction | { separator: true };
  * @param [props.entries[].onDoubleClick] - Runs after a double-click on the action; receives no arguments.
  * @param [props.entries[].onContextMenu] - Runs after a right-click on the row; receives no arguments.
  * @param [props.entries[].disabled] - Disables the action when enabled.
- * @param [props.entries[].checked] - Shows a check or a marker beside the icon.
- * @param [props.entries[].editor] - Inline editing state displayed in place of the action.
- * @param props.entries[].editor.value - Current text in the inline editor.
- * @param props.entries[].editor.onChange - Receives the new text entered in the editor.
- * @param props.entries[].editor.onSave - Saves the edited text; receives no arguments.
- * @param props.entries[].editor.onCancel - Cancels editing; receives no arguments.
+ * @param [props.entries[].checked] - Marks a selected action with a check or selection marker.
  * @param [props.entries[].actions] - Optional secondary actions for the entry.
  * @param props.entries[].actions[].label - Accessible name of the secondary action.
  * @param props.entries[].actions[].icon - Secondary action icon.
  * @param props.entries[].actions[].onClick - Runs the action; receives no arguments.
  * @param [props.entries[].actions[].keepOpen] - Keeps the menu open while running the action.
  * @param [props.className] - Additional classes for the container.
+ * @param [props.showEntryIcons=true] - Whether to render action icons and reserve their column.
  * @param [props.showChevron=true] - Whether to append the standard chevron to custom trigger content.
+ * @param [props.triggerHoverStyle=background] - Hover feedback style for the menu trigger.
  * @param [props.portalPopover=false] - Whether to render the menu above clipping containers.
- * @param [props.children] - Custom content for the menu trigger.
+ * @param [props.contextTarget=false] - Uses the children as a context-menu target instead of rendering a trigger.
+ * @param [props.children] - Custom trigger content, or the target content when contextTarget is enabled.
  * @returns The action menu.
  */
 export function Menu({
    label,
    title,
+   tooltip = false,
    entries,
    className = '',
+   showEntryIcons = true,
    showChevron = true,
+   triggerHoverStyle = 'background',
    portalPopover = false,
+   contextTarget = false,
    children,
 }: {
    label: string;
    title?: string;
+   tooltip?: boolean;
    entries: MenuEntry[];
    className?: string;
+   showEntryIcons?: boolean;
    showChevron?: boolean;
+   triggerHoverStyle?: 'background' | 'icon';
    portalPopover?: boolean;
+   contextTarget?: boolean;
    children?: ReactNode;
 }) {
    const [open, setOpen] = useState(false);
    const [popoverStyle, setPopoverStyle] = useState<CSSProperties>();
+   const [contextPoint, setContextPoint] = useState<{ x: number; y: number } | null>(null);
    const ref = useRef<HTMLDivElement>(null);
    const triggerRef = useRef<HTMLButtonElement>(null);
    const popoverRef = useRef<HTMLDivElement>(null);
+   const contextFocusRef = useRef<HTMLElement | null>(null);
    /**
     * Closes the menu and returns focus to its trigger without inputs.
     * @returns No value.
     */
-   function closeMenu(): void {
+   const closeMenu = useCallback((): void => {
       setOpen(false);
-      triggerRef.current?.focus();
+      setContextPoint(null);
+      (contextTarget ? contextFocusRef.current : triggerRef.current)?.focus();
+   }, [contextTarget]);
+   /**
+    * Opens a context menu below its target and remembers its focus target.
+    * @param focusTarget - Element that should regain focus after the menu closes.
+    * @returns No value.
+    */
+   function openContextMenu(focusTarget: HTMLElement | null): void {
+      const anchor = ref.current;
+      if (!anchor) return;
+      const rect = anchor.getBoundingClientRect();
+      contextFocusRef.current = focusTarget ?? anchor;
+      setContextPoint({ x: rect.left, y: rect.bottom });
+      setOpen(true);
    }
    useEffect(() => {
       if (!open) return;
       const close = (e: PointerEvent) => {
-         if (
-            e.target instanceof Node &&
-            !ref.current?.contains(e.target) &&
-            !popoverRef.current?.contains(e.target)
-         ) {
-            setOpen(false);
-         }
+         if (!(e.target instanceof Node)) return;
+         const withinTarget = ref.current?.contains(e.target) ?? false;
+         const withinPopover = popoverRef.current?.contains(e.target) ?? false;
+         if (!withinPopover && (!withinTarget || contextTarget)) setOpen(false);
       };
       const esc = (e: KeyboardEvent) => {
          if (e.key === 'Escape') closeMenu();
@@ -89,7 +109,7 @@ export function Menu({
          document.removeEventListener('pointerdown', close);
          document.removeEventListener('keydown', esc);
       };
-   }, [open]);
+   }, [closeMenu, contextTarget, open]);
    useLayoutEffect(() => {
       if (!open || !portalPopover) return;
       /**
@@ -99,18 +119,21 @@ export function Menu({
       const updatePosition = () => {
          const trigger = triggerRef.current;
          const popover = popoverRef.current;
-         if (!trigger || !popover) return;
-         const triggerRect = trigger.getBoundingClientRect();
+         if (!popover) return;
+         const triggerRect = trigger?.getBoundingClientRect();
          const popoverRect = popover.getBoundingClientRect();
+         if (!contextTarget && !triggerRect) return;
+         const x = contextPoint?.x ?? triggerRect?.right ?? 0;
+         const y = contextPoint?.y ?? triggerRect?.bottom ?? 0;
          const left = Math.min(
-            Math.max(triggerRect.right - popoverRect.width, 8),
+            Math.max(contextTarget ? x : x - popoverRect.width, 8),
             window.innerWidth - popoverRect.width - 8
          );
-         const below = triggerRect.bottom + 4;
+         const below = contextTarget ? y : y + 4;
          const top =
             below + popoverRect.height <= window.innerHeight - 8
                ? below
-               : Math.max(8, triggerRect.top - popoverRect.height - 4);
+               : Math.max(8, y - popoverRect.height - (contextTarget ? 0 : 4));
          setPopoverStyle({ position: 'fixed', top, left, right: 'auto' });
       };
       updatePosition();
@@ -120,7 +143,7 @@ export function Menu({
          window.removeEventListener('resize', updatePosition);
          window.removeEventListener('scroll', updatePosition, true);
       };
-   }, [open, portalPopover]);
+   }, [contextPoint, contextTarget, open, portalPopover]);
    const popover = open ? (
       <div
          className="menu-popover"
@@ -151,19 +174,54 @@ export function Menu({
             'separator' in entry ? (
                <div key={i} className="menu-separator" role="separator" />
             ) : (
-               <MenuItem key={i} entry={entry} onClose={closeMenu} />
+               <MenuItem
+                  key={i}
+                  entry={entry}
+                  onClose={closeMenu}
+                  showEntryIcons={showEntryIcons}
+               />
             )
          )}
       </div>
    ) : null;
+   if (contextTarget) {
+      return (
+         <div
+            className={`menu ${className}`}
+            ref={ref}
+            onContextMenu={(event) => {
+               event.preventDefault();
+               event.stopPropagation();
+               const target =
+                  event.target instanceof Element
+                     ? event.target.closest<HTMLElement>('button, [tabindex]')
+                     : null;
+               openContextMenu(target ?? ref.current);
+            }}
+            onKeyDown={(event) => {
+               if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return;
+               event.preventDefault();
+               const target =
+                  event.target instanceof Element
+                     ? event.target.closest<HTMLElement>('button, [tabindex]')
+                     : ref.current;
+               openContextMenu(target ?? ref.current);
+            }}
+         >
+            {children}
+            {portalPopover && popover ? createPortal(popover, document.body) : popover}
+         </div>
+      );
+   }
    return (
       <div className={`menu ${className}`} ref={ref}>
          <button
             type="button"
-            className="menu-trigger"
+            className={`menu-trigger ${triggerHoverStyle === 'icon' ? 'hover-icon-stroke' : ''}`}
             ref={triggerRef}
             aria-label={label}
-            title={title}
+            title={tooltip ? undefined : title}
+            data-tooltip={tooltip ? (title ?? label) : undefined}
             aria-haspopup="menu"
             aria-expanded={open}
             onClick={() => setOpen((v) => !v)}

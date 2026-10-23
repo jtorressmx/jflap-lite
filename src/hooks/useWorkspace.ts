@@ -51,6 +51,21 @@ function makeDocument(machine: Machine, path?: string): WorkspaceDocument {
 }
 
 /**
+ * Updates the name in a valid saved machine snapshot.
+ * @param serialized - Stored machine snapshot.
+ * @param name - New document name.
+ * @returns The renamed snapshot or the original value when it cannot be read.
+ */
+function renameSavedSnapshot(serialized: string, name: string): string {
+   try {
+      const snapshot: unknown = JSON.parse(serialized);
+      return validMachine(snapshot) ? JSON.stringify({ ...snapshot, name }) : serialized;
+   } catch {
+      return serialized;
+   }
+}
+
+/**
  * Checks whether two documents contain the same machine and history state.
  * @param left - First workspace document.
  * @param right - Second workspace document.
@@ -318,6 +333,31 @@ export function useWorkspace() {
          ),
       }));
    }
+   /**
+    * Renames a document without adding its metadata change to edit history.
+    * @param id - Identifier of the document to rename.
+    * @param name - New document name.
+    * @returns No value.
+    */
+   function renameDocument(id: string, name: string) {
+      if (state.activeId === id && pending.current) {
+         pending.current = { ...pending.current, name };
+      }
+      setState((current) => ({
+         ...current,
+         documents: current.documents.map((document) =>
+            document.id === id
+               ? {
+                    ...document,
+                    machine: { ...document.machine, name },
+                    past: document.past.map((machine) => ({ ...machine, name })),
+                    future: document.future.map((machine) => ({ ...machine, name })),
+                    saved: renameSavedSnapshot(document.saved, name),
+                 }
+               : document
+         ),
+      }));
+   }
    function setActiveId(id: string) {
       pending.current = null;
       setState((s) => (s.documents.some((d) => d.id === id) ? { ...s, activeId: id } : s));
@@ -331,6 +371,7 @@ export function useWorkspace() {
       open,
       close,
       markSaved,
+      renameDocument,
       setActiveId,
       storageError,
       historyLimit,

@@ -30,7 +30,12 @@ export function Field({
    const id = props.id ?? generatedId;
    return (
       <FormField id={id} label={label} hint={hint} variant={variant} className={className}>
-         <input id={id} aria-describedby={hint ? `${id}-help` : undefined} {...props} />
+         <input
+            id={id}
+            aria-describedby={hint ? `${id}-help` : undefined}
+            {...props}
+            data-autofocus={props.autoFocus ? '' : undefined}
+         />
       </FormField>
    );
 }

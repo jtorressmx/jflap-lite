@@ -30,6 +30,7 @@ export {
    FiMaximize,
    FiMinus,
    FiMoon,
+   FiMoreHorizontal,
    FiMousePointer,
    FiPause,
    FiPauseCircle,

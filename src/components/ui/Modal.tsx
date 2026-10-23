@@ -11,6 +11,7 @@ import { IconButton } from '@/components/ui/IconButton';
  * @param [props.subtitle] - Optional description displayed below the title.
  * @param props.children - Dialog content and actions.
  * @param props.onClose - Requests closing the component; receives no arguments.
+ * @param [props.dismissible=true] - Whether Escape, backdrop clicks, and the close button dismiss the dialog.
  * @param [props.size=default] - Shared dialog size.
  * @param [props.className] - Additional classes for the dialog.
  * @returns The modal dialog with its heading and content.
@@ -20,6 +21,7 @@ export function Modal({
    subtitle,
    children,
    onClose,
+   dismissible = true,
    size = 'default',
    className = '',
 }: {
@@ -27,6 +29,7 @@ export function Modal({
    subtitle?: string;
    children: ReactNode;
    onClose: () => void;
+   dismissible?: boolean;
    size?: 'default' | 'wide' | 'fullscreen';
    className?: string;
 }) {
@@ -36,6 +39,7 @@ export function Modal({
       const dialog = ref.current;
       if (!dialog) return;
       dialog.showModal();
+      dialog.querySelector<HTMLElement>('[data-autofocus]')?.focus();
       return () => dialog.close();
    }, []);
    return (
@@ -46,10 +50,10 @@ export function Modal({
          onCancel={(event) => {
             event.preventDefault();
             event.stopPropagation();
-            onClose();
+            if (dismissible) onClose();
          }}
          onClick={(e) => {
-            if (e.target === e.currentTarget) {
+            if (dismissible && e.target === e.currentTarget) {
                const r = e.currentTarget.getBoundingClientRect();
                if (
                   e.clientX < r.left ||
@@ -66,9 +70,11 @@ export function Modal({
                <h2 id={id}>{title}</h2>
                {subtitle && <p>{subtitle}</p>}
             </div>
-            <IconButton label="Cerrar diálogo" onClick={onClose}>
-               <FiX />
-            </IconButton>
+            {dismissible && (
+               <IconButton label="Cerrar diálogo" onClick={onClose}>
+                  <FiX />
+               </IconButton>
+            )}
          </div>
          {children}
       </dialog>

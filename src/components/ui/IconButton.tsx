@@ -8,6 +8,7 @@ import { shortcutLabel } from '@/lib/shortcuts';
  * @param props.label - Accessible name and help text; shortcut keys adapt to the platform.
  * @param [props.active] - Active state, also exposed through aria-pressed.
  * @param [props.variant=default] - Shared visual variant.
+ * @param [props.hoverStyle=background] - Hover feedback style for the button.
  * @param [props.tooltip=false] - Uses the custom tooltip when enabled and the native title otherwise.
  * @param [props.className] - Additional button classes.
  * @param [props.children] - Content rendered by the component.
@@ -21,6 +22,7 @@ export function IconButton({
    label,
    active,
    variant = 'default',
+   hoverStyle = 'background',
    tooltip = false,
    className = '',
    children,
@@ -29,6 +31,7 @@ export function IconButton({
    label: string;
    active?: boolean;
    variant?: 'default' | 'danger';
+   hoverStyle?: 'background' | 'icon';
    tooltip?: boolean;
 }) {
    label = shortcutLabel(label);
@@ -39,7 +42,7 @@ export function IconButton({
          title={tooltip ? undefined : label}
          data-tooltip={tooltip ? label : undefined}
          aria-pressed={active}
-         className={`icon-button icon-button-${variant} ${active ? 'is-active' : ''} ${className}`}
+         className={`icon-button icon-button-${variant} ${active ? 'is-active' : ''} ${hoverStyle === 'icon' ? 'hover-icon-stroke' : ''} ${className}`}
          {...props}
       >
          {children}

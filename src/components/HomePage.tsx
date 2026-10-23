@@ -1,48 +1,38 @@
 import type { ReactElement } from 'react';
 
 import { DocumentListItem } from '@/components/DocumentListItem';
-import { FiCpu, FiFolder, FiGitBranch, FiTrash2, FiX } from '@/components/icons';
+import { FiCpu, FiFolder, FiGitBranch, FiTrash2 } from '@/components/icons';
 import { ActionCard } from '@/components/ui/ActionCard';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import type { Machine, MachineKind } from '@/domain/model';
-import { machineKind, machineTitle } from '@/domain/model';
+import type { MachineKind } from '@/domain/model';
 
 /**
- * Shows available editors and documents.
+ * Shows available editors and recent files.
  * @param props - Component options.
  * @param props.onCreate - Receives the machine kind whose document should be created.
  * @param props.onOpen - Requests opening the file picker; receives no arguments.
- * @param props.documents - Documents currently open in the workspace.
- * @param props.documents[].id - Open document identifier.
- * @param props.documents[].machine - Machine contained in the document.
- * @param props.documents[].dirty - Whether the document contains unsaved changes.
- * @param props.onResume - Receives the identifier of the document to activate.
- * @param props.onCloseDocument - Receives the identifier of the document to close.
+ * @param props.hasOpenDocuments - Whether the workspace has any open documents.
  * @param props.recentFiles - Recent files available to open.
  * @param props.recentFiles[].path - File path used to identify the recent file.
  * @param props.recentFiles[].name - Display name of the recent file.
  * @param props.recentFiles[].openedAt - Time when the file was last opened, when known.
  * @param props.onRecent - Receives the recent file requested for opening.
  * @param props.onRemoveRecent - Receives the file to remove from the recent list.
- * @returns The home page with available editors and documents.
+ * @returns The home page with available editors and recent files.
  */
 export default function HomePage({
    onCreate,
    onOpen,
-   documents,
-   onResume,
-   onCloseDocument,
+   hasOpenDocuments,
    recentFiles,
    onRecent,
    onRemoveRecent,
 }: {
    onCreate: (kind: MachineKind) => void;
    onOpen: () => void;
-   documents: { id: string; machine: Machine; dirty: boolean }[];
-   onResume: (id: string) => void;
-   onCloseDocument: (id: string) => void;
+   hasOpenDocuments: boolean;
    recentFiles: DesktopRecentFile[];
    onRecent: (file: DesktopRecentFile) => void;
    onRemoveRecent: (file: DesktopRecentFile) => void;
@@ -110,27 +100,10 @@ export default function HomePage({
                onClick={() => onCreate('turing')}
             />
          </div>
-         {documents.length === 0 && recentFiles.length === 0 && (
+         {!hasOpenDocuments && recentFiles.length === 0 && (
             <EmptyState title="No hay documentos abiertos">
                Inicia un nuevo proyecto o abre un archivo existente.
             </EmptyState>
-         )}
-         {documents.length > 0 && (
-            <section className="home-documents home-open-documents" aria-label="Abiertos ahora">
-               <h2>Abiertos ahora</h2>
-               {documents.map((doc) => (
-                  <DocumentListItem
-                     key={doc.id}
-                     name={doc.machine.name}
-                     icon={machineKind(doc.machine) === 'turing' ? <FiCpu /> : <FiGitBranch />}
-                     detail={`${machineTitle(doc.machine)}${doc.dirty ? ' · Sin guardar' : ''}`}
-                     onOpen={() => onResume(doc.id)}
-                     onRemove={() => onCloseDocument(doc.id)}
-                     removeLabel={`Cerrar ${doc.machine.name}`}
-                     removeIcon={<FiX />}
-                  />
-               ))}
-            </section>
          )}
          {recentFiles.length > 0 && (
             <section className="home-documents home-recents" aria-label="Archivos recientes">

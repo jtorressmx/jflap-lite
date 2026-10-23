@@ -7,6 +7,7 @@ export type Dialog =
    | { type: 'state'; id: string }
    | { type: 'transition'; id?: string; from?: string; to?: string }
    | { type: 'note'; id: string }
+   | { type: 'rename-document'; id: string; name: string }
    | {
         type:
            | 'settings'

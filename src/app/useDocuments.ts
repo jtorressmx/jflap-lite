@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 
 import { saveDocumentFile } from '@/app/documentFiles';
 import type { Notify, Workspace } from '@/app/types';
 import { useNativeFiles } from '@/app/useNativeFiles';
 import { emptyFinite } from '@/domain/finite';
+import { serializeJff } from '@/domain/jff';
 import type { Machine, MachineKind } from '@/domain/model';
 import { emptyMachine, machineKind } from '@/domain/model';
 import { sameFilePath } from '@/lib/filePaths';
@@ -48,8 +49,6 @@ export function useDocuments({
 }: DocumentOptions) {
    const { change } = workspace;
    const active = workspace.active;
-   const [renamingDocumentId, setRenamingDocumentId] = useState<string | null>(null);
-   const [renameDraft, setRenameDraft] = useState('');
    const autoSaveInProgress = useRef(new Map<string, Promise<boolean>>());
    /**
     * Opens a blank document and reuses an empty draft of the same type.
@@ -71,49 +70,64 @@ export function useDocuments({
       onCreate();
    }
    /**
-    * Starts inline renaming for a document.
+    * Selects a document and returns its current name for the rename dialog.
     * @param id - Identifier of the document to rename.
-    * @returns No value.
+    * @returns The document name without its file extension, or null if unavailable.
     */
-   function startRenamingDocument(id: string) {
+   function startRenamingDocument(id: string): string | null {
       const document = workspace.documents.find((doc) => doc.id === id);
-      if (!document) return;
+      if (!document) return null;
       workspace.setActiveId(id);
       setHome(false);
-      setRenamingDocumentId(id);
-      setRenameDraft(document.machine.name.replace(/\.jff$/i, ''));
+      return document.machine.name.replace(/\.(?:jff|xml)$/i, '');
    }
    /**
-    * Saves an inline document name after removing whitespace and its file extension.
+    * Renames a document and persists the change when it already has a file.
     * @param id - Identifier of the document being renamed.
     * @param name - Requested document name.
-    * @returns No value.
+    * @returns A promise resolving to whether the rename dialog can close.
     */
-   function saveDocumentName(id: string, name: string) {
+   async function saveDocumentName(id: string, name: string): Promise<boolean> {
       const document = workspace.documents.find((doc) => doc.id === id);
-      if (!document) {
-         setRenamingDocumentId(null);
-         return;
-      }
-      const normalizedName = name.trim().replace(/\.jff$/i, '');
+      if (!document || document.id !== active?.id) return true;
+      const normalizedName = name.trim().replace(/\.(?:jff|xml)$/i, '');
       if (!normalizedName) {
          notify('Escribe un nombre para el archivo.');
-         return;
+         return false;
       }
-      if (document.id !== active?.id) return;
-      change({ ...document.machine, name: normalizedName });
-      setRenamingDocumentId(null);
-      setRenameDraft('');
-   }
-   /**
-    * Cancels inline document renaming.
-    * @param id - Identifier of the document being renamed.
-    * @returns No value.
-    */
-   function cancelDocumentRename(id: string) {
-      if (renamingDocumentId !== id) return;
-      setRenamingDocumentId(null);
-      setRenameDraft('');
+      if (normalizedName === document.machine.name) return true;
+      const renamedMachine = { ...document.machine, name: normalizedName };
+      if (document.path && window.desktop.isDesktop) {
+         try {
+            const result = await window.desktop.renameMachineFile({
+               content: serializeJff(renamedMachine),
+               name: normalizedName,
+               path: document.path,
+            });
+            if (result.status === 'exists') {
+               notify('Ya existe un archivo con ese nombre. Elige otro.');
+               return false;
+            }
+            if (result.status === 'invalid-name') {
+               notify('Ese nombre contiene caracteres no permitidos. Elige otro.');
+               return false;
+            }
+            if (result.status === 'unavailable') {
+               notify('No se encontró el archivo original. Comprueba que siga disponible.');
+               return false;
+            }
+            const savedMachine = { ...renamedMachine, name: result.name };
+            workspace.renameDocument(id, result.name);
+            workspace.markSaved(result.path, id, savedMachine);
+            void refreshRecentFiles();
+            return true;
+         } catch {
+            notify('No se pudo renombrar el archivo. Inténtalo de nuevo.');
+            return false;
+         }
+      }
+      workspace.renameDocument(id, normalizedName);
+      return true;
    }
    /**
     * Activates a document and returns to its editor.
@@ -121,8 +135,6 @@ export function useDocuments({
     * @returns No value.
     */
    function resumeDocument(id: string) {
-      setRenamingDocumentId(null);
-      setRenameDraft('');
       workspace.setActiveId(id);
       setHome(false);
    }
@@ -203,6 +215,23 @@ export function useDocuments({
          return true;
       } catch {
          notify('No se pudo guardar. Inténtalo de nuevo.');
+         return false;
+      }
+   }
+   /**
+    * Reveals a saved document in the native file manager.
+    * @param id - Identifier of the document whose file location to show.
+    * @returns Whether the file location was opened.
+    */
+   async function openFileLocation(id: string): Promise<boolean> {
+      const document = workspace.documents.find((doc) => doc.id === id);
+      if (!document?.path || !window.desktop.isDesktop) return false;
+      try {
+         const opened = await window.desktop.showFileInFolder(document.path);
+         if (!opened) notify('No se encontró la ubicación del archivo.');
+         return opened;
+      } catch {
+         notify('No se pudo abrir la ubicación del archivo.');
          return false;
       }
    }
@@ -424,11 +453,6 @@ export function useDocuments({
       return 'closed';
    }
 
-   const openDocuments = workspace.documents.map((doc) => ({
-      id: doc.id,
-      machine: doc.machine,
-      dirty: JSON.stringify(doc.machine) !== doc.saved,
-   }));
    const homeRecentFiles = recentFiles.filter(
       (file) =>
          !workspace.documents.some(
@@ -438,20 +462,16 @@ export function useDocuments({
    return {
       recentFiles,
       homeRecentFiles,
-      openDocuments,
-      renamingDocumentId,
-      renameDraft,
-      setRenameDraft,
       createDocument,
       resumeDocument,
       startRenamingDocument,
       saveDocumentName,
-      cancelDocumentRename,
       openRecentFile,
       removeRecentFile,
       openDialog,
       openDroppedFiles,
       save,
+      openFileLocation,
       saveOpenDocumentsAutomatically,
       saveAll,
       saveAllDocuments,

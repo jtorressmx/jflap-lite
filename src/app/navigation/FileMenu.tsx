@@ -22,6 +22,7 @@ import { Menu } from '@/components/ui/Menu';
  * @param props.documents.save - Saves the active document, optionally as a copy.
  * @param props.documents.createDocument - Creates or activates an empty document.
  * @param props.documents.openDialog - Opens the native file picker.
+ * @param props.documents.openFileLocation - Reveals a saved document in the native file manager.
  * @param props.documents.closeDocument - Closes the specified document.
  * @param props.setDialog - Receives the requested dialog.
  * @returns The rendered interface.
@@ -34,13 +35,16 @@ export function FileMenu({
 }: {
    home: boolean;
    workspace: Workspace;
-   documents: Pick<DocumentController, 'save' | 'createDocument' | 'openDialog' | 'closeDocument'>;
+   documents: Pick<
+      DocumentController,
+      'save' | 'createDocument' | 'openDialog' | 'openFileLocation' | 'closeDocument'
+   >;
    setDialog: ShowDialog;
 }) {
-   const { save, createDocument, openDialog, closeDocument } = documents;
+   const { save, createDocument, openDialog, openFileLocation, closeDocument } = documents;
    const active = workspace.active;
    const documentFileActions: MenuEntry[] =
-      !home && workspace.active
+      !home && active
          ? [
               { separator: true },
               {
@@ -54,6 +58,12 @@ export function FileMenu({
                  icon: <FiEdit2 />,
                  shortcut: 'Ctrl+Mayús+S',
                  onClick: () => void save(true),
+              },
+              {
+                 label: 'Abrir ubicación del archivo',
+                 icon: <FiFolder />,
+                 disabled: !window.desktop.isDesktop || !active.path,
+                 onClick: () => void openFileLocation(active.id),
               },
               {
                  label: 'Exportar',

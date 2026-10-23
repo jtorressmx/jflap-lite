@@ -240,11 +240,9 @@ export default function App() {
             <HomePage
                onCreate={documents.createDocument}
                onOpen={() => void documents.openDialog()}
-               onResume={documents.resumeDocument}
-               onCloseDocument={documents.closeDocument}
+               hasOpenDocuments={workspace.documents.length > 0}
                onRecent={(file) => void documents.openRecentFile(file)}
                onRemoveRecent={(file) => void documents.removeRecentFile(file)}
-               documents={documents.openDocuments}
                recentFiles={documents.homeRecentFiles}
             />
          )}
