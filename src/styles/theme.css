@@ -87,8 +87,6 @@
    --spacing-movement-input: var(--movement-input-width);
    --spacing-simulation-input: var(--simulation-input-width);
    --spacing-simulation-speed: var(--simulation-speed-width);
-   --spacing-simulation-state: var(--simulation-state-width);
-   --spacing-simulation-state-narrow: var(--simulation-state-narrow-width);
    --spacing-batch-input: var(--batch-input-min-height);
    --spacing-batch-input-narrow: var(--batch-input-narrow-min-height);
    --spacing-batch-results: var(--batch-results-min-height);
@@ -217,8 +215,6 @@
       --dirty-dot-size: 6px;
       --simulation-input-width: 245px;
       --simulation-speed-width: 300px;
-      --simulation-state-width: 115px;
-      --simulation-state-narrow-width: 90px;
       --batch-input-min-height: 70px;
       --batch-input-narrow-min-height: 75px;
       --batch-results-min-height: 140px;

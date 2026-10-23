@@ -1,4 +1,5 @@
 import { useEffect, useEffectEvent, useId, useMemo, useRef, useState } from 'react';
+import type { ChangeEvent, FormEvent } from 'react';
 
 import {
    FiArrowLeft,
@@ -178,6 +179,7 @@ export function SimulationPanel({
    const [tab, setTab] = useState<'simulation' | 'batch' | 'trace'>('simulation');
    const [input, setInput] = useState('');
    const [session, setSession] = useState<Session | null>(null);
+   const [iterationTarget, setIterationTarget] = useState<string | null>(null);
    const [playing, setPlaying] = useState(false);
    const [speed, setSpeed] = useState(650);
    const [directing, setDirecting] = useState(false);
@@ -242,10 +244,15 @@ export function SimulationPanel({
       if (terminal(session)) setPlaying(false);
    }, [session, onActivity, directing]);
 
+   /** Starts a simulation from the current input.
+    * Takes no input.
+    * @returns The created session, or null when the simulation cannot start.
+    */
    function begin() {
       try {
          const next = createSession(machine, input, preferences);
          setSession(next);
+         setIterationTarget(null);
          setPlaying(false);
          setDirecting(false);
          setNotice('');
@@ -263,6 +270,7 @@ export function SimulationPanel({
     */
    function closeSimulation() {
       setSession(null);
+      setIterationTarget(null);
       setPlaying(false);
       setDirecting(false);
       setNotice('');
@@ -276,17 +284,22 @@ export function SimulationPanel({
       onActivity([], undefined);
       onClose?.();
    }
-   /**
-    * Restores the previous Turing machine configuration.
+   /** Restores a saved simulation iteration.
+    * @param iteration - Zero-based iteration from the saved history.
+    * @param preferredId - Optional configuration to select when it exists in the iteration.
     * @returns No value.
     */
-   function back() {
+   function restoreIteration(iteration: number, preferredId?: string): void {
+      if (!session || iteration < 0 || iteration >= session.history.length) return;
       setPlaying(false);
       setDirecting(false);
-      if (!session || session.history.length < 2) return;
-      const history = session.history.slice(0, -1);
+      const history = session.history.slice(0, iteration + 1);
       const configurations = history.at(-1) ?? [];
-      const selected = chosen(session)?.parentId;
+      const selected = preferredId
+         ? configurations.find((config) => config.id === preferredId)
+         : [...traceSession(session, chosen(session)?.id)]
+              .reverse()
+              .find((candidate) => configurations.some((config) => config.id === candidate.id));
       const active = configurations.some((config) => !isRejected(config));
       const isAccepted = configurations.some((config) =>
          isConfigurationAccepted(machine, config, preferences)
@@ -302,17 +315,46 @@ export function SimulationPanel({
          ...session,
          configurations,
          history,
-         steps: Math.max(0, session.steps - 1),
+         steps: iteration,
          status,
-         selectedId:
-            configurations.find((config) => config.id === selected)?.id ?? configurations[0]?.id,
+         selectedId: selected?.id ?? configurations[0]?.id,
          frozenIds: session.frozenIds?.filter((id) =>
             configurations.some((config) => config.id === id)
          ),
          message: undefined,
       });
+      setIterationTarget(null);
       setNotice('');
       setTraceId(undefined);
+   }
+   /** Restores the previous Turing machine iteration.
+    * @returns No value.
+    */
+   function back(): void {
+      if (!session || session.history.length < 2) return;
+      restoreIteration(session.history.length - 2, chosen(session)?.parentId);
+   }
+   /** Moves the simulation to the selected saved iteration.
+    * @param event - Submission event from the iteration field.
+    * @returns No value.
+    */
+   function goToIteration(event: FormEvent<HTMLFormElement>): void {
+      event.preventDefault();
+      if (!session || !canGoToIteration) return;
+      if (iterationIndex === session.steps) {
+         setPlaying(false);
+         setDirecting(false);
+         setIterationTarget(null);
+         return;
+      }
+      restoreIteration(iterationIndex);
+   }
+   /** Stores the iteration entered in the navigation field.
+    * @param event - Input event containing the selected iteration.
+    * @returns No value.
+    */
+   function handleIterationChange(event: ChangeEvent<HTMLInputElement>): void {
+      setIterationTarget(event.currentTarget.value);
    }
    /** Advances the simulation by one step and pauses continuous execution.
     * Takes no input.
@@ -320,6 +362,7 @@ export function SimulationPanel({
     */
    function step() {
       setPlaying(false);
+      if (!session) setIterationTarget(null);
       try {
          const current = session ?? createSession(machine, input, preferences);
          const stepped = stepInteractiveSession(machine, current, preferences, configurationLimit);
@@ -338,6 +381,7 @@ export function SimulationPanel({
     */
    function fast() {
       setResultModal(null);
+      setIterationTarget(null);
       try {
          setDirecting(false);
          const next = focusAccepted(
@@ -474,7 +518,14 @@ export function SimulationPanel({
    const visible = session ? (chosen(session) ?? preview) : preview;
    const configurations = session ? session.configurations : [];
    const trace = session ? traceSession(session, traceId ?? visible.id) : [];
-   const currentState = machine.states.find((state) => state.id === visible.state);
+   const iterationValue = iterationTarget ?? String(session?.steps ?? 0);
+   const iterationIndex = Number(iterationValue);
+   const canGoToIteration =
+      !!session &&
+      iterationValue.length > 0 &&
+      Number.isInteger(iterationIndex) &&
+      iterationIndex >= 0 &&
+      iterationIndex < session.history.length;
    const output = session ? getOutput(visible) : '';
 
    function freeze(id: string) {
@@ -747,6 +798,29 @@ export function SimulationPanel({
                      <IconButton label="Ejecución rápida" tooltip onClick={() => fast()}>
                         <FiZap />
                      </IconButton>
+                     {session && session.history.length > 1 && (
+                        <form
+                           className="simulation-iteration-control"
+                           aria-label="Ir a una iteración"
+                           onSubmit={goToIteration}
+                        >
+                           <Field
+                              label="Iteración"
+                              type="number"
+                              min="0"
+                              max={session.steps}
+                              step="1"
+                              required
+                              value={iterationValue}
+                              title={`Iteraciones disponibles: 0 a ${session.steps}`}
+                              className="simulation-iteration-field"
+                              onChange={handleIterationChange}
+                           />
+                           <Button type="submit" disabled={!canGoToIteration}>
+                              Ir
+                           </Button>
+                        </form>
+                     )}
                   </div>
                   <SimulationSpeed
                      label={<span>Velocidad</span>}
@@ -770,17 +844,6 @@ export function SimulationPanel({
                         status={session?.status}
                         stepInterval={playing ? speed : undefined}
                      />
-                  </div>
-                  <div className="simulation-state-info">
-                     <span>Estado actual</span>
-                     <strong>{currentState?.name ?? '—'}</strong>
-                     <span>
-                        {currentState?.final
-                           ? 'Estado final'
-                           : session
-                             ? `Paso ${visible.depth}`
-                             : 'Estado inicial'}
-                     </span>
                   </div>
                </div>
                <SelectableOutput value={output} />

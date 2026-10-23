@@ -371,6 +371,20 @@
 .simulation-buttons {
    @apply flex gap-2 items-center pb-1;
 }
+.simulation-iteration-control {
+   @apply flex items-end gap-2 flex-none;
+}
+.simulation-iteration-field {
+   flex: 0 0 auto;
+   gap: var(--space-1);
+}
+.simulation-iteration-field > label {
+   @apply text-secondary text-xs;
+}
+.simulation-iteration-field input {
+   @apply font-mono;
+   width: calc(var(--control-height) * 2 + var(--space-6));
+}
 .simulation-follow-button {
    @apply whitespace-nowrap;
 }
@@ -527,12 +541,6 @@
 .verdict-rejected {
    @apply text-danger;
 }
-.simulation-state-info {
-   @apply flex flex-col items-center justify-center gap-1 w-simulation-state flex-none p-3 bg-canvas border border-solid border-border rounded-md text-secondary text-xs;
-}
-.simulation-state-info strong {
-   @apply text-accent font-mono text-lg;
-}
 .simulation-notice {
    @apply m-0 text-secondary text-xs;
 }
@@ -679,9 +687,6 @@
    .simulation-speed {
       @apply ml-0;
    }
-   .simulation-state-info {
-      width: var(--simulation-state-narrow-width);
-   }
 }
 @container simulation (max-width: 650px) {
    .simulation-tabs {
@@ -712,15 +717,6 @@
    }
    .simulation-buttons .button {
       @apply p-2;
-   }
-   .simulation-tape-row {
-      @apply flex-wrap gap-3;
-   }
-   .simulation-tape-main {
-      flex-basis: 100%;
-   }
-   .simulation-state-info {
-      @apply flex-row w-full justify-between;
    }
    .batch-content {
       @apply p-3;
