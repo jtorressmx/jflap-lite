@@ -1,4 +1,5 @@
 import { type DragEvent, useEffect, useEffectEvent, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 
 import { AppDialogs } from '@/app/dialogs/AppDialogs';
 import { EditorCommandBar } from '@/app/editor/EditorCommandBar';
@@ -51,10 +52,33 @@ export default function App() {
    const [home, setHome] = useState(true);
    const [dialog, setDialog] = useState<Dialog | null>(null);
    const [fileDropActive, setFileDropActive] = useState(false);
+   const [notificationHost, setNotificationHost] = useState<HTMLElement | null>(null);
    const dropDepth = useRef(0);
+   const appShellRef = useRef<HTMLDivElement>(null);
    const homeDropEnabled = home && dialog === null;
    const settings = useAppSettings();
    const { message, notify, dismiss } = useNotification();
+   useEffect(() => {
+      const appShell = appShellRef.current;
+      if (!appShell) return;
+      /**
+       * Places notifications inside the active modal layer.
+       * @param shell - Application root that contains modal dialogs.
+       * @returns No value.
+       */
+      function updateNotificationHost(shell: HTMLDivElement): void {
+         const dialogs = shell.querySelectorAll<HTMLDialogElement>('dialog.modal[open]');
+         setNotificationHost(dialogs.item(dialogs.length - 1) ?? shell);
+      }
+      updateNotificationHost(appShell);
+      const observer = new MutationObserver(() => updateNotificationHost(appShell));
+      observer.observe(appShell, {
+         attributes: true,
+         attributeFilter: ['open'],
+         subtree: true,
+      });
+      return () => observer.disconnect();
+   }, []);
    const simulation = useSimulation(active.id, () => setHome(false));
    /**
     * Updates the active dialog and clears pending home file-drop state.
@@ -217,6 +241,7 @@ export default function App() {
    return (
       <div
          className={'app-shell ' + (settings.grid ? '' : 'no-grid')}
+         ref={appShellRef}
          data-file-drop-active={homeDropEnabled && fileDropActive ? 'true' : undefined}
          onDragEnter={homeDropEnabled ? handleFileDragEnter : undefined}
          onDragOver={homeDropEnabled ? handleFileDragOver : undefined}
@@ -285,15 +310,18 @@ export default function App() {
                </main>
             </div>
          )}
-         {message && (
-            <div className="toast" role="status">
-               <FiInfo />
-               <span>{message}</span>
-               <IconButton label="Cerrar aviso" onClick={dismiss}>
-                  <FiX />
-               </IconButton>
-            </div>
-         )}
+         {message &&
+            notificationHost &&
+            createPortal(
+               <div className="toast" role="status">
+                  <FiInfo />
+                  <span>{message}</span>
+                  <IconButton label="Cerrar aviso" onClick={dismiss}>
+                     <FiX />
+                  </IconButton>
+               </div>,
+               notificationHost
+            )}
          <AppDialogs
             active={active}
             workspace={workspace}
