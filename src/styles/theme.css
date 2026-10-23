@@ -146,8 +146,14 @@
       --graph-state-highlight: var(--surface-pressed);
       --graph-stroke: var(--text-secondary);
       --graph-active-edge: var(--accent);
-      --graph-state-initial-fill: var(--graph-state-fill);
-      --graph-state-initial-stroke: #a21caf;
+      --graph-state-initial-fill: color-mix(
+         in srgb,
+         var(--graph-state-fill) 80%,
+         var(--graph-state-initial-stroke)
+      );
+      --graph-state-initial-stroke: var(--warning);
+      --graph-state-initial-border-width: 2px;
+      --graph-initial-arrow-width: 2.5px;
       --graph-state-final-fill: var(--graph-state-highlight);
       --graph-state-final-stroke: var(--success);
       --graph-state-text: var(--text);
@@ -248,7 +254,6 @@
       --accent-pressed: #64acf2;
       --accent-soft: #243e56;
       --on-accent: #102a43;
-      --graph-state-initial-stroke: #e879f9;
       --success: #7cddb0;
       --success-soft: #203d32;
       --danger: #ff9ba7;
@@ -277,7 +282,6 @@
          --accent-pressed: #64acf2;
          --accent-soft: #243e56;
          --on-accent: #102a43;
-         --graph-state-initial-stroke: #e879f9;
          --success: #7cddb0;
          --success-soft: #203d32;
          --danger: #ff9ba7;

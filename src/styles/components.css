@@ -42,6 +42,9 @@
 .graph-arrow-active {
    fill: var(--graph-active-edge);
 }
+.graph-arrow-initial {
+   fill: var(--graph-state-initial-stroke);
+}
 .graph-edge,
 .graph-state,
 .graph-note {
@@ -57,6 +60,10 @@
 }
 .edge-line {
    stroke-width: 1.4;
+}
+.initial-arrow {
+   stroke-width: var(--graph-initial-arrow-width);
+   stroke-linecap: round;
 }
 .graph-edge.is-followed .edge-line {
    stroke: var(--graph-active-edge);
@@ -143,6 +150,7 @@
 .graph-state.is-initial-emphasized .state-body {
    fill: var(--graph-state-initial-fill);
    stroke: var(--graph-state-initial-stroke);
+   stroke-width: var(--graph-state-initial-border-width);
 }
 .graph-state.is-final-emphasized:not(.is-initial-emphasized) .state-body {
    fill: var(--graph-state-final-fill);

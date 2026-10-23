@@ -1007,6 +1007,17 @@ function GraphEditor({
                   <path d="M 0 0 L 10 5 L 0 10 z" className="graph-arrow" />
                </marker>
                <marker
+                  id={`${markerId}-initial-arrow`}
+                  viewBox="0 0 10 10"
+                  refX="9"
+                  refY="5"
+                  markerWidth="7"
+                  markerHeight="7"
+                  orient="auto-start-reverse"
+               >
+                  <path d="M 0 0 L 10 5 L 0 10 z" className="graph-arrow-initial" />
+               </marker>
+               <marker
                   id={`${markerId}-active-arrow`}
                   viewBox="0 0 10 10"
                   refX="9"
@@ -1239,7 +1250,7 @@ function GraphEditor({
                         <path
                            d={`M ${-stateRadius - 39 * labelScale} 0 L ${-stateRadius - 6 * labelScale} 0`}
                            className="initial-arrow"
-                           markerEnd={`url(#${markerId}-${activeStates.includes(state.id) || selected.includes(state.id) ? 'active-arrow' : 'arrow'})`}
+                           markerEnd={`url(#${markerId}-${activeStates.includes(state.id) || selected.includes(state.id) ? 'active-arrow' : highlightInitialFinalStates ? 'initial-arrow' : 'arrow'})`}
                         />
                      )}
                      <circle r={stateRadius + haloGap * labelScale} className="state-halo" />
