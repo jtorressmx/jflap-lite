@@ -1304,6 +1304,16 @@
    .modal-wide {
       @apply w-dialog-wide;
    }
+   .modal-help[open] {
+      @apply flex flex-col overflow-hidden;
+   }
+   .modal-help .modal-footer {
+      @apply flex-none;
+   }
+   .modal-help .help-body {
+      @apply flex-1 min-h-0;
+      max-height: none;
+   }
    .modal-fullscreen[open] {
       @apply flex flex-col;
       width: calc(100vw - var(--space-8));
@@ -1545,10 +1555,13 @@
    .help-body {
       @apply grid;
       grid-template-columns: 1fr 1fr;
-      @apply gap-6;
+      @apply gap-6 overflow-y-auto;
    }
    .help-body h3 {
       @apply mb-3;
+   }
+   .help-body section {
+      @apply min-w-0;
    }
    .help-body p + p {
       @apply mt-3;
@@ -1556,29 +1569,56 @@
    .help-body p {
       @apply text-secondary;
    }
+   .help-body strong {
+      @apply text-foreground font-medium;
+   }
+   .help-body kbd {
+      @apply bg-canvas border border-solid border-border rounded-sm py-0 px-1 whitespace-nowrap;
+   }
    .shortcut-list {
       @apply flex flex-col gap-2;
    }
    .shortcut-list > div {
       @apply flex justify-between gap-2 text-xs;
    }
-   .shortcut-list kbd {
-      @apply bg-canvas border border-solid border-border rounded-sm py-0 px-1;
-   }
    .about-body {
+      @apply gap-4 text-secondary;
+   }
+   .about-intro {
+      @apply text-foreground text-md;
+   }
+   .about-links {
+      @apply flex flex-col items-center gap-4;
+   }
+   .about-action-link {
+      @apply w-full justify-center px-3 text-center text-accent;
+   }
+   .about-action-link > svg {
+      @apply w-icon h-icon flex-none;
+   }
+   .about-source-link > svg:last-child {
       @apply text-secondary;
    }
-   .about-logo {
-      @apply flex w-16 h-16 items-center justify-center bg-accent text-on-accent rounded-xl;
+   .about-links > .about-action-link:hover:not(:disabled):not(:active) {
+      @apply bg-transparent;
    }
-   .about-logo > svg {
-      @apply w-8 h-8;
+   .about-compatibility {
+      @apply border-t border-t-border pt-4 text-xs;
    }
-   .about-body > a {
-      @apply inline-flex items-center gap-2 text-sm text-accent transition-opacity hover:opacity-90;
+   .about-compatibility a {
+      @apply text-accent underline-offset-2 transition-opacity hover:underline hover:opacity-90 focus-visible:underline;
    }
-   .about-body > a > svg {
-      @apply w-icon h-icon;
+   .modal-special-functions {
+      min-height: min(var(--dialog-min-height), calc(100vh - var(--space-12)));
+   }
+   .special-functions-body {
+      @apply gap-4;
+   }
+   .special-function-action {
+      @apply w-full justify-start gap-3 px-3 text-left;
+   }
+   .special-function-action > svg {
+      @apply flex-none text-accent;
    }
    .combine-list {
       @apply flex flex-col gap-2;

@@ -1,5 +1,6 @@
 import type { Dialog, ShowDialog } from '@/app/types';
-import { FiCode, FiExternalLink, FiShare2 } from '@/components/icons';
+import { FiCode, FiExternalLink, FiFileText, FiGithub } from '@/components/icons';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
@@ -30,46 +31,60 @@ export function InformationDialogs({
             </Modal>
          )}
          {dialog?.type === 'special-functions' && (
-            <Modal title="Funciones especiales" onClose={() => setDialog(null)}>
-               <ModalBody>
-                  <Button onClick={() => setDialog({ type: 'manual-code' })}>
-                     <FiCode /> Ingresar código manualmente
+            <Modal
+               title="Funciones especiales"
+               onClose={() => setDialog(null)}
+               className="modal-special-functions"
+            >
+               <ModalBody className="special-functions-body">
+                  <Button
+                     variant="subtle"
+                     className="special-function-action"
+                     onClick={() => setDialog({ type: 'manual-code' })}
+                  >
+                     <FiCode aria-hidden="true" />
+                     Ingresar código manualmente
                   </Button>
                </ModalBody>
             </Modal>
          )}
          {dialog?.type === 'about' && (
-            <Modal
-               title="JFLAP Lite para escritorio"
-               subtitle="Autómatas finitos y máquinas de Turing · Fluent"
-               onClose={() => setDialog(null)}
-            >
+            <Modal title={<BrandMark />} onClose={() => setDialog(null)}>
                <ModalBody className="about-body">
-                  <span className="about-logo">
-                     <FiShare2 />
-                  </span>
-                  <p>
-                     Un espacio para explorar lenguajes formales, construir máquinas y seguir cada
-                     paso de su ejecución.
+                  <p className="about-intro">
+                     Un espacio para explorar lenguajes formales, diseñar modelos de cómputo y
+                     seguir cada paso de su ejecución.
                   </p>
                   <p>
-                     Esta migración parte del código de JFLAP 7.1 de Susan H. Rodger y los
-                     colaboradores de Duke University. Copyright © 2002–2009.
+                     Basado en JFLAP 7.1, creado por Susan H. Rodger y colaboradores de Duke
+                     University. Copyright © 2002–2009.
                   </p>
-                  <p>Migración a escritorio por José G. Torres.</p>
-                  <a
-                     href="https://github.com/jtorressmx/jflap-lite"
-                     target="_blank"
-                     rel="noreferrer"
-                  >
-                     Código fuente en GitHub <FiExternalLink />
-                  </a>
-                  <Button variant="subtle" onClick={() => setDialog({ type: 'license' })}>
-                     Leer la licencia original <FiExternalLink />
-                  </Button>
-                  <p className="muted">
-                     Compatibilidad con autómatas finitos y máquinas de Turing de una cinta,
-                     disponibles en esta aplicación de escritorio.
+                  <div className="about-links">
+                     <a
+                        className="button button-subtle about-action-link about-source-link"
+                        href="https://github.com/jtorressmx/jflap-lite"
+                        target="_blank"
+                        rel="noreferrer"
+                     >
+                        <FiGithub aria-hidden="true" />
+                        Código fuente en GitHub
+                        <FiExternalLink aria-hidden="true" />
+                     </a>
+                     <Button
+                        variant="subtle"
+                        className="about-action-link"
+                        onClick={() => setDialog({ type: 'license' })}
+                     >
+                        <FiFileText aria-hidden="true" />
+                        Leer la licencia original
+                     </Button>
+                  </div>
+                  <p className="about-compatibility">
+                     Migración a escritorio por{' '}
+                     <a href="https://github.com/jtorressmx" target="_blank" rel="noreferrer">
+                        José G. Torres
+                     </a>
+                     . Compatible con autómatas finitos y máquinas de Turing de una cinta.
                   </p>
                </ModalBody>
                <ModalFooter>

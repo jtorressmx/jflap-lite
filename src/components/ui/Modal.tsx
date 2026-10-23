@@ -7,11 +7,12 @@ import { IconButton } from '@/components/ui/IconButton';
 /**
  * Shows a modal dialog with native focus and dismissal.
  * @param props - Component options.
- * @param props.title - Visible and accessible dialog title.
+ * @param props.title - Visible content that labels the dialog accessibly.
  * @param [props.subtitle] - Optional description displayed below the title.
  * @param props.children - Dialog content and actions.
  * @param props.onClose - Requests closing the component; receives no arguments.
  * @param [props.size=default] - Shared dialog size.
+ * @param [props.className] - Additional classes for the dialog.
  * @returns The modal dialog with its heading and content.
  */
 export function Modal({
@@ -20,12 +21,14 @@ export function Modal({
    children,
    onClose,
    size = 'default',
+   className = '',
 }: {
-   title: string;
+   title: ReactNode;
    subtitle?: string;
    children: ReactNode;
    onClose: () => void;
    size?: 'default' | 'wide' | 'fullscreen';
+   className?: string;
 }) {
    const ref = useRef<HTMLDialogElement>(null);
    const id = useId();
@@ -37,7 +40,7 @@ export function Modal({
    }, []);
    return (
       <dialog
-         className={`modal ${size === 'default' ? '' : `modal-${size}`}`}
+         className={`modal ${size === 'default' ? '' : `modal-${size}`} ${className}`}
          ref={ref}
          aria-labelledby={id}
          onCancel={(event) => {

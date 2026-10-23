@@ -77,7 +77,6 @@ export function FileMenu({
       {
          label: 'Nueva máquina de Turing',
          icon: <FiFilePlus />,
-         shortcut: 'Ctrl+N',
          onClick: () => createDocument('turing'),
       },
       {

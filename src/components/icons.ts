@@ -21,6 +21,7 @@ export {
    FiFileText,
    FiFolder,
    FiGitBranch,
+   FiGithub,
    FiHome,
    FiImage,
    FiInfo,

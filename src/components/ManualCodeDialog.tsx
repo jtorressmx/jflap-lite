@@ -97,7 +97,7 @@ export default function ManualCodeDialog({
    return (
       <Modal
          title="Ingresar código manualmente"
-         subtitle="Pega el XML o arrastra un archivo .jff."
+         subtitle="Pega el código o arrastra el archivo."
          onClose={onClose}
          size="wide"
       >
@@ -157,7 +157,7 @@ export default function ManualCodeDialog({
                <Button onClick={onClose}>Cancelar</Button>
                <Button type="submit" variant="primary" disabled={loading || !code.trim()}>
                   <FiPlay />
-                  Generar máquina
+                  Transformar
                </Button>
             </ModalFooter>
          </form>

@@ -109,9 +109,7 @@ export function AppDialogs({
          {dialog?.type === 'manual-code' && (
             <ManualCodeDialog onClose={onClose} onGenerate={onOpenGenerated} />
          )}
-         {dialog?.type === 'help' && (
-            <HelpDialog finite={finite} emptySymbol={settings.emptySymbol} onClose={onClose} />
-         )}
+         {dialog?.type === 'help' && <HelpDialog onClose={onClose} />}
       </>
    );
 }

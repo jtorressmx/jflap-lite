@@ -100,7 +100,7 @@ export function AppMenuBar({
                label="Ayuda"
                entries={[
                   {
-                     label: finite ? 'Guía de autómatas finitos' : 'Guía de máquinas de Turing',
+                     label: 'Guía de controles',
                      icon: <FiBookOpen />,
                      onClick: () => setDialog({ type: 'help' }),
                   },
