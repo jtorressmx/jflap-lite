@@ -36,6 +36,9 @@ export function ActionCard({
                {action} <FiArrowRight />
             </span>
          </span>
+         <span className="home-option-watermark" aria-hidden="true">
+            {icon}
+         </span>
       </Button>
    );
 }

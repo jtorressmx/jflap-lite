@@ -3,9 +3,11 @@ import type { ReactElement } from 'react';
 import { DocumentListItem } from '@/components/DocumentListItem';
 import { FiCpu, FiFolder, FiGitBranch, FiTrash2, FiX } from '@/components/icons';
 import { ActionCard } from '@/components/ui/ActionCard';
+import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
+import { EmptyState } from '@/components/ui/EmptyState';
 import type { Machine, MachineKind } from '@/domain/model';
-import { machineTitle } from '@/domain/model';
+import { machineKind, machineTitle } from '@/domain/model';
 
 /**
  * Shows available editors and documents.
@@ -53,6 +55,7 @@ export default function HomePage({
     * @returns The recent file row.
     */
    function renderRecentFile(file: DesktopRecentFile): ReactElement {
+      const displayName = file.name.replace(/\.jff$/i, '') || file.name;
       const date = file.openedAt ? new Date(file.openedAt) : null;
       const openedAt =
          date && Number.isFinite(date.getTime())
@@ -64,7 +67,7 @@ export default function HomePage({
          <DocumentListItem
             key={file.path}
             className="home-recent-row"
-            name={file.name}
+            name={displayName}
             detail={
                openedAt ? (
                   <time dateTime={file.openedAt}>{`Abierto el ${openedAt}`}</time>
@@ -73,7 +76,7 @@ export default function HomePage({
             title={file.path}
             onOpen={() => onRecent(file)}
             onRemove={() => onRemoveRecent(file)}
-            removeLabel={`Quitar ${file.name} de recientes`}
+            removeLabel={`Quitar ${displayName} de recientes`}
             removeIcon={<FiTrash2 />}
             removeVariant="danger"
          />
@@ -84,8 +87,8 @@ export default function HomePage({
       <main className="home-page">
          <header className="home-heading">
             <div className="home-heading-copy">
-               <span className="eyebrow">JFLAP LITE</span>
-               <h1>Elige qué quieres construir</h1>
+               <BrandMark />
+               <h1>Construye tu modelo</h1>
             </div>
             <Button variant="primary" className="home-open-button" onClick={onOpen}>
                <FiFolder /> Abrir archivo
@@ -107,19 +110,20 @@ export default function HomePage({
                onClick={() => onCreate('turing')}
             />
          </div>
+         {documents.length === 0 && recentFiles.length === 0 && (
+            <EmptyState title="No hay documentos abiertos">
+               Inicia un nuevo proyecto o abre un archivo existente.
+            </EmptyState>
+         )}
          {documents.length > 0 && (
-            <section className="home-documents" aria-label="Abiertos ahora">
+            <section className="home-documents home-open-documents" aria-label="Abiertos ahora">
                <h2>Abiertos ahora</h2>
                {documents.map((doc) => (
                   <DocumentListItem
                      key={doc.id}
                      name={doc.machine.name}
-                     detail={
-                        <>
-                           {machineTitle(doc.machine)}
-                           {doc.dirty ? ' · Sin guardar' : ''}
-                        </>
-                     }
+                     icon={machineKind(doc.machine) === 'turing' ? <FiCpu /> : <FiGitBranch />}
+                     detail={`${machineTitle(doc.machine)}${doc.dirty ? ' · Sin guardar' : ''}`}
                      onOpen={() => onResume(doc.id)}
                      onRemove={() => onCloseDocument(doc.id)}
                      removeLabel={`Cerrar ${doc.machine.name}`}

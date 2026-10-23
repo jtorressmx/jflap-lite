@@ -8,6 +8,7 @@ import { IconButton } from '@/components/ui/IconButton';
  * Shows a document with opening and removal actions.
  * @param props - Component options.
  * @param props.name - Visible document name.
+ * @param [props.icon] - Icon representing the document type.
  * @param [props.title] - Optional text displayed while hovering over the opening action.
  * @param [props.detail] - Optional supplementary document information.
  * @param props.onOpen - Requests opening the document; receives no arguments.
@@ -20,6 +21,7 @@ import { IconButton } from '@/components/ui/IconButton';
  */
 export function DocumentListItem({
    name,
+   icon,
    title,
    detail,
    onOpen,
@@ -30,6 +32,7 @@ export function DocumentListItem({
    removeVariant = 'default',
 }: {
    name: string;
+   icon?: ReactNode;
    title?: string;
    detail?: ReactNode;
    onOpen: () => void;
@@ -42,8 +45,8 @@ export function DocumentListItem({
    return (
       <div className={`home-document-row ${className}`}>
          <Button variant="subtle" className="home-document-open" title={title} onClick={onOpen}>
-            <FiFile />
-            <span>{name}</span>
+            {icon ?? <FiFile />}
+            <span className="home-document-name">{name}</span>
             {detail && <span className="home-document-kind">{detail}</span>}
             <FiArrowRight />
          </Button>
