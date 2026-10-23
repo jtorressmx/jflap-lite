@@ -1,7 +1,7 @@
 {
    "name": "jflap-lite-desktop",
    "private": true,
-   "version": "0.5.0",
+   "version": "1.0.0",
    "type": "module",
    "scripts": {
       "dev": "node scripts/dev.mjs",
@@ -36,6 +36,10 @@
       "vite": "^8.3.4"
    },
    "description": "Autómatas finitos y máquinas de Turing de JFLAP Lite para Windows y macOS.",
+   "author": {
+      "name": "José G. Torres",
+      "url": "https://github.com/jtorressmx"
+   },
    "main": "electron/main.cjs",
    "engines": {
       "node": ">=24"
