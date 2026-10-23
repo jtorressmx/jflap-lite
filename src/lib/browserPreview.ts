@@ -179,6 +179,7 @@ export function createBrowserPreview(): DesktopBridge {
       getRecentFiles: recentFiles,
       removeRecentFile: recentFiles,
       openRecentFile: requireDesktop,
+      renameMachineFile: requireDesktop,
       openFiles,
       readDroppedFiles,
       saveFile,
@@ -191,6 +192,9 @@ export function createBrowserPreview(): DesktopBridge {
        */
       async authorizeSavePath(path) {
          return Boolean(path);
+      },
+      async showFileInFolder() {
+         return false;
       },
       getInitialFiles: nativeFiles,
       onOpenFiles: subscribe,

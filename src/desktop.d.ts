@@ -43,11 +43,35 @@ declare global {
          kind?: DesktopFileKind;
       }): Promise<DesktopSaveResult>;
       /**
+       * Renames an authorized machine file and saves its contents.
+       * @param request - Machine file name and updated contents.
+       * @param request.content - Serialized machine contents to save.
+       * @param request.name - Requested document name without an extension.
+       * @param request.path - Current authorized file path.
+       * @returns The resulting path and name, or a reason the rename could not proceed.
+       */
+      renameMachineFile(request: {
+         content: string;
+         name: string;
+         path: string;
+      }): Promise<
+         | { status: 'renamed'; path: string; name: string }
+         | { status: 'exists' }
+         | { status: 'invalid-name' }
+         | { status: 'unavailable' }
+      >;
+      /**
        * Reauthorizes a saved workspace path when it belongs to a recent machine file.
        * @param path - Candidate file path to restore.
        * @returns Whether the application can safely overwrite the file.
        */
       authorizeSavePath(path: string): Promise<boolean>;
+      /**
+       * Reveals an authorized JFLAP file in the native file manager.
+       * @param path - Candidate machine file path to reveal.
+       * @returns Whether the file was found and revealed.
+       */
+      showFileInFolder(path: string): Promise<boolean>;
       exportFile(request: {
          data: number[];
          name: string;

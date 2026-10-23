@@ -173,6 +173,39 @@ function removeRecentFile(file) {
       });
    return recentWrite;
 }
+/**
+ * Replaces a recent-file path while preserving its position and open date.
+ * @param {string} previousPath - Current path recorded in recent files.
+ * @param {string} nextPath - New path to record.
+ * @returns {Promise<boolean>} Whether the recent-file history was updated.
+ */
+function replaceRecentFilePath(previousPath, nextPath) {
+   const update = async () => {
+      const previous = await readRecentFiles();
+      const previousKey = policy.canonicalKey(previousPath);
+      const nextKey = policy.canonicalKey(nextPath);
+      const previousEntry = previous.find(
+         (entry) => policy.canonicalKey(entry.path) === previousKey
+      );
+      const entries = [
+         {
+            path: nextPath,
+            name: path.basename(nextPath),
+            ...(previousEntry?.openedAt ? { openedAt: previousEntry.openedAt } : {}),
+         },
+         ...previous.filter((entry) => {
+            const key = policy.canonicalKey(entry.path);
+            return key !== previousKey && key !== nextKey;
+         }),
+      ].slice(0, 12);
+      await writeRecentFiles(entries);
+   };
+   recentWrite = recentWrite.then(update, update);
+   return recentWrite.then(
+      () => true,
+      () => false
+   );
+}
 const cliServer = process.argv.find((argument) => argument.startsWith('--dev-server='))?.slice(13);
 const developmentUrl = !app.isPackaged
    ? policy.devServer(process.env.JFLAP_DEV_SERVER_URL || cliServer)
@@ -207,6 +240,108 @@ function handle(channel, listener) {
       assertSender(event);
       return listener(...args);
    });
+}
+
+/**
+ * Reveals an authorized JFLAP machine in the native file manager.
+ * @param {unknown} candidate - Candidate absolute path supplied by the renderer.
+ * @returns {Promise<boolean>} Whether the file was found and revealed.
+ */
+async function showFileInFolder(candidate) {
+   if (!(await authorizeSavePath(candidate))) return false;
+   const file = selectedPaths.get(policy.canonicalKey(candidate));
+   if (!file) return false;
+   try {
+      const real = await fs.realpath(file);
+      if (!(await fs.stat(real)).isFile() || !/\.(jff|xml)$/i.test(real)) return false;
+      shell.showItemInFolder(real);
+      return true;
+   } catch (error) {
+      if (isMissingPathError(error)) return false;
+      throw error;
+   }
+}
+
+/**
+ * Renames an authorized machine file and saves the updated machine contents.
+ * @param {{path?: unknown, name?: unknown, content?: unknown}} request - Requested file update.
+ * @param request.path - Current authorized file path.
+ * @param request.name - Requested document name.
+ * @param request.content - Serialized machine contents to save.
+ * @returns {Promise<{status: 'renamed', path: string, name: string} | {status: 'exists' | 'invalid-name' | 'unavailable'}>} Rename outcome and destination.
+ */
+async function renameMachineFile(request) {
+   const content = policy.text(request?.content);
+   if (!content.trim()) throw new Error('No se puede guardar una máquina vacía.');
+   if (typeof request?.path !== 'string' || typeof request.name !== 'string')
+      return { status: 'unavailable' };
+   if (!(await authorizeSavePath(request.path))) return { status: 'unavailable' };
+   const source = selectedPaths.get(policy.canonicalKey(request.path));
+   if (!source) return { status: 'unavailable' };
+   const realSource = await fs.realpath(source);
+   const sourceStat = await fs.stat(realSource);
+   const extension = path.extname(realSource);
+   if (!sourceStat.isFile() || !/\.(?:jff|xml)$/i.test(extension)) return { status: 'unavailable' };
+   const name = policy
+      .text(request.name, 1000)
+      .trim()
+      .replace(/\.(?:jff|xml)$/i, '');
+   if (!name || /[. ]$/.test(name) || /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])$/i.test(name))
+      return { status: 'invalid-name' };
+   const kind = extension.toLowerCase() === '.xml' ? 'xml' : 'jff';
+   const destinationName = policy.filename(`${name}${extension}`, kind);
+   const destinationBase = destinationName.slice(0, -extension.length);
+   if (destinationBase !== name) return { status: 'invalid-name' };
+   const destination = path.join(path.dirname(realSource), destinationName);
+   const sourceKey = policy.canonicalKey(realSource);
+   const destinationKey = policy.canonicalKey(destination);
+   if (sourceKey === destinationKey) {
+      await saveMachineFile(realSource, content);
+      return { status: 'renamed', path: realSource, name: destinationBase };
+   }
+   try {
+      await fs.lstat(destination);
+      return { status: 'exists' };
+   } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+   }
+   const temporary = path.join(path.dirname(realSource), `.${destinationName}.${randomUUID()}.tmp`);
+   let destinationCreated = false;
+   try {
+      await fs.writeFile(temporary, content, { encoding: 'utf8', flag: 'wx' });
+      await fs.link(temporary, destination);
+      destinationCreated = true;
+      await fs.unlink(temporary);
+      await fs.unlink(realSource);
+   } catch (error) {
+      const cleanup = await Promise.allSettled([
+         removeFileIfPresent(temporary),
+         ...(destinationCreated ? [removeFileIfPresent(destination)] : []),
+      ]);
+      if (cleanup.some((result) => result.status === 'rejected'))
+         throw new Error('No se pudo completar el cambio de nombre de forma segura.', {
+            cause: error,
+         });
+      if (error?.code === 'EEXIST') return { status: 'exists' };
+      throw error;
+   }
+   selectedPaths.delete(sourceKey);
+   selectedPaths.set(destinationKey, destination);
+   void replaceRecentFilePath(realSource, destination);
+   return { status: 'renamed', path: destination, name: destinationBase };
+}
+
+/**
+ * Removes a temporary file when it exists.
+ * @param {string} file - Temporary file path.
+ * @returns {Promise<void>} No value.
+ */
+async function removeFileIfPresent(file) {
+   try {
+      await fs.unlink(file);
+   } catch (error) {
+      if (!isMissingPathError(error)) throw error;
+   }
 }
 
 /**
@@ -387,6 +522,8 @@ function registerBridge() {
       }
    });
    handle('desktop:authorize-save-path', authorizeSavePath);
+   handle('desktop:show-file-in-folder', showFileInFolder);
+   handle('desktop:rename-machine-file', renameMachineFile);
    handle('desktop:open-files', async (options = {}) => {
       const kind = options?.kind === 'text' ? 'text' : 'machine';
       const result = await dialog.showOpenDialog(mainWindow, {

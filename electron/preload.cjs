@@ -28,7 +28,17 @@ contextBridge.exposeInMainWorld(
             files.map((file) => webUtils.getPathForFile(file))
          ),
       saveFile: (request) => ipcRenderer.invoke('desktop:save-file', request),
+      /**
+       * Renames a machine file through the authorized native workflow.
+       * @param request - Machine file update.
+       * @param request.content - Serialized machine contents to save.
+       * @param request.name - Requested name without an extension.
+       * @param request.path - Current authorized file path.
+       * @returns {Promise<{status: 'renamed', path: string, name: string} | {status: 'exists' | 'invalid-name' | 'unavailable'}>} Rename outcome.
+       */
+      renameMachineFile: (request) => ipcRenderer.invoke('desktop:rename-machine-file', request),
       authorizeSavePath: (path) => ipcRenderer.invoke('desktop:authorize-save-path', path),
+      showFileInFolder: (path) => ipcRenderer.invoke('desktop:show-file-in-folder', path),
       exportFile: (request) => ipcRenderer.invoke('desktop:export-file', request),
       print: (svg, name) => ipcRenderer.invoke('desktop:print', svg, name),
       getInitialFiles: () => ipcRenderer.invoke('desktop:initial-files'),
