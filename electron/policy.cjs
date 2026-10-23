@@ -121,7 +121,8 @@ function externalLink(value) {
       return (
          url.protocol === 'https:' &&
          (['jflap.org', 'www.jflap.org'].includes(url.hostname) ||
-            (url.hostname === 'github.com' && url.pathname === '/jtorressmx/jflap-lite')) &&
+            (url.hostname === 'github.com' &&
+               ['/jtorressmx', '/jtorressmx/jflap-lite'].includes(url.pathname))) &&
          !url.username &&
          !url.password
       );
