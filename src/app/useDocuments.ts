@@ -130,7 +130,7 @@ export function useDocuments({
 
    useEffect(() => {
       if (workspace.storageError)
-         notify('No se pudo recuperar la sesión local. Guarda tu máquina en un archivo.');
+         notify('No se pudo recuperar la sesión. Guarda tu máquina en un archivo.');
    }, [workspace.storageError, notify]);
    /**
     * Saves the active document to its existing or a newly selected destination.
@@ -154,7 +154,7 @@ export function useDocuments({
          void refreshRecentFiles();
          return true;
       } catch {
-         notify('No se pudo guardar el archivo. Elige otra ubicación e inténtalo de nuevo.');
+         notify('No se pudo guardar. Inténtalo de nuevo.');
          return false;
       }
    }
@@ -212,9 +212,7 @@ export function useDocuments({
          }
       }
       if (failed) {
-         notify(
-            'Algunos archivos no se pudieron guardar automáticamente. Guarda esos cambios manualmente.'
-         );
+         notify('No se guardaron algunos cambios. Guárdalos manualmente.');
       } else {
          void refreshRecentFiles();
       }
@@ -264,17 +262,15 @@ export function useDocuments({
          });
          await desktop.completeClose({ saved: true });
          void refreshRecentFiles();
-         notify('Todos los archivos .jff guardados.');
+         notify('Todos los archivos guardados.');
       } catch {
          notify(
-            'No se pudieron guardar todos los archivos. Revisa la ubicación e inténtalo de nuevo.'
+            'No se pudieron guardar todos los archivos. Revisa la carpeta e inténtalo de nuevo.'
          );
          try {
             await desktop.completeClose({ saved: false });
          } catch {
-            notify(
-               'No se pudo completar el cierre. Conserva la ventana abierta y guarda tus archivos.'
-            );
+            notify('No se pudo cerrar. Guarda tus archivos e inténtalo de nuevo.');
          }
       }
    }

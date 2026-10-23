@@ -40,9 +40,7 @@ export function useNativeFiles({
       try {
          setRecentFiles(await window.desktop.getRecentFiles());
       } catch {
-         notify(
-            'No se pudieron cargar los archivos recientes. Intenta abrir el archivo desde su ubicación.'
-         );
+         notify('No se pudieron cargar los archivos recientes.');
       }
    }, [notify]);
    useEffect(() => {
@@ -66,7 +64,7 @@ export function useNativeFiles({
          if (opened) receiveNativeFiles([opened]);
          else void refreshRecentFiles();
       } catch {
-         notify('No se pudo abrir el archivo reciente. Intenta abrirlo desde su ubicación.');
+         notify('No se pudo abrir el archivo reciente.');
          void refreshRecentFiles();
       }
    }
@@ -79,7 +77,7 @@ export function useNativeFiles({
       try {
          setRecentFiles(await window.desktop.removeRecentFile(file.path));
       } catch {
-         notify('No se pudo quitar el archivo de la lista de recientes. Inténtalo de nuevo.');
+         notify('No se pudo quitar de recientes.');
       }
    }
 
@@ -101,7 +99,7 @@ export function useNativeFiles({
                setHome(false);
             }
          } catch {
-            notify('No se pudo abrir «' + file.name + '». Selecciona un archivo .jff válido.');
+            notify('El archivo «' + file.name + '» tiene un formato no válido.');
          }
       }
       void refreshRecentFiles();
@@ -122,7 +120,7 @@ export function useNativeFiles({
             combineMode
          );
       } catch {
-         notify('No se pudieron abrir los archivos. Selecciónalos de nuevo.');
+         notify('No se pudieron abrir los archivos.');
       }
    }
    /**
