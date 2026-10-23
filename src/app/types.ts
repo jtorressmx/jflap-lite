@@ -17,6 +17,7 @@ export type Dialog =
            | 'equivalence'
            | 'combine'
            | 'close'
+           | 'close-all'
            | 'export'
            | 'license';
      };

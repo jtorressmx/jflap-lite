@@ -17,7 +17,12 @@ type DocumentOptions = {
    onCreate: () => void;
    onImportCombine: (machine: Machine) => void;
    onRequestClose: () => void;
+   onRequestCloseAll: () => void;
 };
+
+type SaveDocumentsResult =
+   | { status: 'saved'; documents: Workspace['documents'] }
+   | { status: 'cancelled'; documents: Workspace['documents'] };
 /**
  * Coordinates document navigation, native files, and save workflows.
  * @param options - Document workflow dependencies.
@@ -28,6 +33,7 @@ type DocumentOptions = {
  * @param options.onCreate - Resets auxiliary tools for a newly created document.
  * @param options.onImportCombine - Receives a parsed machine selected for combination.
  * @param options.onRequestClose - Requests confirmation before closing a dirty document.
+ * @param options.onRequestCloseAll - Requests confirmation before closing dirty documents.
  * @returns Document navigation, rename, recent-file, dropped-file, and save actions.
  */
 export function useDocuments({
@@ -38,6 +44,7 @@ export function useDocuments({
    onCreate,
    onImportCombine,
    onRequestClose,
+   onRequestCloseAll,
 }: DocumentOptions) {
    const { change } = workspace;
    const active = workspace.active;
@@ -133,6 +140,41 @@ export function useDocuments({
       onImportCombine,
       notify,
    });
+
+   /**
+    * Saves every changed document and returns the persisted workspace snapshot.
+    * @param documents - Workspace documents to save.
+    * @returns The saved document snapshots or a cancellation outcome.
+    */
+   async function saveDocuments(documents: Workspace['documents']): Promise<SaveDocumentsResult> {
+      const savedDocuments = [...documents];
+      for (let index = 0; index < savedDocuments.length; index++) {
+         const document = savedDocuments[index];
+         if (JSON.stringify(document.machine) === document.saved) continue;
+         const hasDuplicatePath = documents.some(
+            (candidate) =>
+               candidate.id !== document.id &&
+               candidate.path &&
+               document.path &&
+               sameFilePath(candidate.path, document.path, window.desktop.platform)
+         );
+         const saved = await saveDocumentFile(
+            window.desktop,
+            document.machine,
+            hasDuplicatePath ? undefined : document.path
+         );
+         if (!saved) return { status: 'cancelled', documents: savedDocuments };
+         const path = saved.path ?? document.path;
+         workspace.markSaved(path, document.id, saved.machine);
+         savedDocuments[index] = {
+            ...document,
+            machine: saved.machine,
+            path,
+            saved: JSON.stringify(saved.machine),
+         };
+      }
+      return { status: 'saved', documents: savedDocuments };
+   }
 
    useEffect(() => {
       if (workspace.storageError)
@@ -231,29 +273,17 @@ export function useDocuments({
    async function saveAll(): Promise<void> {
       const desktop = window.desktop;
       try {
-         const savedDocuments = [...workspace.documents];
-         for (let index = 0; index < savedDocuments.length; index++) {
-            const doc = savedDocuments[index];
-            if (JSON.stringify(doc.machine) === doc.saved) continue;
-            const saved = await saveDocumentFile(desktop, doc.machine, doc.path);
-            if (!saved) {
-               await desktop.completeClose({ saved: false });
-               return;
-            }
-            workspace.markSaved(saved.path, doc.id, saved.machine);
-            savedDocuments[index] = {
-               ...doc,
-               machine: saved.machine,
-               path: saved.path,
-               saved: JSON.stringify(saved.machine),
-            };
+         const result = await saveDocuments([...workspace.documents]);
+         if (result.status === 'cancelled') {
+            await desktop.completeClose({ saved: false });
+            return;
          }
          await desktop.writeWorkspace(
             JSON.stringify({
                version: 1,
                settings: storedSettings(),
                activeId: workspace.activeId,
-               documents: savedDocuments.map(({ id, machine, saved, path }) => ({
+               documents: result.documents.map(({ id, machine, saved, path }) => ({
                   id,
                   machine,
                   saved,
@@ -278,6 +308,23 @@ export function useDocuments({
          } catch {
             notify('No se pudo cerrar. Guarda tus archivos e inténtalo de nuevo.');
          }
+      }
+   }
+
+   /**
+    * Saves every changed document while keeping the workspace open.
+    * @returns Whether every requested save completed successfully.
+    */
+   async function saveAllDocuments(): Promise<boolean> {
+      try {
+         const result = await saveDocuments([...workspace.documents]);
+         void refreshRecentFiles();
+         if (result.status === 'cancelled') return false;
+         notify('Todos los archivos guardados.');
+         return true;
+      } catch {
+         notify('No se pudieron guardar todos los archivos. Inténtalo de nuevo.');
+         return false;
       }
    }
    /**
@@ -332,6 +379,51 @@ export function useDocuments({
       if (!hasUnsavedDocuments) setHome(true);
    }
 
+   /**
+    * Closes every document or requests confirmation when changes are pending.
+    * @returns No value.
+    */
+   function closeAllDocuments(): void {
+      if (!workspace.documents.length) return;
+      const hasUnsavedDocuments = workspace.documents.some(
+         (document) => JSON.stringify(document.machine) !== document.saved
+      );
+      if (hasUnsavedDocuments) {
+         onRequestCloseAll();
+         return;
+      }
+      for (const document of workspace.documents) workspace.close(document.id);
+      setHome(true);
+   }
+
+   /**
+    * Closes every open document after the user confirms discarding pending changes.
+    * @returns No value.
+    */
+   function confirmCloseAllDocuments(): void {
+      for (const document of workspace.documents) workspace.close(document.id);
+      setHome(true);
+   }
+
+   /**
+    * Saves pending documents and closes the workspace when every save succeeds.
+    * @returns The completed, cancelled, or failed outcome.
+    */
+   async function saveAndCloseAllDocuments(): Promise<'closed' | 'cancelled' | 'failed'> {
+      const documentsToClose = [...workspace.documents];
+      try {
+         const result = await saveDocuments(documentsToClose);
+         if (result.status === 'cancelled') return 'cancelled';
+      } catch {
+         return 'failed';
+      }
+      for (const document of documentsToClose) workspace.close(document.id);
+      setHome(true);
+      void refreshRecentFiles();
+      notify('Todos los documentos se guardaron y cerraron.');
+      return 'closed';
+   }
+
    const openDocuments = workspace.documents.map((doc) => ({
       id: doc.id,
       machine: doc.machine,
@@ -362,8 +454,12 @@ export function useDocuments({
       save,
       saveOpenDocumentsAutomatically,
       saveAll,
+      saveAllDocuments,
       closeDocument,
       closeSavedDocuments,
+      closeAllDocuments,
+      confirmCloseAllDocuments,
+      saveAndCloseAllDocuments,
       confirmClose,
    };
 }

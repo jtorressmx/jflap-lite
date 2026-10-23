@@ -1,4 +1,4 @@
-import { CloseDocumentDialog } from '@/app/dialogs/CloseDocumentDialog';
+import { CloseAllDocumentsDialog, CloseDocumentDialog } from '@/app/dialogs/CloseDocumentDialog';
 import { ExportDialog } from '@/app/dialogs/ExportDialog';
 import { GraphDialogs } from '@/app/dialogs/GraphDialogs';
 import { InformationDialogs } from '@/app/dialogs/InformationDialogs';
@@ -21,6 +21,11 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props.active - Active document or the inactive fallback.
  * @param props.workspace - Open documents and history settings.
  * @param props.documents - File selection, save, and close actions.
+ * @param props.documents.save - Saves the active document and reports success.
+ * @param props.documents.openDialog - Opens the native file picker.
+ * @param props.documents.confirmClose - Closes the active document after confirmation.
+ * @param props.documents.confirmCloseAllDocuments - Closes all open documents after confirmation.
+ * @param props.documents.saveAndCloseAllDocuments - Saves and closes all open documents.
  * @param props.settings - Application appearance and simulation settings.
  * @param props.tools - Conversion and machine comparison actions.
  * @param props.dialog - Current application dialog.
@@ -44,7 +49,14 @@ export function AppDialogs({
 }: {
    active: WorkspaceDocument;
    workspace: Workspace;
-   documents: Pick<DocumentController, 'save' | 'openDialog' | 'confirmClose'>;
+   documents: Pick<
+      DocumentController,
+      | 'save'
+      | 'openDialog'
+      | 'confirmClose'
+      | 'confirmCloseAllDocuments'
+      | 'saveAndCloseAllDocuments'
+   >;
    settings: AppSettings;
    tools: MachineToolsController;
    dialog: Dialog | null;
@@ -92,6 +104,13 @@ export function AppDialogs({
                   documents.confirmClose();
                   onClose();
                }}
+            />
+         )}
+         {dialog?.type === 'close-all' && (
+            <CloseAllDocumentsDialog
+               saveAndClose={documents.saveAndCloseAllDocuments}
+               onClose={onClose}
+               onConfirm={documents.confirmCloseAllDocuments}
             />
          )}
          <MachineDialogs

@@ -85,6 +85,7 @@ export default function App() {
          updateDialog({ type: 'combine' });
       },
       onRequestClose: () => updateDialog({ type: 'close' }),
+      onRequestCloseAll: () => updateDialog({ type: 'close-all' }),
    });
    /**
     * Shows the drop hint while files enter the application window.
