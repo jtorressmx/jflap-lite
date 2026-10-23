@@ -625,9 +625,14 @@ function GraphEditor({
       onSelect(next);
       return next;
    }
-   function capture(event: ReactPointerEvent<SVGElement>) {
+   /**
+    * Captures dragging on its original element and focuses the graph.
+    * @param event - Pointer event from the element being dragged.
+    * @returns No value.
+    */
+   function capture(event: ReactPointerEvent<SVGElement>): void {
       svg.current?.focus();
-      svg.current?.setPointerCapture(event.pointerId);
+      event.currentTarget.setPointerCapture(event.pointerId);
    }
    function startDrag(event: ReactPointerEvent<SVGElement>, mode: Drag['mode'], ids: string[]) {
       capture(event);
@@ -831,14 +836,19 @@ function GraphEditor({
          );
       }
    }
-   function pointerUp(event: ReactPointerEvent<SVGSVGElement>) {
+   /**
+    * Finishes a graph interaction and commits completed edits.
+    * @param event - Pointer release or cancellation from the captured element.
+    * @returns No value.
+    */
+   function pointerUp(event: ReactPointerEvent<SVGSVGElement>): void {
       const current = drag.current;
       if (!current) return;
       drag.current = null;
       setPanning(space.current);
       setBox(null);
-      if (svg.current?.hasPointerCapture(event.pointerId))
-         svg.current.releasePointerCapture(event.pointerId);
+      if (event.target instanceof Element && event.target.hasPointerCapture(event.pointerId))
+         event.target.releasePointerCapture(event.pointerId);
       if (current.button === 2) {
          suppressContext.current = current.moved;
          if (!current.moved && current.ids[0]) {
