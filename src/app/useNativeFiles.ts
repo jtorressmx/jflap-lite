@@ -106,6 +106,34 @@ export function useNativeFiles({
    }
 
    /**
+    * Opens dropped JFLAP files in the workspace.
+    * @param files - Files dragged into the application.
+    * @returns A promise resolved after importing supported files.
+    */
+   async function openDroppedFiles(files: File[]): Promise<void> {
+      const machineFiles = files.filter((file) => /\.(?:jff|xml)$/i.test(file.name));
+      if (!machineFiles.length) {
+         notify('Formato no válido');
+         return;
+      }
+      if (machineFiles.length !== files.length)
+         notify('Se omitieron archivos con formato no válido.');
+      if (typeof window.desktop.readDroppedFiles !== 'function') {
+         notify('Reinicia la aplicación para abrir archivos arrastrados.');
+         return;
+      }
+      try {
+         receiveNativeFiles(await window.desktop.readDroppedFiles(machineFiles));
+      } catch {
+         notify(
+            window.desktop.isDesktop
+               ? 'No se pudieron abrir los archivos. Reinicia la aplicación.'
+               : 'No se pudieron abrir los archivos.'
+         );
+      }
+   }
+
+   /**
     * Selects native machine files for opening or combination.
     * @param combineMode - Whether to select a single machine for combination.
     * @returns A promise resolved after selection and import.
@@ -145,5 +173,12 @@ export function useNativeFiles({
       };
    }, [notify]);
 
-   return { recentFiles, refreshRecentFiles, openRecentFile, removeRecentFile, openDialog };
+   return {
+      recentFiles,
+      refreshRecentFiles,
+      openRecentFile,
+      removeRecentFile,
+      openDialog,
+      openDroppedFiles,
+   };
 }

@@ -28,7 +28,7 @@ type DocumentOptions = {
  * @param options.onCreate - Resets auxiliary tools for a newly created document.
  * @param options.onImportCombine - Receives a parsed machine selected for combination.
  * @param options.onRequestClose - Requests confirmation before closing a dirty document.
- * @returns Document navigation, rename, recent-file, and save actions.
+ * @returns Document navigation, rename, recent-file, dropped-file, and save actions.
  */
 export function useDocuments({
    workspace,
@@ -119,14 +119,20 @@ export function useDocuments({
       workspace.setActiveId(id);
       setHome(false);
    }
-   const { recentFiles, refreshRecentFiles, openRecentFile, removeRecentFile, openDialog } =
-      useNativeFiles({
-         workspace,
-         setHome,
-         resumeDocument,
-         onImportCombine,
-         notify,
-      });
+   const {
+      recentFiles,
+      refreshRecentFiles,
+      openRecentFile,
+      removeRecentFile,
+      openDialog,
+      openDroppedFiles,
+   } = useNativeFiles({
+      workspace,
+      setHome,
+      resumeDocument,
+      onImportCombine,
+      notify,
+   });
 
    useEffect(() => {
       if (workspace.storageError)
@@ -352,6 +358,7 @@ export function useDocuments({
       openRecentFile,
       removeRecentFile,
       openDialog,
+      openDroppedFiles,
       save,
       saveOpenDocumentsAutomatically,
       saveAll,

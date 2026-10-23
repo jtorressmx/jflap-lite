@@ -30,6 +30,12 @@ declare global {
          kind?: 'machine' | 'text';
          multiple?: boolean;
       }): Promise<DesktopFile[]>;
+      /**
+       * Reads dropped JFLAP files through the active runtime.
+       * @param files - Files dragged into the application.
+       * @returns File paths, names, and contents for supported machines.
+       */
+      readDroppedFiles(files: File[]): Promise<DesktopFile[]>;
       saveFile(request: {
          content: string;
          name: string;

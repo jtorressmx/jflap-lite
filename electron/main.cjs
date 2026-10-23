@@ -230,6 +230,26 @@ async function readSelected(files) {
 }
 
 /**
+ * Reads dropped JFLAP files after validating their native paths.
+ * @param {string[]} candidates - Absolute paths to dropped .jff or .xml files.
+ * @returns {Promise<Array<{path: string, name: string, content: string}>>} Opened machine files.
+ */
+async function readDroppedFiles(candidates) {
+   if (
+      !Array.isArray(candidates) ||
+      candidates.some(
+         (candidate) =>
+            typeof candidate !== 'string' ||
+            !path.isAbsolute(candidate) ||
+            !/\.(?:jff|xml)$/i.test(candidate)
+      )
+   ) {
+      throw new Error('Selecciona archivos JFLAP válidos para abrirlos.');
+   }
+   return readSelected(candidates);
+}
+
+/**
  * Restores save access for a file previously opened by the application.
  * @param {unknown} candidate - Candidate path stored in the workspace.
  * @returns {Promise<boolean>} Whether the path belongs to a recent machine file.
@@ -379,6 +399,7 @@ function registerBridge() {
       });
       return result.canceled ? [] : readSelected(result.filePaths);
    });
+   handle('desktop:read-dropped-files', readDroppedFiles);
    handle('desktop:save-file', async (request) => {
       const content = policy.text(request?.content);
       const kind = request?.kind || 'jff';

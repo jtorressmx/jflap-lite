@@ -1,4 +1,4 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webUtils } = require('electron');
 
 function subscribe(channel, callback) {
    if (typeof callback !== 'function') throw new TypeError('Se requiere una función.');
@@ -17,6 +17,16 @@ contextBridge.exposeInMainWorld(
       getRecentFiles: () => ipcRenderer.invoke('desktop:recent-files'),
       removeRecentFile: (path) => ipcRenderer.invoke('desktop:remove-recent-file', path),
       openRecentFile: (path) => ipcRenderer.invoke('desktop:open-recent-file', path),
+      /**
+       * Reads dropped JFLAP files through the native file workflow.
+       * @param {File[]} files - Files dragged into the application.
+       * @returns {Promise<Array<{path: string, name: string, content: string}>>} File data for the renderer.
+       */
+      readDroppedFiles: (files) =>
+         ipcRenderer.invoke(
+            'desktop:read-dropped-files',
+            files.map((file) => webUtils.getPathForFile(file))
+         ),
       saveFile: (request) => ipcRenderer.invoke('desktop:save-file', request),
       authorizeSavePath: (path) => ipcRenderer.invoke('desktop:authorize-save-path', path),
       exportFile: (request) => ipcRenderer.invoke('desktop:export-file', request),

@@ -50,6 +50,21 @@ async function openFiles(options: Parameters<DesktopBridge['openFiles']>[0] = {}
 }
 
 /**
+ * Reads files dropped into the browser preview.
+ * @param files - Files dragged into the preview window.
+ * @returns File names and contents for supported machine files.
+ */
+async function readDroppedFiles(files: File[]): Promise<DesktopFile[]> {
+   return Promise.all(
+      files.map(async (file) => ({
+         path: file.name,
+         name: file.name,
+         content: await file.text(),
+      }))
+   );
+}
+
+/**
  * Saves preview text as a browser download.
  * @param request - Text file download settings.
  * @param request.content - Text to download.
@@ -165,6 +180,7 @@ export function createBrowserPreview(): DesktopBridge {
       removeRecentFile: recentFiles,
       openRecentFile: requireDesktop,
       openFiles,
+      readDroppedFiles,
       saveFile,
       exportFile,
       print,

@@ -929,6 +929,21 @@
 .home-page {
    @apply flex-1 min-h-0 overflow-auto bg-canvas py-16 px-8;
 }
+.home-drop-hint {
+   position: fixed;
+   top: calc(var(--menubar-height) + var(--space-4));
+   left: 50%;
+   z-index: 80;
+   transform: translateX(-50%);
+   max-width: calc(100vw - var(--space-8));
+   pointer-events: none;
+   text-align: center;
+   @apply flex items-center gap-2 border border-solid border-border rounded-md py-2 px-4 bg-surface text-foreground text-md font-medium;
+   box-shadow: var(--shadow-flyout);
+}
+.home-drop-hint > svg {
+   @apply w-icon h-icon flex-none text-accent;
+}
 .home-heading,
 .home-options,
 .home-documents {
@@ -939,6 +954,10 @@
 }
 .home-heading-copy {
    @apply min-w-0;
+}
+.app-shell[data-file-drop-active='true'] {
+   outline: var(--focus-ring);
+   outline-offset: -2px;
 }
 .app-brand-mark {
    @apply inline-flex items-center gap-2 whitespace-nowrap;
