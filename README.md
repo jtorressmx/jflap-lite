@@ -4,6 +4,8 @@ Aplicación de escritorio para crear y simular autómatas finitos y máquinas de
 
 ## Descargas
 
+[![Descargar · descargas totales](https://img.shields.io/github/downloads/jtorressmx/jflap-lite/total?style=for-the-badge&label=Descargar&color=0067c0)](https://github.com/jtorressmx/jflap-lite/releases/latest)
+
 - [Windows x64](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe)
 - macOS: [Apple Silicon](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-arm64.dmg) · [Intel](https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-x64.dmg)
 
