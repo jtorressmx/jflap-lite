@@ -297,7 +297,12 @@ async function renameMachineFile(request) {
    const destinationKey = policy.canonicalKey(destination);
    if (sourceKey === destinationKey) {
       await saveMachineFile(realSource, content);
-      return { status: 'renamed', path: realSource, name: destinationBase };
+      if (realSource !== destination) {
+         await fs.rename(realSource, destination);
+         selectedPaths.set(destinationKey, destination);
+         void replaceRecentFilePath(realSource, destination);
+      }
+      return { status: 'renamed', path: destination, name: destinationBase };
    }
    try {
       await fs.lstat(destination);
