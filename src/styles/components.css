@@ -421,6 +421,12 @@
 .simulation-output-label {
    @apply text-secondary text-xs font-semibold;
 }
+.simulation-output-heading {
+   @apply flex items-center gap-2;
+}
+.simulation-character-count {
+   @apply text-tertiary text-xs font-mono;
+}
 .simulation-output-content {
    @apply min-w-0 py-1 px-0;
 }
