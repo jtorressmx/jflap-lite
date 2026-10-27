@@ -163,6 +163,8 @@
       --graph-state-halo-gap: 3px;
       --tape-cell-width: 42px;
       --tape-cell-height: 40px;
+      --tape-cell-border-width: 1px;
+      --tape-head-border-width: 2px;
       --tape-compact-cell-width: 30px;
       --tape-compact-cell-height: 27px;
       --tape-motion-duration: 460ms;

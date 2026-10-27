@@ -581,6 +581,10 @@
 }
 .tape-viewport {
    --tape-head-color: var(--accent);
+   --tape-track-edge-fade: max(
+      var(--tape-edge-fade),
+      calc(var(--tape-cell-width) + var(--space-2))
+   );
    @apply w-full overflow-hidden;
    mask-image: linear-gradient(
       to right,
@@ -598,6 +602,13 @@
    left: 50%;
    transform: translate3d(-50%, 0, 0);
    @apply flex w-max;
+   mask-image: linear-gradient(
+      to right,
+      transparent,
+      black var(--tape-track-edge-fade),
+      black calc(100% - var(--tape-track-edge-fade)),
+      transparent
+   );
 }
 .tape-display:not(.is-compact) .tape-strip {
    will-change: transform;
@@ -611,6 +622,7 @@
    @apply flex justify-center items-center;
    height: var(--tape-cell-height);
    @apply border border-solid border-border-strong;
+   border-width: var(--tape-cell-border-width);
    border-right: 0;
    @apply bg-canvas text-foreground font-mono text-md;
 }
@@ -633,7 +645,7 @@
    transform: translateX(-50%);
    width: var(--tape-cell-width);
    height: var(--tape-cell-height);
-   outline: 2px solid var(--tape-head-color);
+   outline: var(--tape-head-border-width) solid var(--tape-head-color);
    outline-offset: -1px;
    @apply rounded-sm pointer-events-none;
 }
@@ -654,7 +666,7 @@
    border-color: var(--tape-result-color);
 }
 .execution-verdict {
-   @apply mt-2 mx-0 mb-0 text-center text-sm font-medium;
+   @apply mt-2 mx-0 mb-0 text-center text-sm font-medium leading-body;
 }
 .verdict-accepted {
    @apply text-success;
