@@ -37,6 +37,7 @@ export function WorkspaceSimulations({
                key={doc.id}
                enabled={doc.id === workspace.activeId}
                machine={doc.machine}
+               documentTitle={doc.machine.name.replace(/\.(?:jff|xml)$/i, '')}
                preferences={preferences}
                position={simulationPosition}
                onPositionChange={setSimulationPosition}

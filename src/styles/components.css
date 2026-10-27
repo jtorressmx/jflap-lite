@@ -440,11 +440,126 @@
 .simulation-output-count.is-below {
    transform: translate(-50%, var(--space-2));
 }
+.simulation-summary {
+   @apply flex-none min-w-0;
+}
+.simulation-summary-flow {
+   @apply grid items-center gap-1;
+   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+}
+.simulation-summary-flow > .simulation-output {
+   @apply min-w-0 gap-1 py-1 px-2;
+}
+.simulation-summary-transition {
+   @apply flex items-center justify-center text-accent;
+}
+.simulation-summary-transition > svg {
+   @apply w-4 h-4;
+}
+.simulation-summary-flow .simulation-output-content {
+   @apply py-0;
+}
+.simulation-summary-flow .simulation-output-value {
+   @apply min-h-0 text-sm;
+}
+.simulation-symbol-breakdown {
+   @apply flex flex-col gap-1;
+}
+.simulation-symbol-breakdown-label {
+   @apply text-tertiary text-xs;
+}
+.simulation-symbol-counts {
+   @apply flex flex-wrap gap-1;
+   list-style: none;
+   margin: 0;
+   padding: 0;
+}
+.simulation-symbol-count {
+   @apply flex items-center gap-1 py-1 px-2 bg-accent-soft rounded-sm text-sm;
+}
+.simulation-symbol-count-name {
+   @apply text-foreground font-mono font-semibold;
+}
+.simulation-symbol-count-value {
+   @apply text-secondary font-mono text-xs;
+}
+.simulation-summary-flow .simulation-symbol-breakdown {
+   @apply flex-row flex-wrap items-center gap-2;
+}
+.simulation-summary-flow .simulation-symbol-breakdown-label {
+   @apply whitespace-nowrap;
+}
+.simulation-summary-flow .simulation-symbol-count {
+   @apply py-0 px-1;
+}
 .simulation-tape-main {
    @apply flex-1 min-w-0;
 }
 .simulation-tape-heading {
-   @apply flex justify-between gap-2 mb-1 text-secondary text-xs;
+   @apply flex items-center justify-between flex-wrap gap-2 mb-1 text-secondary text-xs;
+}
+.simulation-export-dialog[open] {
+   @apply flex flex-col overflow-hidden;
+}
+.simulation-export-dialog > .modal-heading,
+.simulation-export-dialog > .modal-footer {
+   @apply flex-none;
+}
+.simulation-export-dialog .simulation-export-body {
+   @apply flex-1 min-h-0 overflow-y-auto;
+}
+.simulation-export-dialog .simulation-export-footer {
+   @apply flex-col items-stretch;
+}
+.simulation-export-buttons {
+   @apply flex items-center justify-end gap-2;
+}
+.simulation-export-preview {
+   @apply flex flex-none flex-col gap-1 p-1 border border-solid border-border rounded-md min-w-0;
+}
+.simulation-export-title {
+   @apply text-lg font-semibold text-foreground;
+   overflow-wrap: anywhere;
+}
+.simulation-export-automaton,
+.simulation-export-tape {
+   @apply min-w-0;
+}
+.simulation-export-tape > h3 {
+   @apply text-sm font-medium mb-2;
+}
+.simulation-automaton-preview {
+   @apply overflow-hidden border border-solid border-border rounded-md;
+   height: var(--simulation-automaton-preview-height);
+}
+.simulation-automaton-canvas,
+.simulation-automaton-canvas > .graph-editor {
+   @apply h-full min-h-0;
+}
+.simulation-export-summary {
+   @apply flex-none;
+}
+.simulation-export-body > .field {
+   @apply flex-none;
+}
+.simulation-export-description {
+   @apply whitespace-pre-wrap text-secondary;
+   overflow-wrap: anywhere;
+}
+.editor-layout:not([data-simulation-position='bottom']) .simulation-export-trigger > span {
+   @apply sr-only;
+}
+@media (max-width: 760px) {
+   .simulation-summary-flow {
+      @apply grid-cols-1;
+   }
+   .simulation-summary-transition {
+      @apply justify-self-center;
+      transform: rotate(90deg);
+   }
+   .simulation-export-trigger > span {
+      @apply sr-only;
+   }
 }
 .simulation-tape-title {
    @apply text-foreground font-semibold;

@@ -19,7 +19,8 @@ import {
 import { BatchActions } from '@/components/simulation/BatchActions';
 import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
 import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
-import { SelectableOutput } from '@/components/simulation/SelectableOutput';
+import { SimulationExportDialog } from '@/components/simulation/SimulationExportDialog';
+import { SimulationOutputSummary } from '@/components/simulation/SimulationOutputSummary';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
 import {
@@ -49,6 +50,7 @@ import {
 import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
 import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
 import { download } from '@/lib/files';
+import type { SimulationImage } from '@/lib/simulationImage';
 import { exportTablePng } from '@/lib/tableImage';
 
 type Request = {
@@ -58,6 +60,7 @@ type Request = {
 type Props = SimulationPlacementProps & {
    onClose?: () => void;
    machine: Machine;
+   documentTitle: string;
    preferences: Preferences;
    request?: Request;
    onActivity: (states: string[], transition?: string, guide?: SimulationGuide) => void;
@@ -153,6 +156,7 @@ function traceText(machine: Machine, session: Session, id?: string, emptySymbol:
  * @param props - Component options.
  * @param [props.onClose] - Requests closing the component; receives no arguments.
  * @param props.machine - Machine used by the component.
+ * @param props.documentTitle - Title displayed for the document in the workspace.
  * @param props.preferences - Machine execution and acceptance preferences.
  * @param props.position - Current location of the simulator.
  * @param props.onPositionChange - Receives the requested simulator location.
@@ -167,6 +171,7 @@ function traceText(machine: Machine, session: Session, id?: string, emptySymbol:
 export function SimulationPanel({
    onClose,
    machine,
+   documentTitle,
    preferences,
    position,
    onPositionChange,
@@ -193,6 +198,7 @@ export function SimulationPanel({
       machine: Machine;
       session: Session;
    } | null>(null);
+   const [exportSnapshot, setExportSnapshot] = useState<SimulationImage | null>(null);
    const [traceId, setTraceId] = useState<string | undefined>();
    const [traceFocusId, setTraceFocusId] = useState<string | undefined>();
    const signature = JSON.stringify([machine.states, machine.transitions, preferences]);
@@ -375,7 +381,16 @@ export function SimulationPanel({
          onMessage((error as Error).message);
       }
    }
-   /** Runs the simulation to completion and displays its result in the panel.
+   /** Runs the simulation to completion with the current execution limits.
+    * @param simulationInput - Input captured for the simulation.
+    * @returns The completed or limit-reached session.
+    */
+   function simulateToCompletion(simulationInput: string): Session {
+      return focusAccepted(
+         runMachine(machine, simulationInput, preferences, stepLimit, configurationLimit)
+      );
+   }
+   /** Runs the current input to completion and displays its result in the panel.
     * Takes no input.
     * @returns No value.
     */
@@ -384,9 +399,7 @@ export function SimulationPanel({
       setIterationTarget(null);
       try {
          setDirecting(false);
-         const next = focusAccepted(
-            runMachine(machine, input, preferences, stepLimit, configurationLimit)
-         );
+         const next = simulateToCompletion(input);
          setSession(next);
          setPlaying(false);
          setNotice(next.message ?? '');
@@ -526,7 +539,35 @@ export function SimulationPanel({
       Number.isInteger(iterationIndex) &&
       iterationIndex >= 0 &&
       iterationIndex < session.history.length;
-   const output = session ? getOutput(visible) : '';
+   /** Completes the current input and opens its export preview.
+    * @returns No value.
+    */
+   function openExport(): void {
+      setPlaying(false);
+      setDirecting(false);
+      const simulationInput = session?.input ?? input;
+      try {
+         const completed = simulateToCompletion(simulationInput);
+         const configuration = chosen(completed);
+         if (!configuration) throw new Error('No hay un resultado final para exportar.');
+         setIterationTarget(null);
+         setNotice(completed.message ?? '');
+         setTraceId(undefined);
+         setSession(completed);
+         setTab('simulation');
+         setExportSnapshot({
+            kind: 'turing',
+            name: machine.name,
+            title: documentTitle,
+            machine: structuredClone(machine),
+            input: simulationInput,
+            configuration: structuredClone(configuration),
+            status: completed.status,
+         });
+      } catch (error) {
+         onMessage((error as Error).message);
+      }
+   }
 
    function freeze(id: string) {
       if (!session) return;
@@ -723,6 +764,15 @@ export function SimulationPanel({
                />
             </div>
             <div className="simulation-tab-status">
+               <Button
+                  variant="subtle"
+                  className="simulation-export-trigger"
+                  aria-label="Exportar simulación"
+                  title="Exportar simulación"
+                  onClick={openExport}
+               >
+                  <FiDownload /> <span>Exportar simulación</span>
+               </Button>
                {session?.status === 'limit' && (
                   <Badge tone="warning">{statusNames[session.status]}</Badge>
                )}
@@ -846,7 +896,9 @@ export function SimulationPanel({
                      />
                   </div>
                </div>
-               <SelectableOutput value={output} />
+               {session && (session.status === 'accepted' || session.status === 'rejected') && (
+                  <SimulationOutputSummary input={session.input} output={getOutput(visible)} />
+               )}
                {notice && (
                   <p className="simulation-notice" role="status">
                      {notice}
@@ -1068,6 +1120,13 @@ export function SimulationPanel({
                   </>
                )}
             </div>
+         )}
+         {exportSnapshot && (
+            <SimulationExportDialog
+               simulation={exportSnapshot}
+               onClose={() => setExportSnapshot(null)}
+               onMessage={onMessage}
+            />
          )}
          {resultModal && (
             <Modal

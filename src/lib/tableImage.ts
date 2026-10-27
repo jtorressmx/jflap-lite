@@ -1,24 +1,19 @@
+import { canvasPngBlob, wrapCanvasText } from '@/lib/canvasImage';
 import { download } from '@/lib/files';
 
 type Tone = 'success' | 'danger' | 'warning' | 'accent';
 type ImageTableCell = { text: string; tone?: Tone; mono?: boolean };
 
-function wrap(context: CanvasRenderingContext2D, text: string, width: number): string[] {
-   return text.split(/\r?\n/).flatMap((paragraph) => {
-      const lines: string[] = [];
-      let line = '';
-      for (const character of paragraph) {
-         if (line && context.measureText(line + character).width > width) {
-            lines.push(line);
-            line = '';
-         }
-         line += character;
-      }
-      return [...lines, line];
-   });
-}
-
-/** Render the full table from its data, including rows outside the scroll viewport. */
+/**
+ * Exports the complete results table, including rows outside its scroll viewport.
+ * @param title - Table title and suggested filename.
+ * @param columns - Column headings in display order.
+ * @param rows - Table cells grouped by row.
+ * @param rows[][].text - Cell text, including optional line breaks.
+ * @param rows[][].tone - Optional semantic color for a result.
+ * @param rows[][].mono - Whether a cell uses the monospace font.
+ * @returns Whether the image was saved rather than canceled.
+ */
 export async function exportTablePng(
    title: string,
    columns: string[],
@@ -43,7 +38,7 @@ export async function exportTablePng(
    if (!context) throw new Error('No se pudo generar la imagen de resultados.');
    const font = (mono = false) => `${fontSize}px ${token(mono ? '--font-mono' : '--font-sans')}`;
    context.font = `600 ${titleSize}px ${token('--font-sans')}`;
-   const titleLines = wrap(context, title, width - margin * 2);
+   const titleLines = wrapCanvasText(context, title, width - margin * 2);
    const titleHeight = titleLines.length * titleLineHeight + padding * 2;
    const headerHeight = size('--space-10');
    const measured = rows.map((row) => {
@@ -52,7 +47,7 @@ export async function exportTablePng(
          context.font = font(cell.mono);
          return {
             ...cell,
-            lines: wrap(context, cell.text, columnWidth - padding * 2),
+            lines: wrapCanvasText(context, cell.text, columnWidth - padding * 2),
          };
       });
       return {
@@ -134,14 +129,6 @@ export async function exportTablePng(
       y += row.height;
       divider(y);
    }
-   const blob = await new Promise<Blob>((resolve, reject) =>
-      canvas.toBlob(
-         (value) =>
-            value
-               ? resolve(value)
-               : reject(new Error('No se pudo generar la imagen de resultados.')),
-         'image/png'
-      )
-   );
+   const blob = await canvasPngBlob(canvas);
    return download(blob, `resultados-${title.replace(/\.jff$/i, '')}.png`, 'image/png');
 }

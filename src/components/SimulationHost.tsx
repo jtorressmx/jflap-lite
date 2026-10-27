@@ -10,6 +10,7 @@ import { machineKind } from '@/domain/model';
  * @param props - Component options.
  * @param props.enabled - Whether the simulator is visible and its activity updates are reported.
  * @param props.machine - Machine used by the component.
+ * @param props.documentTitle - Title displayed for the document in the workspace.
  * @param props.preferences - Turing machine execution preferences.
  * @param props.position - Current location of the simulator.
  * @param props.onPositionChange - Receives the requested simulator location.
@@ -44,6 +45,7 @@ export function SimulationHost({
          {machineKind(props.machine) === 'fa' ? (
             <FiniteSimulationPanel
                machine={props.machine}
+               documentTitle={props.documentTitle}
                emptySymbol={props.emptySymbol ?? 'ε'}
                position={props.position}
                onPositionChange={props.onPositionChange}

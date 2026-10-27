@@ -53,6 +53,10 @@ type Props = {
    highlightInitialFinalStates?: boolean;
    createStatesOnDoubleClick?: boolean;
    zoom: number;
+   fitPadding?: number;
+   fitScale?: number;
+   minimumZoom?: number;
+   panOnly?: boolean;
    onZoom: (zoom: number) => void;
    fitKey: number;
    stateScale?: number;
@@ -235,6 +239,10 @@ function connectionPreviewPath(
  * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
  * @param [props.createStatesOnDoubleClick=true] - Whether a background double-click creates a state.
  * @param props.zoom - Current diagram zoom factor.
+ * @param [props.fitPadding] - Optional margin around the diagram when fitting it to the viewport.
+ * @param [props.fitScale=1] - Scale multiplier applied after fitting the diagram.
+ * @param [props.minimumZoom] - Optional lower zoom bound for fitting and wheel interactions.
+ * @param [props.panOnly=false] - Restricts pointer interactions to moving and zooming the view.
  * @param [props.simulationOpen=false] - Keeps simulation framing at a readable scale.
  * @param props.onZoom - Receives the requested zoom factor.
  * @param props.fitKey - Changing this value requests fitting the diagram to the available area.
@@ -263,6 +271,10 @@ function GraphEditor({
    highlightInitialFinalStates = false,
    createStatesOnDoubleClick = true,
    zoom,
+   fitPadding,
+   fitScale = 1,
+   minimumZoom,
+   panOnly = false,
    simulationOpen = false,
    onZoom,
    fitKey,
@@ -382,8 +394,22 @@ function GraphEditor({
       zoom,
       onZoom,
       pan,
+      fitPadding,
+      fitScale,
+      minimumZoom,
    });
-   live.current = { machine, selected, onSelect, onChange, zoom, onZoom, pan };
+   live.current = {
+      machine,
+      selected,
+      onSelect,
+      onChange,
+      zoom,
+      onZoom,
+      pan,
+      fitPadding,
+      fitScale,
+      minimumZoom,
+   };
 
    /**
     * Opens the requested editor using the current diagram coordinates.
@@ -423,13 +449,21 @@ function GraphEditor({
    const fitDiagram = useEffectEvent(() => {
       if (size.width <= 0 || size.height <= 0) return;
       const all = [...machine.states, ...machine.notes];
-      const minX = all.length ? Math.min(...all.map((item) => item.x)) - 100 : 0;
-      const maxX = all.length ? Math.max(...all.map((item) => item.x)) + 100 : 800;
-      const minY = all.length ? Math.min(...all.map((item) => item.y)) - 90 : 0;
-      const maxY = all.length ? Math.max(...all.map((item) => item.y)) + 65 : 500;
+      const horizontalPadding = live.current.fitPadding ?? 100;
+      const topPadding = live.current.fitPadding ?? 90;
+      const bottomPadding = live.current.fitPadding ?? 65;
+      const minX = all.length ? Math.min(...all.map((item) => item.x)) - horizontalPadding : 0;
+      const maxX = all.length ? Math.max(...all.map((item) => item.x)) + horizontalPadding : 800;
+      const minY = all.length ? Math.min(...all.map((item) => item.y)) - topPadding : 0;
+      const maxY = all.length ? Math.max(...all.map((item) => item.y)) + bottomPadding : 500;
       const fittedZoom = Math.min(
          1.35,
-         Math.max(0.25, Math.min(size.width / (maxX - minX), size.height / (maxY - minY)) * 0.88)
+         Math.max(
+            live.current.minimumZoom ?? 0.25,
+            Math.min(size.width / (maxX - minX), size.height / (maxY - minY)) *
+               0.88 *
+               live.current.fitScale
+         )
       );
       const nextZoom =
          simulationOpen && !didFit.current ? Math.max(0.75, Math.min(1, fittedZoom)) : fittedZoom;
@@ -515,7 +549,10 @@ function GraphEditor({
             };
             const delta = event.deltaY * factor;
             const zoomDelta = delta / (1 + Math.abs(delta) / 24);
-            const next = Math.max(0.2, Math.min(3, current.zoom * Math.exp(-zoomDelta * 0.01)));
+            const next = Math.max(
+               current.minimumZoom ?? 0.2,
+               Math.min(3, current.zoom * Math.exp(-zoomDelta * 0.01))
+            );
             const ratio = next / current.zoom;
             previousZoom.current = next;
             const nextPan = {
@@ -656,12 +693,23 @@ function GraphEditor({
       };
       if (mode === 'pan') setPanning(true);
    }
+   /**
+    * Starts an interaction with a graph object.
+    * @param event - Pointer event from the graph object.
+    * @param id - Identifier of the graph object.
+    * @param kind - Kind of graph object receiving the event.
+    * @returns No value.
+    */
    function objectDown(
       event: ReactPointerEvent<SVGElement>,
       id: string,
       kind: 'state' | 'transition' | 'note'
    ) {
       event.stopPropagation();
+      if (panOnly && event.button === 0) {
+         startDrag(event, 'pan', []);
+         return;
+      }
       if (event.button === 2) {
          suppressContext.current = false;
          startDrag(event, 'pan', [id]);
@@ -971,7 +1019,9 @@ function GraphEditor({
             aria-label={
                readOnly
                   ? shortcutLabel(
-                       `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
+                       panOnly
+                          ? 'Vista del diagrama. Arrastra para desplazar; usa Ctrl y rueda para cambiar el zoom.'
+                          : `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
                     )
                   : `Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`
             }

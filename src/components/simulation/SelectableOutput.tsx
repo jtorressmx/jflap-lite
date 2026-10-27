@@ -1,13 +1,35 @@
 import { useEffect, useRef, useState } from 'react';
 
+export type SelectableOutputFrequency = {
+   symbol: string;
+   count: number;
+};
+
 /**
- * Shows machine output and the selected character count.
+ * Displays a selectable machine string with optional symbol frequencies.
  * @param props - Component options.
- * @param props.value - Output string to display and allow selecting.
+ * @param props.value - Machine string to display and allow selecting.
+ * @param [props.label=Salida] - Visible string label and accessible name.
+ * @param [props.showCount=false] - Displays the total character count beside the label.
+ * @param [props.emptySymbol] - Optional placeholder for an empty string.
+ * @param [props.frequencies] - Optional counts for each symbol in the string.
  * @returns The selectable output and selection count.
  */
-export function SelectableOutput({ value }: { value: string }) {
+export function SelectableOutput({
+   value,
+   label = 'Salida',
+   showCount = false,
+   emptySymbol = '',
+   frequencies,
+}: {
+   value: string;
+   label?: string;
+   showCount?: boolean;
+   emptySymbol?: string;
+   frequencies?: SelectableOutputFrequency[];
+}) {
    const outputRef = useRef<HTMLOutputElement>(null);
+   const characterCount = Array.from(value).length;
    const [selection, setSelection] = useState<{
       count: number;
       x: number;
@@ -60,17 +82,45 @@ export function SelectableOutput({ value }: { value: string }) {
    useEffect(() => setSelection(null), [value]);
 
    return (
-      <section className="simulation-output" aria-label="Salida de la máquina">
-         <span className="simulation-output-label">Salida</span>
+      <section className="simulation-output" aria-label={`${label} de la máquina`}>
+         <div className="simulation-output-heading">
+            <span className="simulation-output-label">{label}</span>
+            {showCount && (
+               <span
+                  className="simulation-character-count"
+                  aria-label={`${characterCount} ${characterCount === 1 ? 'carácter' : 'caracteres'}`}
+               >
+                  {characterCount}
+               </span>
+            )}
+         </div>
          <div className="simulation-output-content">
             <output
                ref={outputRef}
                className="simulation-output-value"
-               aria-label="Cadena de salida"
+               aria-label={`Cadena de ${label.toLowerCase()}`}
             >
-               {value}
+               {value || emptySymbol}
             </output>
          </div>
+         {frequencies && frequencies.length > 0 && (
+            <div className="simulation-symbol-breakdown">
+               <span className="simulation-symbol-breakdown-label">Conteo por símbolo</span>
+               <ul
+                  className="simulation-symbol-counts"
+                  aria-label={`Frecuencias de ${label.toLowerCase()}`}
+               >
+                  {frequencies.map(({ symbol, count }) => (
+                     <li key={symbol} className="simulation-symbol-count">
+                        <span className="simulation-symbol-count-name">
+                           {symbol === ' ' ? 'espacio' : symbol}
+                        </span>
+                        <span className="simulation-symbol-count-value">× {count}</span>
+                     </li>
+                  ))}
+               </ul>
+            </div>
+         )}
          {selection && (
             <span
                className={`simulation-output-count${selection.below ? ' is-below' : ''}`}

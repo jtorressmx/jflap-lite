@@ -15,6 +15,7 @@ import {
 import { BatchActions } from '@/components/simulation/BatchActions';
 import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
 import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
+import { SimulationExportDialog } from '@/components/simulation/SimulationExportDialog';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
 import {
@@ -46,10 +47,12 @@ import type { Machine } from '@/domain/model';
 import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
 import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
 import { download } from '@/lib/files';
+import type { SimulationImage } from '@/lib/simulationImage';
 import { exportTablePng } from '@/lib/tableImage';
 
 type Props = SimulationPlacementProps & {
    machine: Machine;
+   documentTitle: string;
    emptySymbol: 'ε' | 'λ';
    request?: { id: number; action: SimulationAction };
    onActivity: (states: string[], transition?: string) => void;
@@ -83,6 +86,7 @@ function parseBatchLine(line: string) {
  * Coordinates finite automaton simulation and testing.
  * @param props - Component options.
  * @param props.machine - Machine used by the component.
+ * @param props.documentTitle - Title displayed for the document in the workspace.
  * @param props.emptySymbol - Symbol used to display the empty string.
  * @param props.position - Current location of the simulator.
  * @param props.onPositionChange - Receives the requested simulator location.
@@ -96,6 +100,7 @@ function parseBatchLine(line: string) {
  */
 export default function FiniteSimulationPanel({
    machine,
+   documentTitle,
    emptySymbol,
    position,
    onPositionChange,
@@ -113,6 +118,7 @@ export default function FiniteSimulationPanel({
    const [selectedId, setSelectedId] = useState<string>(),
       [speed, setSpeed] = useState(650);
    const [selectedIds, setSelectedIds] = useState<string[]>([]);
+   const [exportSnapshot, setExportSnapshot] = useState<SimulationImage | null>(null);
    const [configurationLimit, setConfigurationLimit] = useState(50000);
    const [batchItems, setBatchItems] = useState<BatchInputItem[]>(() => [createBatchInputItem()]);
    const [batchFile, setBatchFile] = useState<BatchTextFile | null>(null);
@@ -151,6 +157,47 @@ export default function FiniteSimulationPanel({
       setSelectedId(undefined);
       setSelectedIds([]);
       return next;
+   }
+   /** Completes the current input and opens its export preview.
+    * @returns No value.
+    */
+   function openExport(): void {
+      setPlaying(false);
+      const simulationInput = session?.input ?? input;
+      const useClosure = session?.closure ?? closure;
+      try {
+         const completed = runFinite(machine, simulationInput, useClosure, configurationLimit);
+         if (completed.status === 'limit') {
+            setSession(completed);
+            setTab('simulation');
+            onMessage(
+               'La ejecución alcanzó el límite sin un veredicto. Prueba con una cadena más corta o un autómata menos complejo.'
+            );
+            return;
+         }
+         if (completed.status !== 'accepted' && completed.status !== 'rejected')
+            throw new Error('La ejecución no llegó a un resultado final.');
+         const configuration =
+            completed.configurations.find((candidate) =>
+               finiteAccepts(machine, candidate, completed.input)
+            ) ?? completed.configurations.at(-1);
+         if (!configuration) throw new Error('No hay un resultado para exportar.');
+         setSession(completed);
+         setSelectedId(configuration.id);
+         setSelectedIds([configuration.id]);
+         setTab('simulation');
+         setExportSnapshot({
+            kind: 'fa',
+            name: machine.name,
+            title: documentTitle,
+            machine: structuredClone(machine),
+            input: completed.input,
+            stateId: configuration.state,
+            status: completed.status,
+         });
+      } catch (error) {
+         onMessage((error as Error).message);
+      }
    }
    /**
     * Closes the simulator and clears its temporary results.
@@ -378,6 +425,15 @@ export default function FiniteSimulationPanel({
                />
             </div>
             <div className="simulation-tab-status">
+               <Button
+                  variant="subtle"
+                  className="simulation-export-trigger"
+                  aria-label="Exportar simulación"
+                  title="Exportar simulación"
+                  onClick={openExport}
+               >
+                  <FiDownload /> <span>Exportar simulación</span>
+               </Button>
                <Badge>{finiteNondeterminism(machine).length ? 'AFN' : 'AFD'}</Badge>
             </div>
             <SimulationWindowActions
@@ -833,6 +889,13 @@ export default function FiniteSimulationPanel({
                   <Button onClick={() => setResult(null)}>Listo</Button>
                </ModalFooter>
             </Modal>
+         )}
+         {exportSnapshot && (
+            <SimulationExportDialog
+               simulation={exportSnapshot}
+               onClose={() => setExportSnapshot(null)}
+               onMessage={onMessage}
+            />
          )}
       </section>
    );
