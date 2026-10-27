@@ -125,6 +125,7 @@ function deduplicateIdenticalDocuments(
 
 /**
  * Creates the document workspace and its editing actions.
+ * Takes no input.
  * @returns Workspace documents, the active document, and editing actions.
  */
 export function useWorkspace() {
@@ -362,6 +363,23 @@ export function useWorkspace() {
       pending.current = null;
       setState((s) => (s.documents.some((d) => d.id === id) ? { ...s, activeId: id } : s));
    }
+   /**
+    * Persists an empty document workspace while preserving application settings.
+    * Takes no input.
+    * @returns A promise resolved after the empty workspace is stored.
+    */
+   async function clearDocuments(): Promise<void> {
+      const emptyState = { documents: [], activeId: '' };
+      const value = JSON.stringify({
+         version: 1,
+         settings: storedSettings(),
+         ...emptyState,
+      });
+      await window.desktop.writeWorkspace(value);
+      localStorage.setItem(KEY, value);
+      pending.current = null;
+      setState(emptyState);
+   }
    return {
       ...state,
       active,
@@ -373,6 +391,7 @@ export function useWorkspace() {
       markSaved,
       renameDocument,
       setActiveId,
+      clearDocuments,
       storageError,
       historyLimit,
       setHistoryLimit,

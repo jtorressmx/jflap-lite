@@ -7,6 +7,7 @@ declare global {
       | 'save'
       | 'save-as'
       | 'save-all'
+      | 'clear-workspace'
       | 'close'
       | 'print'
       | 'step'
@@ -86,6 +87,7 @@ declare global {
          dirty: boolean;
          dirtyCount?: number;
          autoSaveOnBlur?: boolean;
+         clearWorkspaceOnExit?: boolean;
       }): Promise<void>;
       completeClose(result: { saved: boolean }): Promise<boolean>;
       readWorkspace(): Promise<string | null>;

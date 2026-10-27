@@ -106,6 +106,7 @@ export default function App() {
       setHome,
       notify,
       autoSaveOnBlur: settings.autoSaveOnBlur,
+      clearWorkspaceOnExit: settings.clearWorkspaceOnExit,
       onCreate: () => simulation.setOpen(false),
       onImportCombine: (machine) => {
          tools.setImportedCombine(machine);
@@ -256,6 +257,7 @@ export default function App() {
       dirtyCount: workspace.documents.filter((doc) => JSON.stringify(doc.machine) !== doc.saved)
          .length,
       autoSaveOnBlur: settings.autoSaveOnBlur,
+      clearWorkspaceOnExit: settings.clearWorkspaceOnExit,
       notify,
       commands: {
          new: () => documents.createDocument(machineKind(machine)),
@@ -263,6 +265,7 @@ export default function App() {
          save: () => (view === 'document' ? documents.save() : undefined),
          'save-as': () => (view === 'document' ? documents.save(true) : undefined),
          'save-all': documents.saveAll,
+         'clear-workspace': documents.clearWorkspaceForExit,
          close: () => (view === 'settings' ? closeSettings() : documents.closeDocument(active.id)),
          print,
          start: () => simulation.simulate('start'),

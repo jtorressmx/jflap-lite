@@ -15,6 +15,7 @@ type DocumentOptions = {
    setHome: (home: boolean) => void;
    notify: Notify;
    autoSaveOnBlur: boolean;
+   clearWorkspaceOnExit: boolean;
    onCreate: () => void;
    onImportCombine: (machine: Machine) => void;
    onRequestClose: () => void;
@@ -31,6 +32,7 @@ type SaveDocumentsResult =
  * @param options.setHome - Receives the requested home visibility.
  * @param options.notify - Receives a user-facing notification.
  * @param options.autoSaveOnBlur - Whether desktop files save automatically on navigation.
+ * @param options.clearWorkspaceOnExit - Whether the workspace is cleared when the app exits.
  * @param options.onCreate - Resets auxiliary tools for a newly created document.
  * @param options.onImportCombine - Receives a parsed machine selected for combination.
  * @param options.onRequestClose - Requests confirmation before closing a dirty document.
@@ -42,6 +44,7 @@ export function useDocuments({
    setHome,
    notify,
    autoSaveOnBlur,
+   clearWorkspaceOnExit,
    onCreate,
    onImportCombine,
    onRequestClose,
@@ -324,6 +327,8 @@ export function useDocuments({
             name: active?.machine.name ?? '',
             dirty: false,
             dirtyCount: 0,
+            autoSaveOnBlur,
+            clearWorkspaceOnExit,
          });
          await desktop.completeClose({ saved: true });
          void refreshRecentFiles();
@@ -336,6 +341,33 @@ export function useDocuments({
             await desktop.completeClose({ saved: false });
          } catch {
             notify('No se pudo cerrar. Guarda tus archivos e inténtalo de nuevo.');
+         }
+      }
+   }
+
+   /**
+    * Clears the open workspace and completes the requested application close.
+    * Takes no input.
+    * @returns A promise resolved after clearing the workspace or reporting failure.
+    */
+   async function clearWorkspaceForExit(): Promise<void> {
+      try {
+         await workspace.clearDocuments();
+         await window.desktop.setDocumentState({
+            name: '',
+            dirty: false,
+            dirtyCount: 0,
+            autoSaveOnBlur,
+            clearWorkspaceOnExit,
+         });
+         const closed = await window.desktop.completeClose({ saved: true });
+         if (!closed) notify('No se pudo cerrar la aplicación. Inténtalo de nuevo.');
+      } catch {
+         notify('No se pudo limpiar el espacio. Inténtalo de nuevo.');
+         try {
+            await window.desktop.completeClose({ saved: false });
+         } catch {
+            notify('No se pudo cancelar el cierre. Inténtalo de nuevo.');
          }
       }
    }
@@ -474,6 +506,7 @@ export function useDocuments({
       openFileLocation,
       saveOpenDocumentsAutomatically,
       saveAll,
+      clearWorkspaceForExit,
       saveAllDocuments,
       closeDocument,
       closeSavedDocuments,

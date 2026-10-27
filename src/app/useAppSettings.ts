@@ -2,7 +2,12 @@ import { useEffect, useState } from 'react';
 
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
-import { AUTO_SAVE_ON_BLUR_KEY, readUiSettings, settingsChanged } from '@/lib/settings';
+import {
+   AUTO_SAVE_ON_BLUR_KEY,
+   CLEAR_WORKSPACE_ON_EXIT_KEY,
+   readUiSettings,
+   settingsChanged,
+} from '@/lib/settings';
 import type { SimulationPosition } from '@/lib/settings';
 
 /**
@@ -71,6 +76,9 @@ export function useAppSettings() {
    const [autoSaveOnBlur, setAutoSaveOnBlur] = useState(
       () => localStorage.getItem(AUTO_SAVE_ON_BLUR_KEY) === 'true'
    );
+   const [clearWorkspaceOnExit, setClearWorkspaceOnExit] = useState(
+      () => localStorage.getItem(CLEAR_WORKSPACE_ON_EXIT_KEY) === 'true'
+   );
    useEffect(() => {
       localStorage.setItem('jflap-lite.palette', palette);
       localStorage.setItem('jflap-lite.empty-symbol', emptySymbol);
@@ -85,6 +93,10 @@ export function useAppSettings() {
       localStorage.setItem(AUTO_SAVE_ON_BLUR_KEY, String(autoSaveOnBlur));
       settingsChanged();
    }, [autoSaveOnBlur]);
+   useEffect(() => {
+      localStorage.setItem(CLEAR_WORKSPACE_ON_EXIT_KEY, String(clearWorkspaceOnExit));
+      settingsChanged();
+   }, [clearWorkspaceOnExit]);
    useEffect(() => {
       localStorage.setItem('jflap-lite.theme', theme);
       localStorage.setItem('jflap-lite.accent', accent);
@@ -143,6 +155,8 @@ export function useAppSettings() {
       setPalette,
       autoSaveOnBlur,
       setAutoSaveOnBlur,
+      clearWorkspaceOnExit,
+      setClearWorkspaceOnExit,
    };
 }
 export type AppSettings = ReturnType<typeof useAppSettings>;

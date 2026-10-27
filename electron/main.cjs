@@ -17,9 +17,16 @@ if (!hasLock) app.quit();
 let mainWindow = null;
 let rendererReady = false;
 let initialFiles = [];
-let documentState = { name: '', dirty: false, dirtyCount: 0, autoSaveOnBlur: false };
+let documentState = {
+   name: '',
+   dirty: false,
+   dirtyCount: 0,
+   autoSaveOnBlur: false,
+   clearWorkspaceOnExit: false,
+};
 let closePrompt = false;
 let pendingClose = false;
+let closeApproved = false;
 let workspaceWrite = Promise.resolve();
 const selectedPaths = new Map();
 let recentWrite = Promise.resolve();
@@ -233,6 +240,62 @@ function assertSender(event) {
    ) {
       throw new Error('Origen de aplicación no autorizado.');
    }
+}
+
+/**
+ * Returns the path to the persisted workspace snapshot.
+ * Takes no input.
+ * @returns {string} Workspace file path.
+ */
+function workspaceFile() {
+   return path.join(app.getPath('userData'), 'workspace.json');
+}
+
+/**
+ * Stores a workspace snapshot using a temporary file.
+ * @param {string} content - Serialized workspace snapshot.
+ * @returns {Promise<void>} Resolves after the snapshot is stored.
+ */
+async function persistWorkspace(content) {
+   await fs.mkdir(app.getPath('userData'), { recursive: true });
+   const destination = workspaceFile();
+   await fs.writeFile(`${destination}.tmp`, content, 'utf8');
+   await replaceStoredFile(`${destination}.tmp`, destination);
+}
+
+/**
+ * Writes a validated workspace snapshot atomically.
+ * @param {string} content - Serialized workspace snapshot.
+ * @returns {Promise<void>} Resolves after the snapshot is stored.
+ */
+function writeWorkspace(content) {
+   policy.text(content);
+   JSON.parse(content);
+   const persist = () => persistWorkspace(content);
+   const write = workspaceWrite.then(persist, persist);
+   workspaceWrite = write;
+   return write;
+}
+
+/**
+ * Clears restored documents while preserving the workspace settings.
+ * Takes no input.
+ * @returns {Promise<void>} Resolves after the empty workspace is stored.
+ */
+async function clearWorkspaceDocuments() {
+   await workspaceWrite;
+   let content;
+   try {
+      content = await fs.readFile(workspaceFile(), 'utf8');
+   } catch (error) {
+      if (error.code === 'ENOENT') return;
+      throw error;
+   }
+   policy.text(content);
+   const stored = JSON.parse(content);
+   if (!stored || typeof stored !== 'object' || Array.isArray(stored))
+      throw new Error('El espacio guardado no es válido.');
+   await writeWorkspace(JSON.stringify({ ...stored, activeId: '', documents: [] }));
 }
 
 function handle(channel, listener) {
@@ -586,7 +649,12 @@ function registerBridge() {
    });
    /**
     * Updates the native window status from the renderer workspace.
-    * @param {{name?: unknown, dirty?: unknown, dirtyCount?: unknown, autoSaveOnBlur?: unknown}} state - Renderer document status.
+    * @param {{name?: unknown, dirty?: unknown, dirtyCount?: unknown, autoSaveOnBlur?: unknown, clearWorkspaceOnExit?: unknown}} state - Renderer document status.
+    * @param state.name - Current document name.
+    * @param state.dirty - Whether any document has unsaved changes.
+    * @param state.dirtyCount - Number of changed documents.
+    * @param state.autoSaveOnBlur - Whether changed documents save when the app loses focus.
+    * @param state.clearWorkspaceOnExit - Whether open documents clear on application exit.
     * @returns {void} No value.
     */
    handle('desktop:document-state', (state) => {
@@ -604,6 +672,10 @@ function registerBridge() {
             typeof state?.autoSaveOnBlur === 'boolean'
                ? state.autoSaveOnBlur
                : documentState.autoSaveOnBlur,
+         clearWorkspaceOnExit:
+            typeof state?.clearWorkspaceOnExit === 'boolean'
+               ? state.clearWorkspaceOnExit
+               : documentState.clearWorkspaceOnExit,
       };
       mainWindow.setTitle(
          documentState.name
@@ -612,6 +684,12 @@ function registerBridge() {
       );
       mainWindow.setDocumentEdited(documentState.dirty);
    });
+   /**
+    * Completes a native close after the renderer confirms its save decision.
+    * @param {{saved?: unknown}} result - Renderer close outcome.
+    * @param result.saved - Whether the renderer confirmed its save decision.
+    * @returns {Promise<boolean>} Whether the native window was closed.
+    */
    handle('desktop:complete-close', async (result) => {
       if (!pendingClose) return false;
       if (result?.saved !== true || documentState.dirty) {
@@ -619,13 +697,17 @@ function registerBridge() {
          return false;
       }
       await workspaceWrite;
+      if (documentState.clearWorkspaceOnExit) await clearWorkspaceDocuments();
       // The renderer explicitly acknowledged every modified document, not just the active tab.
-      pendingClose = false;
-      if (!mainWindow || mainWindow.isDestroyed()) return false;
+      if (!mainWindow || mainWindow.isDestroyed()) {
+         pendingClose = false;
+         return false;
+      }
+      closeApproved = true;
       mainWindow.close();
+      pendingClose = false;
       return true;
    });
-   const workspaceFile = () => path.join(app.getPath('userData'), 'workspace.json');
    handle('desktop:read-workspace', async () => {
       try {
          const value = await fs.readFile(workspaceFile(), 'utf8');
@@ -637,20 +719,7 @@ function registerBridge() {
          throw error;
       }
    });
-   handle('desktop:write-workspace', (content) => {
-      policy.text(content);
-      JSON.parse(content);
-      const write = workspaceWrite
-         .catch(() => {})
-         .then(async () => {
-            await fs.mkdir(app.getPath('userData'), { recursive: true });
-            const destination = workspaceFile();
-            await fs.writeFile(`${destination}.tmp`, content, 'utf8');
-            await replaceStoredFile(`${destination}.tmp`, destination);
-         });
-      workspaceWrite = write;
-      return write;
-   });
+   handle('desktop:write-workspace', writeWorkspace);
 }
 
 async function createWindow() {
@@ -695,14 +764,27 @@ async function createWindow() {
       mainWindow.focus();
    });
    /**
-    * Resolves automatic saving or prompts before closing a changed workspace.
+    * Saves, clears, or prompts before closing the workspace.
     * @param {import('electron').Event} event - Native close event.
     * @returns {Promise<void>} Resolves after the close decision is processed.
     */
    mainWindow.on('close', async (event) => {
-      if (!documentState.dirty) return;
+      if (closeApproved) {
+         closeApproved = false;
+         return;
+      }
+      if (pendingClose) {
+         event.preventDefault();
+         return;
+      }
+      if (!documentState.dirty && !documentState.clearWorkspaceOnExit) return;
       event.preventDefault();
       if (closePrompt || pendingClose) return;
+      if (!documentState.dirty) {
+         pendingClose = true;
+         command('clear-workspace');
+         return;
+      }
       closePrompt = true;
       try {
          if (documentState.autoSaveOnBlur) {
@@ -725,8 +807,14 @@ async function createWindow() {
          });
          if (response === 1) {
             await workspaceWrite;
-            documentState.dirty = false;
-            mainWindow.close();
+            if (documentState.clearWorkspaceOnExit) {
+               pendingClose = true;
+               command('clear-workspace');
+            } else {
+               documentState.dirty = false;
+               closeApproved = true;
+               mainWindow.close();
+            }
          } else if (response === 0) {
             pendingClose = true;
             command('save-all');
@@ -745,6 +833,7 @@ async function createWindow() {
    mainWindow.webContents.on('render-process-gone', () => {
       pendingClose = false;
       closePrompt = false;
+      closeApproved = false;
    });
    mainWindow.on('closed', () => {
       mainWindow = null;

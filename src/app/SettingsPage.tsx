@@ -34,6 +34,8 @@ import { defaultPreferences } from '@/domain/model';
  * @param props.settings.setStateScale - Receives the requested state size multiplier.
  * @param props.settings.autoSaveOnBlur - Whether changed files save when the app loses focus.
  * @param props.settings.setAutoSaveOnBlur - Receives the requested automatic-save behavior.
+ * @param props.settings.clearWorkspaceOnExit - Whether open documents close when the app exits.
+ * @param props.settings.setClearWorkspaceOnExit - Receives the requested workspace cleanup behavior.
  * @param props.historyLimit - Maximum retained undo actions.
  * @param props.setHistoryLimit - Receives the requested undo history limit.
  * @returns The rendered interface.
@@ -72,6 +74,8 @@ export function SettingsPage({
       setStateScale,
       autoSaveOnBlur,
       setAutoSaveOnBlur,
+      clearWorkspaceOnExit,
+      setClearWorkspaceOnExit,
    } = settings;
    return (
       <main className="settings-page" aria-labelledby="settings-title">
@@ -89,6 +93,12 @@ export function SettingsPage({
                            description="Guarda automáticamente al salir del editor o cambiar a otra aplicación."
                            checked={autoSaveOnBlur}
                            onChange={setAutoSaveOnBlur}
+                        />
+                        <Toggle
+                           label="Limpiar espacio al cerrar"
+                           description="Cierra los documentos abiertos al salir. Podrás abrirlos desde Recientes."
+                           checked={clearWorkspaceOnExit}
+                           onChange={setClearWorkspaceOnExit}
                         />
                      </div>
                   </section>
