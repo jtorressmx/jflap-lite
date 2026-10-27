@@ -1059,13 +1059,17 @@
    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
 }
 .home-recents .home-document-open > .home-document-name,
-.home-recents .home-document-open > .home-document-kind {
+.home-recents .home-document-open > .home-document-kind,
+.home-open-documents .home-document-open > .home-document-name,
+.home-open-documents .home-document-open > .home-document-kind {
    @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
 }
-.home-recents .home-document-open > svg {
+.home-recents .home-document-open > svg,
+.home-open-documents .home-document-open > svg {
    @apply shrink-0;
 }
-.home-recents .home-document-open > svg:last-child {
+.home-recents .home-document-open > svg:last-child,
+.home-open-documents .home-document-open > svg:last-child {
    @apply ml-auto;
 }
 .home-recent-row > .home-document-open {

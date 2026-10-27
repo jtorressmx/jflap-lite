@@ -1,38 +1,51 @@
 import type { ReactElement } from 'react';
 
+import type { Workspace } from '@/app/types';
 import { DocumentListItem } from '@/components/DocumentListItem';
-import { FiCpu, FiFolder, FiGitBranch, FiTrash2 } from '@/components/icons';
+import { MachineKindIcon } from '@/components/MachineKindIcon';
+import { FiFolder, FiTrash2, FiX } from '@/components/icons';
 import { ActionCard } from '@/components/ui/ActionCard';
 import { BrandMark } from '@/components/ui/BrandMark';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import type { MachineKind } from '@/domain/model';
+import { machineKind, machineTitle, type MachineKind } from '@/domain/model';
+
+type OpenDocument = Pick<Workspace['documents'][number], 'id' | 'machine' | 'path'>;
 
 /**
- * Shows available editors and recent files.
+ * Shows available editors, open documents, and recent files.
  * @param props - Component options.
  * @param props.onCreate - Receives the machine kind whose document should be created.
  * @param props.onOpen - Requests opening the file picker; receives no arguments.
- * @param props.hasOpenDocuments - Whether the workspace has any open documents.
+ * @param props.openDocuments - Documents currently open in the workspace.
+ * @param props.openDocuments[].id - Identifier used to resume or close the document.
+ * @param props.openDocuments[].machine - Machine represented by the document.
+ * @param props.openDocuments[].path - Optional saved-file path.
+ * @param props.onResumeDocument - Receives the identifier of the document to activate.
+ * @param props.onCloseDocument - Receives the identifier of the document to close.
  * @param props.recentFiles - Recent files available to open.
  * @param props.recentFiles[].path - File path used to identify the recent file.
  * @param props.recentFiles[].name - Display name of the recent file.
  * @param props.recentFiles[].openedAt - Time when the file was last opened, when known.
  * @param props.onRecent - Receives the recent file requested for opening.
  * @param props.onRemoveRecent - Receives the file to remove from the recent list.
- * @returns The home page with available editors and recent files.
+ * @returns The home page with open and recent documents.
  */
 export default function HomePage({
    onCreate,
    onOpen,
-   hasOpenDocuments,
+   openDocuments,
+   onResumeDocument,
+   onCloseDocument,
    recentFiles,
    onRecent,
    onRemoveRecent,
 }: {
    onCreate: (kind: MachineKind) => void;
    onOpen: () => void;
-   hasOpenDocuments: boolean;
+   openDocuments: OpenDocument[];
+   onResumeDocument: (id: string) => void;
+   onCloseDocument: (id: string) => void;
    recentFiles: DesktopRecentFile[];
    onRecent: (file: DesktopRecentFile) => void;
    onRemoveRecent: (file: DesktopRecentFile) => void;
@@ -86,24 +99,46 @@ export default function HomePage({
          </header>
          <div className="home-options">
             <ActionCard
-               icon={<FiGitBranch />}
+               icon={<MachineKindIcon kind="fa" />}
                title="Autómatas finitos"
                description="Reconoce cadenas, explora el no determinismo y convierte o minimiza tu autómata."
                action="Abrir editor de autómatas"
                onClick={() => onCreate('fa')}
             />
             <ActionCard
-               icon={<FiCpu />}
+               icon={<MachineKindIcon kind="turing" />}
                title="Máquina de Turing"
                description="Lee, escribe y mueve el cabezal. Sigue la cinta durante la ejecución."
                action="Abrir editor de Turing"
                onClick={() => onCreate('turing')}
             />
          </div>
-         {!hasOpenDocuments && recentFiles.length === 0 && (
+         {openDocuments.length === 0 && recentFiles.length === 0 && (
             <EmptyState title="No hay documentos abiertos">
                Inicia un nuevo proyecto o abre un archivo existente.
             </EmptyState>
+         )}
+         {openDocuments.length > 0 && (
+            <section className="home-documents home-open-documents" aria-label="Abiertos ahora">
+               <h2>Abiertos ahora</h2>
+               {openDocuments.map((document) => {
+                  const name = document.machine.name.replace(/\.(?:jff|xml)$/i, '');
+                  return (
+                     <DocumentListItem
+                        key={document.id}
+                        className="home-open-row"
+                        icon={<MachineKindIcon kind={machineKind(document.machine)} />}
+                        name={name}
+                        detail={machineTitle(document.machine)}
+                        title={document.path || name}
+                        onOpen={() => onResumeDocument(document.id)}
+                        onRemove={() => onCloseDocument(document.id)}
+                        removeLabel={`Cerrar ${name}`}
+                        removeIcon={<FiX />}
+                     />
+                  );
+               })}
+            </section>
          )}
          {recentFiles.length > 0 && (
             <section className="home-documents home-recents" aria-label="Archivos recientes">

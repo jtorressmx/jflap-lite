@@ -2,10 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { AppView, Workspace } from '@/app/types';
 import type { DocumentController } from '@/app/useDocuments';
+import { MachineKindIcon } from '@/components/MachineKindIcon';
 import {
    FiArrowLeft,
    FiArrowRight,
-   FiCpu,
    FiFilePlus,
    FiGitBranch,
    FiHome,
@@ -170,7 +170,7 @@ export function DocumentPicker({
                            onDoubleClick={() => onRenameDocument(doc.id)}
                         >
                            <span className="document-tab-icon" aria-hidden="true">
-                              {machineKind(doc.machine) === 'fa' ? <FiGitBranch /> : <FiCpu />}
+                              <MachineKindIcon kind={machineKind(doc.machine)} />
                            </span>
                            <span className="document-tab-name">{name}</span>
                            {dirty && <span className="dirty-dot" aria-hidden="true" />}
