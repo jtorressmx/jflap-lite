@@ -372,14 +372,14 @@
    @apply flex gap-2 items-center pb-1;
 }
 .simulation-iteration-control {
-   @apply flex items-end gap-2 flex-none;
+   @apply flex items-center gap-2 flex-none;
 }
 .simulation-iteration-field {
+   @apply flex-row items-center gap-2;
    flex: 0 0 auto;
-   gap: var(--space-1);
 }
 .simulation-iteration-field > label {
-   @apply text-secondary text-xs;
+   @apply text-secondary text-xs whitespace-nowrap;
 }
 .simulation-iteration-field input {
    @apply font-mono;
