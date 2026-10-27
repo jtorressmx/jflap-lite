@@ -1,3 +1,5 @@
+import type { MachineKind } from '@/domain/model';
+
 export {};
 
 declare global {
@@ -19,7 +21,12 @@ declare global {
       | 'help';
    type DesktopFileKind = 'jff' | 'xml' | 'txt' | 'svg' | 'png';
    type DesktopFile = { path: string; name: string; content: string };
-   type DesktopRecentFile = { path: string; name: string; openedAt?: string };
+   type DesktopRecentFile = {
+      path: string;
+      name: string;
+      openedAt?: string;
+      kind?: MachineKind;
+   };
    type DesktopSaveResult = { path?: string; canceled: boolean };
    interface DesktopBridge {
       readonly isDesktop: boolean;

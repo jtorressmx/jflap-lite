@@ -1189,21 +1189,10 @@
    @apply flex-1 min-w-0 justify-start p-3;
 }
 .home-document-open > .home-document-name {
-   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
+   @apply flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap text-left;
 }
-.home-recents .home-document-open > .home-document-name,
-.home-recents .home-document-open > .home-document-kind,
-.home-open-documents .home-document-open > .home-document-name,
-.home-open-documents .home-document-open > .home-document-kind {
-   @apply min-w-0 overflow-hidden text-ellipsis whitespace-nowrap;
-}
-.home-recents .home-document-open > svg,
-.home-open-documents .home-document-open > svg {
+.home-document-open > svg {
    @apply shrink-0;
-}
-.home-recents .home-document-open > svg:last-child,
-.home-open-documents .home-document-open > svg:last-child {
-   @apply ml-auto;
 }
 .home-recent-row > .home-document-open {
    @apply p-3;
@@ -1212,7 +1201,7 @@
    @apply text-danger bg-danger-soft;
 }
 .home-document-kind {
-   @apply ml-auto text-secondary text-xs;
+   @apply shrink-0 text-secondary text-xs text-right whitespace-nowrap;
 }
 .app-body[hidden] {
    @apply hidden;
@@ -1226,9 +1215,6 @@
    }
    .home-heading {
       @apply items-start flex-col gap-4;
-   }
-   .home-document-kind {
-      @apply hidden;
    }
 }
 @media (max-height: 700px) {

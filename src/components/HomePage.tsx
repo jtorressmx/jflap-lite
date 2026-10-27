@@ -27,6 +27,7 @@ type OpenDocument = Pick<Workspace['documents'][number], 'id' | 'machine' | 'pat
  * @param props.recentFiles[].path - File path used to identify the recent file.
  * @param props.recentFiles[].name - Display name of the recent file.
  * @param props.recentFiles[].openedAt - Time when the file was last opened, when known.
+ * @param props.recentFiles[].kind - Machine kind declared by the file, when available.
  * @param props.onRecent - Receives the recent file requested for opening.
  * @param props.onRemoveRecent - Receives the file to remove from the recent list.
  * @returns The home page with open and recent documents.
@@ -55,6 +56,7 @@ export default function HomePage({
     * @param file.path - File path used to identify and open the file.
     * @param file.name - Display name of the file.
     * @param file.openedAt - ISO timestamp of the latest opening, when known.
+    * @param file.kind - Machine kind declared by the file, when available.
     * @returns The recent file row.
     */
    function renderRecentFile(file: DesktopRecentFile): ReactElement {
@@ -70,6 +72,7 @@ export default function HomePage({
          <DocumentListItem
             key={file.path}
             className="home-recent-row"
+            icon={file.kind ? <MachineKindIcon kind={file.kind} /> : undefined}
             name={displayName}
             detail={
                openedAt ? (

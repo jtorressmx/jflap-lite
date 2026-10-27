@@ -114,11 +114,48 @@ async function writeRecentFiles(entries) {
    await fs.writeFile(`${recentFile()}.tmp`, JSON.stringify(entries), 'utf8');
    await replaceStoredFile(`${recentFile()}.tmp`, recentFile());
 }
+/**
+ * Reads the declared machine kind from a recent file's XML header.
+ * @param {string} file - Absolute path of the recent machine file.
+ * @returns {Promise<'fa' | 'turing' | undefined>} The declared kind, or undefined when unavailable.
+ */
+async function readRecentMachineKind(file) {
+   try {
+      const source = await fs.open(file, 'r');
+      try {
+         const buffer = Buffer.alloc(64 * 1024);
+         const { bytesRead } = await source.read(buffer, 0, buffer.length, 0);
+         const header = buffer
+            .subarray(0, bytesRead)
+            .toString('utf8')
+            .replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+         const kind = /<type>\s*(fa|turing)\s*<\/type>/.exec(header)?.[1];
+         return kind === 'fa' || kind === 'turing' ? kind : undefined;
+      } finally {
+         await source.close();
+      }
+   } catch (error) {
+      if (
+         error instanceof Error &&
+         'code' in error &&
+         typeof error.code === 'string' &&
+         ['EACCES', 'EISDIR', 'ENOENT', 'ENOTDIR', 'EPERM'].includes(error.code)
+      )
+         return undefined;
+      throw error;
+   }
+}
+/**
+ * Lists existing recent files with their declared machine kinds.
+ * Takes no input.
+ * @returns {Promise<Array<{path: string, name: string, openedAt?: string, kind?: 'fa' | 'turing'}>>} Recent file metadata.
+ */
 function pruneRecentFiles() {
    recentWrite = recentWrite
       .catch(() => {})
       .then(async () => {
          const previous = await readRecentFiles();
+         /** @type {Array<{path: string, name: string, openedAt?: string, kind?: 'fa' | 'turing'}>} */
          const entries = [];
          for (const entry of previous) {
             try {
@@ -130,6 +167,10 @@ function pruneRecentFiles() {
          }
          const recent = entries.slice(0, 12);
          if (recent.length !== previous.length) await writeRecentFiles(recent);
+         for (const entry of recent) {
+            const kind = await readRecentMachineKind(entry.path);
+            if (kind) entry.kind = kind;
+         }
          return recent;
       });
    return recentWrite;
