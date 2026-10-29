@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 
 import type { Machine } from '@/domain/model';
 import { sameFilePath } from '@/lib/filePaths';
-import { settingsChanged, storedSettings } from '@/lib/settings';
+import { storedSettings } from '@/lib/settings';
 
 export type WorkspaceDocument = {
    id: string;
@@ -177,14 +177,10 @@ export function useWorkspace() {
       return () => window.removeEventListener('jflap-settings-changed', update);
    }, []);
    const pending = useRef<Machine | null>(null);
-   const [historyLimit, setHistoryLimit] = useState(() => {
+   const [historyLimit] = useState(() => {
       const value = Number(localStorage.getItem('jflap-lite.undo-limit') ?? 100);
       return Number.isInteger(value) && value >= 0 && value <= 1000 ? value : 100;
    });
-   useEffect(() => {
-      localStorage.setItem('jflap-lite.undo-limit', String(historyLimit));
-      settingsChanged();
-   }, [historyLimit]);
    useEffect(() => {
       const timer = setTimeout(() => {
          try {
@@ -393,7 +389,5 @@ export function useWorkspace() {
       setActiveId,
       clearDocuments,
       storageError,
-      historyLimit,
-      setHistoryLimit,
    };
 }

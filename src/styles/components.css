@@ -1494,13 +1494,29 @@
       @apply gap-4;
    }
    .settings-page {
+      --settings-page-top-inset: var(--space-6);
       @apply flex-1 min-h-0 overflow-y-auto bg-canvas py-6 px-8;
    }
    .settings-content {
       @apply w-full max-w-home mx-auto;
    }
    .settings-heading {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+      margin-top: calc(var(--space-1) * -1);
       @apply mb-6;
+      @apply py-1 bg-canvas;
+   }
+   .settings-heading::before {
+      content: '';
+      position: absolute;
+      top: calc(var(--settings-page-top-inset) * -1);
+      right: 0;
+      left: 0;
+      height: var(--settings-page-top-inset);
+      background: var(--canvas);
+      pointer-events: none;
    }
    .settings-heading h1 {
       @apply text-xl;
@@ -1508,35 +1524,147 @@
    .settings-body {
       @apply grid;
       grid-template-columns:
-         minmax(var(--settings-section-min-width), 0.8fr)
-         minmax(0, 1.2fr);
+         minmax(var(--settings-section-min-width), max-content)
+         minmax(0, 1fr);
       align-content: start;
-      @apply gap-8;
+      @apply gap-6;
    }
-   .settings-section {
+   .settings-navigation {
+      position: sticky;
+      z-index: 1;
+      top: calc(var(--font-size-xl) * var(--leading-heading) + var(--space-2) + var(--space-5));
+      background: var(--canvas);
+      @apply flex flex-col gap-1 self-start;
+   }
+   .settings-navigation a {
+      position: relative;
+      @apply flex items-center min-h-control rounded-sm px-3 text-sm text-secondary font-medium no-underline;
+   }
+   .settings-navigation a:hover:not([aria-current='location']) {
+      @apply text-accent;
+   }
+   .settings-navigation a::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: var(--space-1);
+      width: var(--focus-offset-wide);
+      height: var(--space-4);
+      border-radius: var(--radius-full);
+      background: var(--accent);
+      opacity: 0;
+      transform: translateY(-50%) scaleY(0.75);
+      transition:
+         opacity var(--duration) ease-out,
+         transform var(--duration) ease-out;
+      pointer-events: none;
+   }
+   .settings-navigation a[aria-current='location']::before {
+      opacity: 1;
+      transform: translateY(-50%) scaleY(1);
+   }
+   .settings-sections {
       @apply flex flex-col gap-4 min-w-0;
    }
+   .settings-section {
+      scroll-margin-top: calc(
+         var(--settings-page-top-inset) + var(--font-size-xl) * var(--leading-heading) +
+            var(--space-2) + var(--space-5)
+      );
+      @apply flex flex-col gap-4 min-w-0 p-6 bg-surface border border-solid border-border rounded-md;
+   }
    .settings-section h2 {
-      @apply m-0 text-md;
+      @apply m-0 pb-3 text-xl font-semibold border-b border-b-border;
    }
-   .settings-section > .button {
-      @apply self-start;
+   .settings-group {
+      @apply flex flex-col gap-3 min-w-0;
    }
-   .settings-section-wide {
-      grid-column: 1 / -1;
+   .settings-group + .settings-group {
+      padding-top: var(--space-4);
+      border-top: 1px solid var(--border);
+   }
+   .settings-group h3 {
+      @apply m-0 text-sm text-secondary font-semibold;
+   }
+   .range-slider-field {
+      display: grid;
+      grid-template-areas:
+         'label value'
+         'slider slider';
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: center;
+      column-gap: var(--space-3);
+      row-gap: var(--space-2);
+   }
+   .range-slider-field > label {
+      grid-area: label;
+   }
+   .range-slider-value {
+      @apply text-secondary text-xs font-mono;
+      grid-area: value;
+   }
+   .range-slider-input {
+      @apply block w-full min-w-0 appearance-none bg-transparent;
+      grid-area: slider;
+      height: var(--control-height);
+      margin: 0;
+      cursor: pointer;
+      touch-action: pan-y;
+   }
+   .range-slider-input::-webkit-slider-runnable-track {
+      height: var(--space-1);
+      border-radius: 999px;
+      background: linear-gradient(
+         to right,
+         var(--accent) 0,
+         var(--accent) var(--range-progress),
+         var(--border-strong) var(--range-progress),
+         var(--border-strong) 100%
+      );
+   }
+   .range-slider-input::-webkit-slider-thumb {
+      width: var(--space-4);
+      height: var(--space-4);
+      margin-top: calc((var(--space-1) - var(--space-4)) / 2);
+      appearance: none;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: var(--shadow-control);
+   }
+   .range-slider-input::-moz-range-track {
+      height: var(--space-1);
+      border-radius: 999px;
+      background: var(--border-strong);
+   }
+   .range-slider-input::-moz-range-progress {
+      height: var(--space-1);
+      border-radius: 999px;
+      background: var(--accent);
+   }
+   .range-slider-input::-moz-range-thumb {
+      width: var(--space-4);
+      height: var(--space-4);
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      background: var(--surface);
+      box-shadow: var(--shadow-control);
+   }
+   .range-slider-input:focus-visible {
+      outline: none;
+   }
+   .range-slider-input:focus-visible::-webkit-slider-thumb,
+   .range-slider-input:focus-visible::-moz-range-thumb {
+      box-shadow:
+         0 0 0 var(--focus-offset-wide) var(--accent-soft),
+         var(--shadow-control);
+   }
+   .range-slider-input:disabled {
+      opacity: var(--opacity-disabled);
+      cursor: not-allowed;
    }
    .settings-options {
       @apply flex flex-col gap-2;
-   }
-   .settings-controls {
-      @apply grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      align-items: start;
-      @apply gap-y-4 gap-x-6;
-   }
-   .settings-controls > .form-row,
-   .settings-controls > .settings-scale-field {
-      grid-column: 1 / -1;
    }
    .empty-state {
       @apply flex flex-col items-center justify-center gap-2 p-6 text-secondary text-center text-sm;
@@ -2005,6 +2133,11 @@
 .select-menu-trigger > svg {
    @apply flex-none text-secondary;
 }
+.select-menu-trigger:focus-visible {
+   border-color: var(--accent);
+   outline: var(--focus-ring);
+   outline-offset: var(--focus-offset);
+}
 .select-menu-popover {
    @apply fixed z-50 min-w-0 p-1 bg-surface border border-solid border-border rounded-md overflow-y-auto;
    max-height: min(50vh, calc(var(--control-height) * 3));
@@ -2153,20 +2286,18 @@
          grid-template-columns: 1fr;
          @apply gap-6;
       }
+      .settings-navigation {
+         grid-template-columns: repeat(2, minmax(0, 1fr));
+         @apply grid mb-2;
+      }
       .settings-page {
+         --settings-page-top-inset: var(--space-4);
          @apply p-4;
       }
-      .settings-section-wide {
-         grid-column: auto;
+      .settings-section {
+         @apply p-4;
       }
-      .settings-controls {
-         grid-template-columns: 1fr;
-      }
-      .settings-controls > .form-row,
-      .settings-controls > .settings-scale-field {
-         grid-column: auto;
-      }
-      .settings-controls > .form-row {
+      .settings-group > .form-row {
          grid-template-columns: 1fr;
       }
       .commandbar .button-subtle > span {

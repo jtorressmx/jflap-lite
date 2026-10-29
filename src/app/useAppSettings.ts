@@ -58,7 +58,6 @@ export function useAppSettings() {
          ? uiSettings.simulationPosition
          : 'bottom'
    );
-   const [autoZoom, setAutoZoom] = useState(uiSettings.autoZoom === true);
    const [createStatesOnDoubleClick, setCreateStatesOnDoubleClick] = useState(
       uiSettings.createStatesOnDoubleClick !== false
    );
@@ -111,7 +110,6 @@ export function useAppSettings() {
             showLabels,
             highlightInitialFinalStates,
             grid,
-            autoZoom,
             createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
@@ -122,7 +120,6 @@ export function useAppSettings() {
       showLabels,
       highlightInitialFinalStates,
       grid,
-      autoZoom,
       createStatesOnDoubleClick,
       stateScale,
       simulationPosition,
@@ -143,8 +140,6 @@ export function useAppSettings() {
       setGrid,
       simulationPosition,
       setSimulationPosition,
-      autoZoom,
-      setAutoZoom,
       createStatesOnDoubleClick,
       setCreateStatesOnDoubleClick,
       stateScale,

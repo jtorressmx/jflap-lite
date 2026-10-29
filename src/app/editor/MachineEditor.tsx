@@ -22,7 +22,7 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props - Component options.
  * @param props.active - Active document.
  * @param props.settings - Graph appearance and simulation preferences.
- * @param props.settings.highlightInitialFinalStates - Whether initial and final states use distinct colors.
+ * @param props.settings.highlightInitialFinalStates - Whether initial and final states use the palette accent outline.
  * @param props.settings.createStatesOnDoubleClick - Whether a background double-click creates a state.
  * @param props.editor - Selection, camera, and tool state.
  * @param props.simulation - Current simulator graph activity.
@@ -52,7 +52,6 @@ export function MachineEditor({
    const {
       emptySymbol,
       preferences,
-      autoZoom,
       createStatesOnDoubleClick,
       showLabels,
       highlightInitialFinalStates,
@@ -87,10 +86,7 @@ export function MachineEditor({
                   tool={tool}
                   selected={selected}
                   onSelect={setSelected}
-                  onChange={(m, commit) => {
-                     change(m, commit);
-                     if (autoZoom && commit !== false) setFitKey((k) => k + 1);
-                  }}
+                  onChange={change}
                   onEditNote={(id) => setDialog({ type: 'note', id })}
                   activeStates={activeStates}
                   activeTransition={activeTransition}

@@ -303,13 +303,7 @@ export default function App() {
             simulate={simulation.simulate}
             notify={notify}
          />
-         {view === 'settings' && (
-            <SettingsPage
-               settings={settings}
-               historyLimit={workspace.historyLimit}
-               setHistoryLimit={workspace.setHistoryLimit}
-            />
-         )}
+         {view === 'settings' && <SettingsPage settings={settings} />}
          {home && (
             <HomePage
                onCreate={documents.createDocument}
