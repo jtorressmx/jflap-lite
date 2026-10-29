@@ -171,6 +171,8 @@
       --backdrop: #10182766;
       --focus-ring: 2px solid var(--accent);
       --duration: 140ms;
+      --duration-view-enter: 320ms;
+      --ease-view-enter: cubic-bezier(0.22, 1, 0.36, 1);
       --icon-size: 16px;
       --icon-stroke-width-emphasis: 2.5;
       --control-height: 32px;

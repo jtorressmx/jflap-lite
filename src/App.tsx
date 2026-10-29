@@ -52,6 +52,7 @@ export default function App() {
    const machine = active.machine;
    const [view, setView] = useState<AppView>('home');
    const [settingsOpen, setSettingsOpen] = useState(false);
+   const [documentEntryPhase, setDocumentEntryPhase] = useState(false);
    const home = view === 'home';
    const [dialog, setDialog] = useState<Dialog | null>(null);
    const [fileDropActive, setFileDropActive] = useState(false);
@@ -165,6 +166,7 @@ export default function App() {
     * @returns No value.
     */
    function setHome(nextHome: boolean): void {
+      if (!nextHome) setDocumentEntryPhase((phase) => !phase);
       setView((current) =>
          nextHome && current === 'settings' ? current : nextHome ? 'home' : 'document'
       );
@@ -324,7 +326,11 @@ export default function App() {
             </div>
          )}
          {workspace.active && (
-            <div className="app-body" hidden={view !== 'document'}>
+            <div
+               className="app-body"
+               data-entry-phase={documentEntryPhase ? 'first' : 'second'}
+               hidden={view !== 'document'}
+            >
                <main className="main-workspace">
                   <EditorCommandBar
                      active={active}

@@ -1277,6 +1277,32 @@
 .app-body[hidden] {
    @apply hidden;
 }
+.app-body:not([hidden])[data-entry-phase='first'] {
+   animation: app-body-enter-first var(--duration-view-enter) var(--ease-view-enter);
+}
+.app-body:not([hidden])[data-entry-phase='second'] {
+   animation: app-body-enter-second var(--duration-view-enter) var(--ease-view-enter);
+}
+@keyframes app-body-enter-first {
+   from {
+      opacity: 0;
+      transform: translateY(var(--space-2));
+   }
+   to {
+      opacity: 1;
+      transform: translateY(0);
+   }
+}
+@keyframes app-body-enter-second {
+   from {
+      opacity: 0;
+      transform: translateY(var(--space-2));
+   }
+   to {
+      opacity: 1;
+      transform: translateY(0);
+   }
+}
 @media (max-width: 760px) {
    .home-page {
       @apply py-8 px-5;
