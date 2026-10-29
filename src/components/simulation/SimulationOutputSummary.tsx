@@ -19,7 +19,7 @@ function countSymbols(value: string): SelectableOutputFrequency[] {
 }
 
 /**
- * Compares the machine input and output with their symbol frequencies.
+ * Compares input and output with symbol frequencies, leaving empty strings blank.
  * @param props - Final simulation strings.
  * @param props.input - Original machine input.
  * @param props.output - Output from the selected final configuration.
@@ -29,28 +29,18 @@ export function SimulationOutputSummary({ input, output }: { input: string; outp
    return (
       <section className="simulation-summary" aria-label="Resumen de entrada y salida">
          <div className="simulation-summary-flow">
-            <SelectableOutput
-               label="Entrada"
-               value={input}
-               emptySymbol="(Cadena vacía)"
-               frequencies={countSymbols(input)}
-            />
+            <SelectableOutput label="Entrada" value={input} frequencies={countSymbols(input)} />
             <span className="simulation-summary-transition" aria-hidden="true">
                <FiArrowRight />
             </span>
-            <SelectableOutput
-               label="Salida"
-               value={output}
-               emptySymbol="(Cadena vacía)"
-               frequencies={countSymbols(output)}
-            />
+            <SelectableOutput label="Salida" value={output} frequencies={countSymbols(output)} />
          </div>
       </section>
    );
 }
 
 /**
- * Displays a finite automaton input and its execution verdict.
+ * Displays a finite automaton input and verdict, leaving an empty input blank.
  * @param props - Final finite automaton result.
  * @param props.input - Original machine input.
  * @param props.status - Whether the input was accepted or rejected.
@@ -75,7 +65,7 @@ export function SimulationFiniteSummary({
                </div>
                <div className="simulation-output-content">
                   <output className="simulation-output-value" aria-label="Cadena de entrada">
-                     {input || '(Cadena vacía)'}
+                     {input}
                   </output>
                </div>
             </div>
