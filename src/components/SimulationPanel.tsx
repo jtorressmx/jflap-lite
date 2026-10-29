@@ -20,6 +20,7 @@ import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
 import { SimulationExportDialog } from '@/components/simulation/SimulationExportDialog';
 import { SimulationOutputSummary } from '@/components/simulation/SimulationOutputSummary';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
+import { TuringTraceTable } from '@/components/simulation/SimulationTraceTable';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
 import {
    SimulationWindowActions,
@@ -493,7 +494,7 @@ export function SimulationPanel({
             setTab('batch');
             break;
          case 'trace':
-            setTab('trace');
+            if (session) setTab('trace');
             break;
       }
    });
@@ -719,6 +720,7 @@ export function SimulationPanel({
                aria-label="Herramientas de simulación"
             >
                <SimulationTabs
+                  traceEnabled={!!session}
                   selected={tab}
                   onSelect={setTab}
                   tabId={(id) => `${panelId}-tab-${id}`}
@@ -997,25 +999,15 @@ export function SimulationPanel({
                            <FiDownload /> Exportar traza
                         </Button>
                      </div>
-                     <div className="trace-timeline">
-                        {trace.map((config) => (
-                           <button
-                              key={config.id}
-                              className={`trace-step${traceFocusId === config.id ? ' is-selected' : ''}`}
-                              onClick={() => {
-                                 setTraceFocusId(config.id);
-                                 onActivity([config.state], config.transitionId);
-                              }}
-                           >
-                              <span className="trace-step-number">{config.depth}</span>
-                              <span className="trace-step-state">
-                                 {machine.states.find((state) => state.id === config.state)?.name ??
-                                    config.state}
-                              </span>
-                              <Tape configuration={config} compact />
-                           </button>
-                        ))}
-                     </div>
+                     <TuringTraceTable
+                        machine={machine}
+                        trace={trace}
+                        selectedId={traceFocusId}
+                        onSelect={(config) => {
+                           setTraceFocusId(config.id);
+                           onActivity([config.state], config.transitionId);
+                        }}
+                     />
                   </>
                )}
             </div>
@@ -1092,14 +1084,10 @@ export function SimulationPanel({
                               Ver {traceSession(resultModal.session, config.id).length} pasos de
                               esta rama
                            </summary>
-                           <pre>
-                              {traceText(
-                                 resultModal.machine,
-                                 resultModal.session,
-                                 config.id,
-                                 emptySymbol
-                              )}
-                           </pre>
+                           <TuringTraceTable
+                              machine={resultModal.machine}
+                              trace={traceSession(resultModal.session, config.id)}
+                           />
                         </details>
                      </div>
                   ))}

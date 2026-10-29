@@ -324,8 +324,12 @@
    border: 0;
    @apply bg-transparent text-secondary text-sm cursor-pointer;
 }
-:is(.simulation-tabs, .simulation-tab-buttons) > button:hover {
+:is(.simulation-tabs, .simulation-tab-buttons) > button:hover:not(:disabled) {
    @apply text-foreground bg-accent-soft;
+}
+:is(.simulation-tabs, .simulation-tab-buttons) > button:disabled {
+   @apply cursor-default;
+   opacity: var(--opacity-disabled);
 }
 :is(.simulation-tabs, .simulation-tab-buttons) > button.is-active {
    @apply text-accent font-semibold;
@@ -730,30 +734,33 @@
    @apply text-danger;
 }
 .trace-content {
-   @apply flex-1 min-h-0 overflow-auto py-3 px-5 overscroll-contain;
+   @apply flex flex-col flex-1 min-h-0 overflow-hidden py-3 px-5;
 }
 .trace-toolbar {
-   @apply flex items-center justify-between gap-3 text-secondary text-xs mb-3;
+   @apply flex flex-none items-center justify-between gap-3 text-secondary text-xs mb-3;
 }
-.trace-timeline {
-   @apply flex flex-col gap-2;
+.trace-table-scroll {
+   @apply flex-1 min-h-0 overscroll-contain;
 }
-.trace-step {
-   @apply flex items-center gap-3 py-2 px-3 border border-solid border-border rounded-md bg-canvas text-foreground cursor-pointer text-left;
+.trace-table-scroll .simulation-trace-table {
+   @apply text-xs;
 }
-.trace-step:hover,
-.trace-step.is-selected {
-   @apply border-accent bg-accent-soft;
+.simulation-trace-table th {
+   @apply whitespace-nowrap;
 }
-.trace-step-number {
-   @apply flex items-center justify-center flex-none w-trace-step h-trace-step rounded-sm bg-surface text-accent font-mono text-xs;
+.simulation-trace-table tr[data-selected] td {
+   @apply bg-accent-soft;
 }
-.trace-step-state {
-   min-width: var(--trace-state-min-width);
-   @apply font-mono text-sm;
+.simulation-trace-table .trace-table-tape {
+   width: var(--simulation-input-width);
+   min-width: var(--simulation-input-width);
+   max-width: var(--simulation-input-width);
 }
-.trace-step-state small {
-   @apply block text-secondary font-sans text-xs;
+.trace-table-tape .tape-display {
+   width: var(--simulation-input-width);
+}
+.trace-table-select {
+   @apply h-6 min-h-6 py-0 px-2 font-mono text-xs;
 }
 .tape-compact {
    @apply w-auto min-w-0;
@@ -846,12 +853,6 @@
    }
    .trace-toolbar {
       @apply flex-wrap;
-   }
-   .trace-step {
-      @apply p-2 gap-2;
-   }
-   .trace-step-state {
-      @apply min-w-trace-state-narrow;
    }
 }
 

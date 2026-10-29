@@ -18,13 +18,13 @@ import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
 import { SimulationExportDialog } from '@/components/simulation/SimulationExportDialog';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
+import { FiniteTraceTable } from '@/components/simulation/SimulationTraceTable';
 import {
    SimulationWindowActions,
    type SimulationPlacementProps,
 } from '@/components/simulation/SimulationWindowActions';
 import { Badge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
-import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field } from '@/components/ui/Field';
 import { IconButton } from '@/components/ui/IconButton';
@@ -129,6 +129,7 @@ export default function FiniteSimulationPanel({
    const signature = JSON.stringify([machine.states, machine.transitions]);
    useEffect(() => {
       setSession(null);
+      setTab((current) => (current === 'trace' ? 'simulation' : current));
       setSelectedId(undefined);
       setSelectedIds([]);
       setPlaying(false);
@@ -241,7 +242,7 @@ export default function FiniteSimulationPanel({
             return;
          }
          if (action === 'trace') {
-            setTab('trace');
+            if (session) setTab('trace');
             return;
          }
          setTab('simulation');
@@ -414,6 +415,7 @@ export default function FiniteSimulationPanel({
             >
                <SimulationTabs
                   selected={tab}
+                  traceEnabled={!!session}
                   onSelect={(id) => {
                      setTab(id);
                      setPlaying(false);
@@ -781,9 +783,9 @@ export default function FiniteSimulationPanel({
                </div>
             </div>
          )}
-         {tab === 'trace' && (
+         {tab === 'trace' && session && (
             <div
-               className="simulation-content"
+               className="trace-content"
                role="tabpanel"
                id={`${panelId}-${tab}`}
                aria-labelledby={`${panelId}-${tab}-tab`}
@@ -827,35 +829,12 @@ export default function FiniteSimulationPanel({
                         ))}
                   </Select>
                )}
-               <DataTable
-                  columns={[
-                     { id: 'column-0', header: <>Paso</> },
-                     { id: 'column-1', header: <>Estado</> },
-                     { id: 'column-2', header: <>Por leer</> },
-                     { id: 'column-3', header: <>Transición</> },
-                  ]}
-               >
-                  {trace.map((c) => (
-                     <tr key={c.id}>
-                        <td>{c.depth}</td>
-                        <td>{label(c.state)}</td>
-                        <td>
-                           <code>{session!.input.slice(c.offset)}</code>
-                        </td>
-                        <td>
-                           {c.transitionId
-                              ? machine.transitions.find((t) => t.id === c.transitionId)?.read ||
-                                emptySymbol
-                              : 'Inicio'}
-                        </td>
-                     </tr>
-                  ))}
-               </DataTable>
-               {!trace.length && (
-                  <p className="simulation-notice">
-                     Inicia una simulación para consultar la traza.
-                  </p>
-               )}
+               <FiniteTraceTable
+                  machine={machine}
+                  trace={trace}
+                  input={session.input}
+                  emptySymbol={emptySymbol}
+               />
             </div>
          )}
          {result && (
@@ -865,23 +844,12 @@ export default function FiniteSimulationPanel({
                onClose={() => setResult(null)}
             >
                <ModalBody>
-                  <DataTable
-                     columns={[
-                        { id: 'column-0', header: <>Paso</> },
-                        { id: 'column-1', header: <>Estado</> },
-                        { id: 'column-2', header: <>Por leer</> },
-                     ]}
-                  >
-                     {batchTrace.map((c) => (
-                        <tr key={c.id}>
-                           <td>{c.depth}</td>
-                           <td>{result.machine.states.find((s) => s.id === c.state)?.name}</td>
-                           <td>
-                              <code>{result.input.slice(c.offset)}</code>
-                           </td>
-                        </tr>
-                     ))}
-                  </DataTable>
+                  <FiniteTraceTable
+                     machine={result.machine}
+                     trace={batchTrace}
+                     input={result.input}
+                     emptySymbol={emptySymbol}
+                  />
                </ModalBody>
                <ModalFooter>
                   <Button onClick={() => setResult(null)}>Listo</Button>
