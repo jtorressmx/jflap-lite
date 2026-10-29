@@ -43,7 +43,7 @@
    fill: var(--graph-active-edge);
 }
 .graph-arrow-initial {
-   fill: var(--graph-state-initial-stroke);
+   fill: var(--graph-active-edge);
 }
 .graph-edge,
 .graph-state,
@@ -147,20 +147,15 @@
 .state-label {
    @apply fill-secondary font-sans text-xs pointer-events-none;
 }
-.graph-state.is-initial-emphasized .state-body {
-   fill: var(--graph-state-initial-fill);
-   stroke: var(--graph-state-initial-stroke);
-   stroke-width: var(--graph-state-initial-border-width);
-}
-.graph-state.is-final-emphasized:not(.is-initial-emphasized) .state-body {
-   fill: var(--graph-state-final-fill);
-   stroke: var(--graph-state-final-stroke);
+.graph-state.is-initial-emphasized .state-halo,
+.graph-state.is-final-emphasized .state-halo {
+   stroke: var(--graph-active-edge);
 }
 .graph-state.is-final-emphasized .state-final {
-   stroke: var(--graph-state-final-stroke);
+   stroke: var(--graph-active-edge);
 }
 .graph-state.is-initial-emphasized .initial-arrow {
-   stroke: var(--graph-state-initial-stroke);
+   stroke: var(--graph-active-edge);
 }
 .graph-state:hover .state-body,
 .graph-state:focus-visible .state-body,

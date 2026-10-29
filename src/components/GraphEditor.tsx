@@ -236,7 +236,7 @@ function connectionPreviewPath(
  * @param [props.followedTransitions] - Identifiers of transitions to follow; none by default.
  * @param [props.highlightStates] - Identifiers of highlighted states; none by default.
  * @param props.showLabels - Whether state labels are displayed.
- * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
+ * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use the palette accent outline.
  * @param [props.createStatesOnDoubleClick=true] - Whether a background double-click creates a state.
  * @param props.zoom - Current diagram zoom factor.
  * @param [props.fitPadding] - Optional margin around the diagram when fitting it to the viewport.
