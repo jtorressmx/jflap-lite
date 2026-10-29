@@ -15,6 +15,7 @@ type SelectMenuProps<Value extends string> = {
    value: Value;
    options: readonly SelectMenuOption<Value>[];
    onChange: (value: Value) => void;
+   disabled?: boolean;
 };
 
 /**
@@ -27,6 +28,7 @@ type SelectMenuProps<Value extends string> = {
  * @param props.options[].label - Visible choice text.
  * @param props.options[].value - Value emitted when the choice is selected.
  * @param props.onChange - Receives the value selected by the user.
+ * @param [props.disabled=false] - Prevents changing the selection.
  * @returns The custom selector and its option list.
  */
 export function SelectMenu<Value extends string>({
@@ -35,6 +37,7 @@ export function SelectMenu<Value extends string>({
    value,
    options,
    onChange,
+   disabled = false,
 }: SelectMenuProps<Value>) {
    const generatedId = useId();
    const id = suppliedId ?? generatedId;
@@ -164,6 +167,7 @@ export function SelectMenu<Value extends string>({
       <div className="select-menu" ref={rootRef}>
          <button
             ref={triggerRef}
+            disabled={disabled}
             id={id}
             type="button"
             className="select-menu-trigger"
