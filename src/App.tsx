@@ -385,6 +385,7 @@ export default function App() {
             }}
             onOpenConverted={(machine) => {
                workspace.open(machine);
+               setHome(false);
                tools.setFiniteTool(null);
                simulation.setOpen(false);
             }}
