@@ -24,8 +24,10 @@ import type { WorkspaceDocument } from '@/hooks/useWorkspace';
  * @param props.settings - Graph appearance and simulation preferences.
  * @param props.settings.highlightInitialFinalStates - Whether initial and final states use the palette accent outline.
  * @param props.settings.createStatesOnDoubleClick - Whether a background double-click creates a state.
+ * @param props.settings.simulationPosition - Current location of the simulator panel.
  * @param props.editor - Selection, camera, and tool state.
  * @param props.simulation - Current simulator graph activity.
+ * @param props.simulation.open - Whether the simulator panel is visible.
  * @param props.dialog - Requested graph edit dialog.
  * @param props.setDialog - Receives a graph edit request or null.
  * @param props.change - Receives graph changes and history commit flags.
@@ -55,11 +57,13 @@ export function MachineEditor({
       createStatesOnDoubleClick,
       showLabels,
       highlightInitialFinalStates,
+      simulationPosition,
       stateScale,
    } = settings;
    const { tool, toggleTool, selected, setSelected, highlights, zoom, setZoom, fitKey, setFitKey } =
       editor;
    const { activeStates, activeTransition, guide: simulationGuide } = simulation;
+   const showStatusBar = !simulation.open || simulationPosition !== 'bottom';
    const toolsList: { id: Tool; icon: ReactNode; label: string }[] = [
       { id: 'state', icon: <FiCircle />, label: 'Añadir estado (S)' },
       {
@@ -144,6 +148,13 @@ export function MachineEditor({
                   </IconButton>
                </div>
             </div>
+            {showStatusBar && (
+               <footer className="editor-statusbar" role="status" aria-label="Estados definidos">
+                  <span className="machine-state-count">
+                     {machine.states.length} {machine.states.length === 1 ? 'estado' : 'estados'}
+                  </span>
+               </footer>
+            )}
          </section>
       </div>
    );

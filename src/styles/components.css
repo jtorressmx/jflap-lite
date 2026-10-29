@@ -1816,6 +1816,9 @@
    .command-spacer {
       @apply flex-1;
    }
+   .machine-state-count {
+      @apply flex-none text-xs text-secondary whitespace-nowrap tabular-nums;
+   }
    .machine-kind-indicator {
       @apply flex-none;
    }
@@ -1829,6 +1832,9 @@
    }
    .canvas-content {
       @apply relative flex-1 min-h-0 overflow-hidden;
+   }
+   .editor-statusbar {
+      @apply flex flex-none items-center min-h-7 px-4 py-1 bg-surface border-t border-t-border;
    }
    .canvas-tools {
       @apply flex items-center gap-1 absolute;
