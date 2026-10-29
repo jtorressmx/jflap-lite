@@ -152,6 +152,10 @@
       --graph-state-emphasis-border-width: 1.75px;
       --graph-state-name-size: var(--font-size-md);
       --graph-state-halo-gap: 3px;
+      --graph-transition-text-scale: 1;
+      --graph-transition-spacing: 1;
+      --graph-transition-text-size: calc(var(--font-size-xs) * var(--graph-transition-text-scale));
+      --graph-transition-row-gap: var(--space-1);
       --tape-cell-width: 42px;
       --tape-cell-height: 40px;
       --tape-cell-border-width: 1px;

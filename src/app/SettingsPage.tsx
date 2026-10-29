@@ -6,6 +6,7 @@ import { FormRow } from '@/components/ui/FormRow';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { SelectMenu } from '@/components/ui/SelectMenu';
 import { Toggle } from '@/components/ui/Toggle';
+import { TRANSITION_APPEARANCE_RANGES } from '@/lib/transitionAppearance';
 
 /**
  * Finds the settings section crossing the navigation position.
@@ -39,6 +40,10 @@ function getSettingsSectionAtPosition(
  * @param props.settings.setTheme - Receives the requested application theme.
  * @param props.settings.accent - Selected accent color.
  * @param props.settings.setAccent - Receives the requested accent color.
+ * @param props.settings.transitionTextScale - Current transition text size multiplier.
+ * @param props.settings.setTransitionTextScale - Receives the requested transition text size multiplier.
+ * @param props.settings.transitionSpacing - Current transition row gap multiplier.
+ * @param props.settings.setTransitionSpacing - Receives the requested transition row gap multiplier.
  * @param props.settings.showLabels - Whether state labels are visible.
  * @param props.settings.setShowLabels - Receives the requested label visibility.
  * @param props.settings.highlightInitialFinalStates - Whether initial and final states use the palette accent outline.
@@ -100,6 +105,10 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
       setTheme,
       accent,
       setAccent,
+      transitionTextScale,
+      setTransitionTextScale,
+      transitionSpacing,
+      setTransitionSpacing,
       showLabels,
       setShowLabels,
       highlightInitialFinalStates,
@@ -321,6 +330,31 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
                               value={stateScale}
                               formatValue={(value) => `${value.toFixed(1)}×`}
                               onChange={setStateScale}
+                           />
+                        </FormRow>
+                     </div>
+                     <div className="settings-group">
+                        <h3>Transiciones</h3>
+                        <FormRow>
+                           <RangeSlider
+                              id="settings-transition-text-scale"
+                              label="Tamaño del texto de transiciones"
+                              min={TRANSITION_APPEARANCE_RANGES.text.min}
+                              max={TRANSITION_APPEARANCE_RANGES.text.max}
+                              step={TRANSITION_APPEARANCE_RANGES.text.step}
+                              value={transitionTextScale}
+                              formatValue={(value) => `${Math.round(value * 100)} %`}
+                              onChange={setTransitionTextScale}
+                           />
+                           <RangeSlider
+                              id="settings-transition-spacing"
+                              label="Espaciado entre transiciones"
+                              min={TRANSITION_APPEARANCE_RANGES.spacing.min}
+                              max={TRANSITION_APPEARANCE_RANGES.spacing.max}
+                              step={TRANSITION_APPEARANCE_RANGES.spacing.step}
+                              value={transitionSpacing}
+                              formatValue={(value) => `${Math.round(value * 100)} %`}
+                              onChange={setTransitionSpacing}
                            />
                         </FormRow>
                      </div>

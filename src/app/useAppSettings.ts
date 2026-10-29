@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
@@ -9,6 +9,10 @@ import {
    settingsChanged,
 } from '@/lib/settings';
 import type { SimulationPosition } from '@/lib/settings';
+import {
+   applyTransitionAppearance,
+   normalizeTransitionAppearance,
+} from '@/lib/transitionAppearance';
 
 /**
  * Reads validated simulation preferences from local storage.
@@ -53,6 +57,12 @@ export function useAppSettings() {
       uiSettings.highlightInitialFinalStates !== false
    );
    const [grid, setGrid] = useState(uiSettings.grid !== false);
+   const [transitionTextScale, setTransitionTextScale] = useState(() =>
+      normalizeTransitionAppearance(uiSettings.transitionTextScale, 'text')
+   );
+   const [transitionSpacing, setTransitionSpacing] = useState(() =>
+      normalizeTransitionAppearance(uiSettings.transitionSpacing, 'spacing')
+   );
    const [simulationPosition, setSimulationPosition] = useState<SimulationPosition>(
       uiSettings.simulationPosition === 'left' || uiSettings.simulationPosition === 'right'
          ? uiSettings.simulationPosition
@@ -78,6 +88,10 @@ export function useAppSettings() {
    const [clearWorkspaceOnExit, setClearWorkspaceOnExit] = useState(
       () => localStorage.getItem(CLEAR_WORKSPACE_ON_EXIT_KEY) === 'true'
    );
+   useLayoutEffect(() => {
+      applyTransitionAppearance(transitionTextScale, transitionSpacing);
+      settingsChanged();
+   }, [transitionTextScale, transitionSpacing]);
    useEffect(() => {
       localStorage.setItem('jflap-lite.palette', palette);
       localStorage.setItem('jflap-lite.empty-symbol', emptySymbol);
@@ -110,6 +124,8 @@ export function useAppSettings() {
             showLabels,
             highlightInitialFinalStates,
             grid,
+            transitionTextScale,
+            transitionSpacing,
             createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
@@ -120,6 +136,8 @@ export function useAppSettings() {
       showLabels,
       highlightInitialFinalStates,
       grid,
+      transitionTextScale,
+      transitionSpacing,
       createStatesOnDoubleClick,
       stateScale,
       simulationPosition,
@@ -138,6 +156,10 @@ export function useAppSettings() {
       setHighlightInitialFinalStates,
       grid,
       setGrid,
+      transitionTextScale,
+      setTransitionTextScale,
+      transitionSpacing,
+      setTransitionSpacing,
       simulationPosition,
       setSimulationPosition,
       createStatesOnDoubleClick,

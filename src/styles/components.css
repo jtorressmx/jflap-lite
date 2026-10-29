@@ -102,7 +102,8 @@
    opacity: 1;
 }
 .edge-label text {
-   @apply fill-foreground font-mono text-xs pointer-events-none;
+   @apply fill-foreground font-mono pointer-events-none;
+   font-size: var(--graph-transition-text-size);
 }
 .edge-label:hover text,
 .edge-label:focus-visible text {

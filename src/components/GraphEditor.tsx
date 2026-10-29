@@ -75,6 +75,32 @@ type Drag = {
 };
 
 const symbol = (value: string) => (value === '' ? '□' : value);
+/** Reads resolved graph text sizes and row spacing from the shared theme.
+ * Takes no input.
+ * @returns Current transition metrics and note layout dimensions.
+ */
+function readGraphTextLayout() {
+   const style = getComputedStyle(document.documentElement);
+   const scale = Number.parseFloat(style.getPropertyValue('--graph-transition-text-scale'));
+   const fontSize = Number.parseFloat(style.getPropertyValue('--font-size-xs')) * scale;
+   const transitionLineHeight =
+      fontSize * Number.parseFloat(style.getPropertyValue('--leading-body'));
+   const rowGap =
+      Number.parseFloat(style.getPropertyValue('--graph-transition-row-gap')) *
+      Number.parseFloat(style.getPropertyValue('--graph-transition-spacing'));
+   return {
+      scale,
+      transitionLineHeight,
+      transitionRowHeight: transitionLineHeight + rowGap,
+      note: {
+         maxWidth: Number.parseFloat(style.getPropertyValue('--graph-note-max-width')),
+         padding: Number.parseFloat(style.getPropertyValue('--graph-note-padding')),
+         lineHeight: Number.parseFloat(style.getPropertyValue('--graph-note-line-height')),
+         fontSize: Number.parseFloat(style.getPropertyValue('--font-size-sm')),
+         radius: Number.parseFloat(style.getPropertyValue('--radius-md')),
+      },
+   };
+}
 /** Replaces an edited finite transition or an ordered Turing rule group.
  * @param machine - Current machine snapshot.
  * @param updates - Ordered rules to save; an empty list leaves transitions unchanged.
@@ -376,16 +402,19 @@ function GraphEditor({
       []
    );
    const stateRadius = radius * stateScale;
-   const noteLayout = useMemo(() => {
-      const style = getComputedStyle(document.documentElement);
-      return {
-         maxWidth: parseFloat(style.getPropertyValue('--graph-note-max-width')),
-         padding: parseFloat(style.getPropertyValue('--graph-note-padding')),
-         lineHeight: parseFloat(style.getPropertyValue('--graph-note-line-height')),
-         fontSize: parseFloat(style.getPropertyValue('--font-size-sm')),
-         radius: parseFloat(style.getPropertyValue('--radius-md')),
-      };
+   const [textLayout, setTextLayout] = useState(readGraphTextLayout);
+   useEffect(() => {
+      /** Refreshes graph text metrics after appearance changes without inputs.
+       * @returns No value.
+       */
+      function refreshTextLayout(): void {
+         setTextLayout(readGraphTextLayout());
+      }
+      refreshTextLayout();
+      window.addEventListener('jflap-settings-changed', refreshTextLayout);
+      return () => window.removeEventListener('jflap-settings-changed', refreshTextLayout);
    }, []);
+   const noteLayout = textLayout.note;
    const live = useRef({
       machine,
       selected,
@@ -1140,7 +1169,7 @@ function GraphEditor({
                               (from.id === to.id
                                  ? index - (group.length - 1) / 2
                                  : -(group.length - 1 - index)) *
-                                 23 *
+                                 textLayout.transitionRowHeight *
                                  labelScale;
                            const label = transitionText(
                               transition,
@@ -1175,21 +1204,28 @@ function GraphEditor({
                                     transform={`translate(${geometry.label.x} ${y}) scale(${labelScale})`}
                                  >
                                     <rect
-                                       x={-Math.max(42, label.length * 3.7 + 10)}
-                                       y={-14}
-                                       width={Math.max(84, label.length * 7.4 + 20)}
-                                       height={22}
+                                       x={-Math.max(42, label.length * 3.7 + 10) * textLayout.scale}
+                                       y={-textLayout.transitionLineHeight / 2}
+                                       width={
+                                          Math.max(84, label.length * 7.4 + 20) * textLayout.scale
+                                       }
+                                       height={textLayout.transitionLineHeight}
                                        rx={5}
                                     />
-                                    <text x={0} y={1} textAnchor="middle">
+                                    <text
+                                       x={0}
+                                       y={0}
+                                       textAnchor="middle"
+                                       dominantBaseline="central"
+                                    >
                                        {label}
                                     </text>
                                     <line
                                        className="edge-label-underline"
-                                       x1={-label.length * 3.7}
-                                       x2={label.length * 3.7}
-                                       y1={7}
-                                       y2={7}
+                                       x1={-label.length * 3.7 * textLayout.scale}
+                                       x2={label.length * 3.7 * textLayout.scale}
+                                       y1={7 * textLayout.scale}
+                                       y2={7 * textLayout.scale}
                                     />
                                  </g>
                               </g>

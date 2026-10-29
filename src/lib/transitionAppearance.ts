@@ -1,0 +1,66 @@
+export const TRANSITION_APPEARANCE_RANGES = {
+   text: { min: 0.7, max: 1.5, step: 0.05 },
+   spacing: { min: 0, max: 3, step: 0.25 },
+} as const;
+
+const interfaceMetrics = [
+   'font-size-xs',
+   'font-size-sm',
+   'font-size-md',
+   'font-size-lg',
+   'font-size-xl',
+   'home-title-size',
+   'space-1',
+   'space-2',
+   'space-3',
+   'space-4',
+   'space-5',
+   'space-6',
+   'space-7',
+   'space-8',
+   'space-10',
+   'space-12',
+   'space-16',
+   'space-tight',
+   'control-height',
+   'menubar-height',
+   'graph-transition-row-height',
+   'graph-note-line-height',
+   'graph-note-padding',
+] as const;
+
+/** Validates a stored transition appearance multiplier.
+ * @param value - Stored multiplier to validate.
+ * @param setting - Transition appearance setting being normalized.
+ * @returns A supported multiplier, or the default multiplier for an invalid value.
+ */
+export function normalizeTransitionAppearance(
+   value: unknown,
+   setting: keyof typeof TRANSITION_APPEARANCE_RANGES
+): number {
+   if (typeof value !== 'number' || !Number.isFinite(value)) return 1;
+   const { min, max, step } = TRANSITION_APPEARANCE_RANGES[setting];
+   const clamped = Math.max(min, Math.min(max, value));
+   return Number((Math.round(clamped / step) * step).toFixed(2));
+}
+
+/** Applies transition appearance and restores shared interface sizes.
+ * @param textScale - Requested transition text multiplier.
+ * @param spacing - Requested transition row gap multiplier.
+ * @returns No value.
+ */
+export function applyTransitionAppearance(textScale: number, spacing: number): void {
+   const root = document.documentElement;
+   root.style.removeProperty('--ui-scale');
+   for (const metric of interfaceMetrics) {
+      root.style.removeProperty(`--${metric}`);
+   }
+   root.style.setProperty(
+      '--graph-transition-text-scale',
+      String(normalizeTransitionAppearance(textScale, 'text'))
+   );
+   root.style.setProperty(
+      '--graph-transition-spacing',
+      String(normalizeTransitionAppearance(spacing, 'spacing'))
+   );
+}
