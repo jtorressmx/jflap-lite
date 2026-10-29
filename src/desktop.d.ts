@@ -28,9 +28,45 @@ declare global {
       kind?: MachineKind;
    };
    type DesktopSaveResult = { path?: string; canceled: boolean };
+   type FolderWorkspace = { id: string; name: string; path: string };
+   type FolderWorkspaceState = { items: FolderWorkspace[]; activeId: string | null };
+   type FolderWorkspaceFile = { name: string; path: string };
    interface DesktopBridge {
       readonly isDesktop: boolean;
       readonly platform: string;
+      /** Reads saved registrations without inputs. @returns Registered folders and the active identifier. */
+      getFolderWorkspaces(): Promise<FolderWorkspaceState>;
+      /**
+       * Registers a folder chosen in the system picker.
+       * @param name - Display name for the folder.
+       * @returns Updated registrations or cancellation.
+       */
+      createFolderWorkspace(name: string): Promise<FolderWorkspaceState | null>;
+      /**
+       * Selects a folder or standalone file mode.
+       * @param id - Folder identifier or null.
+       * @returns Updated registrations.
+       */
+      selectFolderWorkspace(id: string | null): Promise<FolderWorkspaceState>;
+      /**
+       * Removes a registration while preserving its files.
+       * @param id - Folder identifier.
+       * @returns Updated registrations.
+       */
+      removeFolderWorkspace(id: string): Promise<FolderWorkspaceState>;
+      /**
+       * Lists direct JFF children of a folder.
+       * @param id - Folder identifier.
+       * @returns File entries without machine-kind guesses.
+       */
+      listFolderWorkspaceFiles(id: string): Promise<FolderWorkspaceFile[]>;
+      /**
+       * Reads an authorized folder entry.
+       * @param id - Folder identifier.
+       * @param path - Selected file path.
+       * @returns Native file contents.
+       */
+      openFolderWorkspaceFile(id: string, path: string): Promise<DesktopFile[]>;
       getRecentFiles(): Promise<DesktopRecentFile[]>;
       removeRecentFile(path: string): Promise<DesktopRecentFile[]>;
       openRecentFile(path: string): Promise<DesktopFile | null>;

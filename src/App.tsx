@@ -308,6 +308,7 @@ export default function App() {
             <HomePage
                onCreate={documents.createDocument}
                onOpen={() => void documents.openDialog()}
+               onWorkspaceFile={(id, path) => void documents.openFolderFile(id, path)}
                openDocuments={workspace.documents}
                onResumeDocument={documents.resumeDocument}
                onCloseDocument={(id) => void documents.closeDocument(id)}

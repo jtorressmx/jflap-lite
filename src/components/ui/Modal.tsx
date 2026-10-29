@@ -47,6 +47,7 @@ export function Modal({
          className={`modal ${size === 'default' ? '' : `modal-${size}`} ${className}`}
          ref={ref}
          aria-labelledby={id}
+         data-dismissible={dismissible}
          onCancel={(event) => {
             event.preventDefault();
             event.stopPropagation();

@@ -1,7 +1,9 @@
 import type { ReactElement } from 'react';
 
 import type { Workspace } from '@/app/types';
+import { useFolderWorkspaces } from '@/app/useFolderWorkspaces';
 import { DocumentListItem } from '@/components/DocumentListItem';
+import { FolderWorkspaceFiles, FolderWorkspacePicker } from '@/components/FolderWorkspaces';
 import { MachineKindIcon } from '@/components/MachineKindIcon';
 import { FiFolder, FiTrash2, FiX } from '@/components/icons';
 import { ActionCard } from '@/components/ui/ActionCard';
@@ -17,6 +19,7 @@ type OpenDocument = Pick<Workspace['documents'][number], 'id' | 'machine' | 'pat
  * @param props - Component options.
  * @param props.onCreate - Receives the machine kind whose document should be created.
  * @param props.onOpen - Requests opening the file picker; receives no arguments.
+ * @param props.onWorkspaceFile - Receives the workspace identifier and file path to open.
  * @param props.openDocuments - Documents currently open in the workspace.
  * @param props.openDocuments[].id - Identifier used to resume or close the document.
  * @param props.openDocuments[].machine - Machine represented by the document.
@@ -35,6 +38,7 @@ type OpenDocument = Pick<Workspace['documents'][number], 'id' | 'machine' | 'pat
 export default function HomePage({
    onCreate,
    onOpen,
+   onWorkspaceFile,
    openDocuments,
    onResumeDocument,
    onCloseDocument,
@@ -44,6 +48,7 @@ export default function HomePage({
 }: {
    onCreate: (kind: MachineKind) => void;
    onOpen: () => void;
+   onWorkspaceFile: (id: string, path: string) => void;
    openDocuments: OpenDocument[];
    onResumeDocument: (id: string) => void;
    onCloseDocument: (id: string) => void;
@@ -51,6 +56,7 @@ export default function HomePage({
    onRecent: (file: DesktopRecentFile) => void;
    onRemoveRecent: (file: DesktopRecentFile) => void;
 }) {
+   const folderWorkspaces = useFolderWorkspaces();
    /** Renders a recent file row with its last opening time when available.
     * @param file - Recent file to display.
     * @param file.path - File path used to identify and open the file.
@@ -96,9 +102,12 @@ export default function HomePage({
                <BrandMark />
                <h1>Construye tu modelo</h1>
             </div>
-            <Button variant="primary" className="home-open-button" onClick={onOpen}>
-               <FiFolder /> Abrir archivo
-            </Button>
+            <div className="home-file-actions">
+               <FolderWorkspacePicker controller={folderWorkspaces} />
+               <Button variant="primary" className="home-open-button" onClick={onOpen}>
+                  <FiFolder /> Abrir archivo
+               </Button>
+            </div>
          </header>
          <div className="home-options">
             <ActionCard
@@ -116,7 +125,10 @@ export default function HomePage({
                onClick={() => onCreate('turing')}
             />
          </div>
-         {openDocuments.length === 0 && recentFiles.length === 0 && (
+         {window.desktop.isDesktop && (
+            <FolderWorkspaceFiles controller={folderWorkspaces} onOpen={onWorkspaceFile} />
+         )}
+         {!folderWorkspaces.active && openDocuments.length === 0 && recentFiles.length === 0 && (
             <EmptyState title="No hay documentos abiertos">
                Inicia un nuevo proyecto o abre un archivo existente.
             </EmptyState>

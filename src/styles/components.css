@@ -1111,6 +1111,82 @@
 .home-open-button {
    @apply flex-none px-4 py-2;
 }
+.home-file-actions {
+   @apply flex flex-wrap items-center gap-3;
+}
+.folder-workspace-heading {
+   @apply flex items-center justify-between gap-3 mb-3;
+}
+.folder-workspace-title-actions,
+.folder-workspace-file-actions {
+   @apply flex items-center gap-2;
+}
+.folder-workspace-title-actions {
+   @apply min-w-0 items-center;
+}
+.folder-workspace-title-actions > h2 {
+   @apply flex h-control items-center leading-none;
+}
+.folder-workspace-title-actions > .icon-button {
+   @apply self-center;
+   position: relative;
+   top: calc(-1 * var(--space-1));
+}
+.folder-workspace-file-actions {
+   @apply shrink-0;
+}
+.folder-workspace-summary {
+   @apply flex flex-col gap-1 mb-3 px-3;
+}
+.folder-workspace-summary > strong {
+   @apply text-md font-semibold;
+}
+.folder-workspace-summary > .folder-workspace-path {
+   @apply mb-0;
+}
+.folder-workspace-choice-name {
+   @apply flex w-full items-center justify-between gap-3;
+}
+.folder-workspace-current {
+   @apply text-xs text-secondary font-normal;
+}
+.folder-workspace-collapse.button {
+   @apply min-w-0 justify-start gap-2;
+}
+.folder-workspace-heading h2 {
+   @apply m-0 truncate;
+}
+.folder-workspace-collapse > span {
+   @apply truncate;
+}
+.folder-workspace-collapse > svg {
+   @apply shrink-0;
+   transition: transform var(--duration);
+}
+.folder-workspace-collapse > svg.is-collapsed {
+   transform: rotate(-90deg);
+}
+.folder-workspace-path {
+   @apply text-secondary text-xs break-all mb-3;
+}
+.folder-workspace-choices {
+   @apply flex flex-col gap-2;
+}
+.folder-workspace-choices > .button {
+   @apply justify-between;
+}
+.folder-workspace-choice {
+   @apply flex items-center gap-2;
+}
+.folder-workspace-choice > .button {
+   @apply flex-1 min-w-0 flex-col items-start whitespace-normal text-left;
+}
+.folder-workspace-choice .folder-workspace-path {
+   @apply mb-0;
+}
+.folder-workspace-choices .button[aria-pressed='true'] {
+   @apply bg-accent-soft text-accent;
+}
 .home-options {
    @apply grid;
    grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1438,6 +1514,12 @@
    .modal::backdrop {
       @apply bg-backdrop;
       backdrop-filter: blur(var(--backdrop-blur));
+   }
+   .modal[data-dismissible='true']::backdrop {
+      @apply cursor-pointer;
+   }
+   .modal[data-dismissible='false']::backdrop {
+      @apply cursor-default;
    }
    .modal-wide {
       @apply w-dialog-wide;

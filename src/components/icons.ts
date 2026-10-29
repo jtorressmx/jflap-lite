@@ -39,6 +39,7 @@ export {
    FiPrinter,
    FiRotateCcw,
    FiRotateCw,
+   FiRepeat,
    FiSave,
    FiSettings,
    FiShare2,

@@ -1,4 +1,5 @@
 const { contextBridge, ipcRenderer, webUtils } = require('electron');
+/** @typedef {{items: Array<{id: string, name: string, path: string}>, activeId: string | null}} FolderWorkspaceState */
 
 function subscribe(channel, callback) {
    if (typeof callback !== 'function') throw new TypeError('Se requiere una función.');
@@ -13,6 +14,41 @@ contextBridge.exposeInMainWorld(
    Object.freeze({
       isDesktop: true,
       platform: process.platform,
+      /** Reads folder registrations without inputs. @returns {Promise<FolderWorkspaceState>} Stored spaces. */
+      getFolderWorkspaces: () => ipcRenderer.invoke('desktop:folder-workspaces'),
+      /**
+       * Creates a named folder registration.
+       * @param {string} name - Workspace name.
+       * @returns {Promise<FolderWorkspaceState | null>} Registry or cancellation.
+       */
+      createFolderWorkspace: (name) => ipcRenderer.invoke('desktop:create-folder-workspace', name),
+      /**
+       * Selects a registered folder or standalone mode.
+       * @param {string | null} id - Workspace identifier.
+       * @returns {Promise<FolderWorkspaceState>} Updated registry.
+       */
+      selectFolderWorkspace: (id) => ipcRenderer.invoke('desktop:select-folder-workspace', id),
+      /**
+       * Removes a folder registration.
+       * @param {string} id - Workspace identifier.
+       * @returns {Promise<FolderWorkspaceState>} Updated registry.
+       */
+      removeFolderWorkspace: (id) => ipcRenderer.invoke('desktop:remove-folder-workspace', id),
+      /**
+       * Lists JFF files in a registered folder.
+       * @param {string} id - Workspace identifier.
+       * @returns {Promise<Array<{name: string, path: string}>>} File entries.
+       */
+      listFolderWorkspaceFiles: (id) =>
+         ipcRenderer.invoke('desktop:list-folder-workspace-files', id),
+      /**
+       * Opens an authorized folder entry.
+       * @param {string} id - Workspace identifier.
+       * @param {string} path - Selected file path.
+       * @returns {Promise<Array<{name: string, path: string, content: string}>>} File contents.
+       */
+      openFolderWorkspaceFile: (id, path) =>
+         ipcRenderer.invoke('desktop:open-folder-workspace-file', id, path),
       openFiles: (options) => ipcRenderer.invoke('desktop:open-files', options),
       getRecentFiles: () => ipcRenderer.invoke('desktop:recent-files'),
       removeRecentFile: (path) => ipcRenderer.invoke('desktop:remove-recent-file', path),

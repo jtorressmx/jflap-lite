@@ -7,6 +7,7 @@ const { pathToFileURL } = require('node:url');
 const { app, BrowserWindow, Menu, dialog, ipcMain, shell } = require('electron');
 
 const policy = require('#electron/policy');
+const { createFolderWorkspaces } = require('#electron/folder-workspaces');
 const { shortcutCommand } = require('#electron/shortcuts');
 
 app.setName('JFLAP Lite');
@@ -30,6 +31,8 @@ let closeApproved = false;
 let workspaceWrite = Promise.resolve();
 const selectedPaths = new Map();
 let recentWrite = Promise.resolve();
+/** @type {ReturnType<typeof createFolderWorkspaces> | undefined} */
+let folderWorkspaces;
 async function replaceStoredFile(temporary, destination) {
    for (let attempt = 0; ; attempt++) {
       try {
@@ -548,10 +551,20 @@ async function receiveFiles(arguments_) {
    }
 }
 
+/**
+ * Requests a save destination using the active folder for machine files.
+ * @param {string} name - Suggested file name.
+ * @param {string} kind - Supported output format.
+ * @returns {Promise<string | null>} Destination or cancellation.
+ */
 async function chooseSave(name, kind) {
+   const folder =
+      kind === 'jff' || kind === 'xml' ? await folderWorkspaces?.defaultDirectory() : undefined;
    const result = await dialog.showSaveDialog(mainWindow, {
       title: 'Guardar archivo',
-      defaultPath: policy.filename(name, kind),
+      defaultPath: folder
+         ? path.join(folder, policy.filename(name, kind))
+         : policy.filename(name, kind),
       filters: [policy.format(kind)],
       properties: ['showOverwriteConfirmation', 'createDirectory'],
    });
@@ -597,7 +610,26 @@ async function createPrintWindow(svg, name) {
    }
 }
 
+/** Registers native IPC operations without inputs. @returns {void} No value. */
 function registerBridge() {
+   folderWorkspaces = createFolderWorkspaces({
+      storagePath: path.join(app.getPath('userData'), 'folder-workspaces.json'),
+      /** Opens the folder picker without inputs. @returns {Promise<string | null>} Selected folder or cancellation. */
+      chooseDirectory: async () => {
+         const result = await dialog.showOpenDialog(mainWindow, {
+            title: 'Elegir carpeta del espacio de trabajo',
+            properties: ['openDirectory', 'createDirectory'],
+         });
+         return result.canceled ? null : (result.filePaths[0] ?? null);
+      },
+      openFiles: readSelected,
+   });
+   handle('desktop:folder-workspaces', folderWorkspaces.getState);
+   handle('desktop:create-folder-workspace', folderWorkspaces.create);
+   handle('desktop:select-folder-workspace', folderWorkspaces.select);
+   handle('desktop:remove-folder-workspace', folderWorkspaces.remove);
+   handle('desktop:list-folder-workspace-files', folderWorkspaces.listFiles);
+   handle('desktop:open-folder-workspace-file', folderWorkspaces.openFile);
    handle('desktop:recent-files', async () => {
       return pruneRecentFiles();
    });
