@@ -676,29 +676,6 @@
 .configuration-list {
    @apply flex gap-2 flex-wrap;
 }
-.configuration-card {
-   @apply flex gap-1 items-center p-1 border border-solid border-border bg-canvas rounded-md;
-}
-.configuration-card.is-selected {
-   @apply border-accent;
-}
-.configuration-select {
-   @apply flex items-center gap-2 bg-transparent;
-   border: 0;
-   @apply text-secondary cursor-pointer text-xs py-1 px-2;
-}
-.configuration-select > span:first-child {
-   @apply text-foreground font-mono font-semibold;
-}
-.configuration-select .configuration-rejected {
-   @apply text-danger;
-}
-.configuration-select .configuration-accepted {
-   @apply text-success;
-}
-.configuration-card .icon-button {
-   @apply w-7 h-7;
-}
 .batch-content {
    @apply grid;
    grid-template-columns: minmax(var(--batch-entry-min-width), 0.8fr) minmax(0, 2fr);
