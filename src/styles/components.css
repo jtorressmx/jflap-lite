@@ -1845,7 +1845,8 @@
    .document-tabs-bar .menu-trigger[data-tooltip],
    .menubar .icon-button[data-tooltip],
    .zoom-control .icon-button[data-tooltip],
-   .simulation-panel .icon-button[data-tooltip] {
+   .simulation-panel .icon-button[data-tooltip],
+   .folder-workspace-heading .icon-button[data-tooltip] {
       @apply relative;
    }
    .commandbar .icon-button[data-tooltip]:disabled {
@@ -1860,7 +1861,8 @@
    .document-tabs-bar .menu-trigger[data-tooltip]::after,
    .menubar .icon-button[data-tooltip]::after,
    .zoom-control .icon-button[data-tooltip]::after,
-   .simulation-panel .icon-button[data-tooltip]::after {
+   .simulation-panel .icon-button[data-tooltip]::after,
+   .folder-workspace-heading .icon-button[data-tooltip]::after {
       @apply absolute;
       left: 50%;
       z-index: 10;
@@ -1882,7 +1884,8 @@
    .commandbar .icon-button[data-tooltip]::after,
    .document-tabs-bar .icon-button[data-tooltip]::after,
    .document-tabs-bar .menu-trigger[data-tooltip]::after,
-   .menubar .icon-button[data-tooltip]::after {
+   .menubar .icon-button[data-tooltip]::after,
+   .folder-workspace-heading .icon-button[data-tooltip]::after {
       top: calc(100% + var(--space-2));
       transform: translate(-50%, var(--space-1));
    }
@@ -1919,7 +1922,9 @@
    .zoom-control .icon-button[data-tooltip]:hover::after,
    .zoom-control .icon-button[data-tooltip]:focus-visible::after,
    .simulation-panel .icon-button[data-tooltip]:hover::after,
-   .simulation-panel .icon-button[data-tooltip]:focus-visible::after {
+   .simulation-panel .icon-button[data-tooltip]:focus-visible::after,
+   .folder-workspace-heading .icon-button[data-tooltip]:hover::after,
+   .folder-workspace-heading .icon-button[data-tooltip]:focus-visible::after {
       transform: translate(-50%, 0);
       opacity: 1;
       @apply visible;
