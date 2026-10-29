@@ -38,7 +38,7 @@ export function normalizeTransitionAppearance(
    value: unknown,
    setting: keyof typeof TRANSITION_APPEARANCE_RANGES
 ): number {
-   if (typeof value !== 'number' || !Number.isFinite(value)) return 1;
+   if (typeof value !== 'number' || !Number.isFinite(value)) return setting === 'spacing' ? 0 : 1;
    const { min, max, step } = TRANSITION_APPEARANCE_RANGES[setting];
    const clamped = Math.max(min, Math.min(max, value));
    return Number((Math.round(clamped / step) * step).toFixed(2));
