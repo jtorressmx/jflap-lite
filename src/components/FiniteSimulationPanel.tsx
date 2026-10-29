@@ -200,7 +200,7 @@ export default function FiniteSimulationPanel({
       }
    }
    /**
-    * Closes the simulator and clears its temporary results.
+    * Closes the simulator and clears execution results while preserving batch inputs.
     * @returns No value.
     */
    function closeSimulation() {
@@ -210,8 +210,6 @@ export default function FiniteSimulationPanel({
       setPlaying(false);
       setResults([]);
       setResult(null);
-      setBatchItems([createBatchInputItem()]);
-      setBatchFile(null);
       setTab('simulation');
       onActivity([], undefined);
       onClose?.();

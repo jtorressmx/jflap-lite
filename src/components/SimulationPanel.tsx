@@ -266,7 +266,7 @@ export function SimulationPanel({
       }
    }
    /**
-    * Closes the simulator and clears its temporary results.
+    * Closes the simulator and clears execution results while preserving batch inputs.
     * @returns No value.
     */
    function closeSimulation() {
@@ -278,8 +278,6 @@ export function SimulationPanel({
       setTab('simulation');
       setTraceFocusId(undefined);
       setResults([]);
-      setBatchItems([createBatchInputItem()]);
-      setBatchFile(null);
       setResultModal(null);
       onActivity([], undefined);
       onClose?.();
