@@ -369,10 +369,34 @@
    @apply font-mono;
 }
 .simulation-buttons {
-   @apply flex gap-2 items-center pb-1;
+   @apply flex flex-wrap gap-2 items-center pb-1;
 }
 .simulation-iteration-control {
-   @apply flex items-center gap-2 flex-none;
+   @apply flex flex-wrap items-center gap-2;
+}
+.simulation-iteration-maximum {
+   @apply text-secondary text-xs whitespace-nowrap tabular-nums;
+}
+.simulation-loop-notice {
+   @apply flex flex-none flex-wrap items-center justify-between gap-x-4 gap-y-3 p-3 border border-solid border-border rounded-md bg-canvas text-sm;
+}
+.simulation-loop-details {
+   @apply flex flex-1 min-w-0 flex-col gap-2;
+}
+.simulation-loop-details > strong {
+   @apply text-foreground font-semibold;
+}
+.simulation-loop-metrics {
+   @apply flex flex-wrap gap-x-5 gap-y-2 m-0 text-xs;
+}
+.simulation-loop-metrics > div {
+   @apply flex items-baseline gap-2;
+}
+.simulation-loop-metrics dt {
+   @apply text-secondary;
+}
+.simulation-loop-metrics dd {
+   @apply m-0 font-mono font-medium tabular-nums text-foreground;
 }
 .simulation-iteration-field {
    @apply flex-row items-center gap-2;

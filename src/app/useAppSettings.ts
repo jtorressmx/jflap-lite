@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useState } from 'react';
 
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
+import { normalizeIterationLimit } from '@/domain/simulationLimits';
 import {
    AUTO_SAVE_ON_BLUR_KEY,
    CLEAR_WORKSPACE_ON_EXIT_KEY,
@@ -51,6 +52,9 @@ function readPreferences(): Preferences {
 export function useAppSettings() {
    const [uiSettings] = useState(readUiSettings);
    const [preferences, setPreferences] = useState<Preferences>(readPreferences);
+   const [iterationLimit, setIterationLimit] = useState(() =>
+      normalizeIterationLimit(uiSettings.iterationLimit)
+   );
    const [theme, setTheme] = useState(() => localStorage.getItem('jflap-lite.theme') || 'light');
    const [accent, setAccent] = useState(() => localStorage.getItem('jflap-lite.accent') || 'blue');
    const [showLabels, setShowLabels] = useState(uiSettings.showLabels !== false);
@@ -134,6 +138,7 @@ export function useAppSettings() {
             createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
+            iterationLimit,
          })
       );
       settingsChanged();
@@ -147,11 +152,14 @@ export function useAppSettings() {
       createStatesOnDoubleClick,
       stateScale,
       simulationPosition,
+      iterationLimit,
    ]);
 
    return {
       preferences,
       setPreferences,
+      iterationLimit,
+      setIterationLimit,
       theme,
       setTheme,
       accent,

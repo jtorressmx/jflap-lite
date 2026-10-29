@@ -21,6 +21,8 @@ import { machineKind } from '@/domain/model';
  * @param props.onMessage - Receives the message to present in the application.
  * @param [props.onClose] - Requests closing the component; receives no arguments.
  * @param [props.emptySymbol=ε] - Symbol used to display the empty string.
+ * @param [props.iterationLimit] - Maximum iteration analyzed for Turing inputs.
+ * @param [props.analysisEnabled] - Whether background Turing analysis is requested.
  * @returns The machine-specific simulator, visible when enabled.
  */
 export function SimulationHost({
@@ -57,6 +59,7 @@ export function SimulationHost({
          ) : (
             <SimulationPanel
                {...props}
+               analysisEnabled={enabled && props.analysisEnabled !== false}
                request={
                   props.request &&
                   props.request.action !== 'closure' &&

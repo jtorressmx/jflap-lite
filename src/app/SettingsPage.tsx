@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 
 import type { AppSettings } from '@/app/useAppSettings';
+import { Field } from '@/components/ui/Field';
 import { FormField } from '@/components/ui/FormField';
 import { FormRow } from '@/components/ui/FormRow';
 import { RangeSlider } from '@/components/ui/RangeSlider';
 import { SelectMenu } from '@/components/ui/SelectMenu';
 import { Toggle } from '@/components/ui/Toggle';
+import { MAX_ITERATION_LIMIT, normalizeIterationLimit } from '@/domain/simulationLimits';
 import { TRANSITION_APPEARANCE_RANGES } from '@/lib/transitionAppearance';
 
 /**
@@ -36,6 +38,8 @@ function getSettingsSectionAtPosition(
  * @param props.settings - Appearance, simulation, and file preferences and setters.
  * @param props.settings.preferences - Machine execution behavior.
  * @param props.settings.setPreferences - Receives the next machine execution behavior.
+ * @param props.settings.iterationLimit - Maximum iteration analyzed for Turing inputs.
+ * @param props.settings.setIterationLimit - Receives the requested iteration analysis limit.
  * @param props.settings.theme - Selected application theme.
  * @param props.settings.setTheme - Receives the requested application theme.
  * @param props.settings.accent - Selected accent color.
@@ -67,6 +71,7 @@ function getSettingsSectionAtPosition(
  * @returns The rendered interface.
  */
 export function SettingsPage({ settings }: { settings: AppSettings }) {
+   const [iterationLimitDraft, setIterationLimitDraft] = useState(String(settings.iterationLimit));
    const settingsPageRef = useRef<HTMLElement>(null);
    const [activeSection, setActiveSection] = useState(
       () =>
@@ -103,6 +108,7 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
    const {
       preferences,
       setPreferences,
+      setIterationLimit,
       theme,
       setTheme,
       accent,
@@ -224,6 +230,28 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
                               description="Habilita S para escribir sin mover el cabezal."
                               checked={preferences.allowStay}
                               onChange={(v) => setPreferences((p) => ({ ...p, allowStay: v }))}
+                           />
+                           <Field
+                              label="Límite de análisis de iteraciones"
+                              hint="Analiza la entrada de Turing hasta este límite. Alcanzarlo no confirma un bucle."
+                              type="number"
+                              min="1"
+                              max={MAX_ITERATION_LIMIT}
+                              step="1"
+                              value={iterationLimitDraft}
+                              onChange={(event) => setIterationLimitDraft(event.target.value)}
+                              onKeyDown={(event) => {
+                                 if (event.key === 'Enter') event.currentTarget.blur();
+                              }}
+                              onBlur={() => {
+                                 const limit = normalizeIterationLimit(
+                                    iterationLimitDraft.trim()
+                                       ? Number(iterationLimitDraft)
+                                       : undefined
+                                 );
+                                 setIterationLimit(limit);
+                                 setIterationLimitDraft(String(limit));
+                              }}
                            />
                         </div>
                      </div>

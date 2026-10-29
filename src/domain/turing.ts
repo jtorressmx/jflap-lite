@@ -1,5 +1,7 @@
 import type { Configuration, Machine, Preferences, Session, Transition } from '@/domain/model';
 import { BLANK, defaultPreferences, machineKind } from '@/domain/model';
+import { DEFAULT_ITERATION_LIMIT } from '@/domain/simulationLimits';
+import { detectSessionLoop } from '@/domain/turingCycles';
 
 /** Empty fields mean a blank; a bare ! means !□, as in TMTransition.setRead. */
 export function normalizeRead(read: string): string {
@@ -139,24 +141,37 @@ function matches(symbol: string, read: string): boolean {
    return read === '~' || symbol === read.charAt(0);
 }
 
+/** Advances a running session and preserves terminal results.
+ * @param machine - Machine supplying the transitions.
+ * @param session - Current execution snapshot.
+ * @param preferences - Acceptance and movement rules.
+ * @param maxConfigurations - Maximum number of configurations in the next frontier.
+ * @returns The next session, or the unchanged terminal session.
+ */
 export function stepSession(
    machine: Machine,
    session: Session,
    preferences: Preferences = defaultPreferences,
    maxConfigurations = 2000
 ): Session {
-   if (session.status === 'accepted' || session.status === 'rejected' || session.status === 'limit')
-      return session;
+   if (['accepted', 'rejected', 'limit', 'loop'].includes(session.status)) return session;
    return stepInteractiveSession(machine, session, preferences, maxConfigurations);
 }
 
-/** Swing Step advances only NORMAL configurations and clears every non-frozen old card. */
+/** Advances active configurations and detects exact repetition of the whole frontier.
+ * @param machine - Machine supplying the transitions.
+ * @param session - Current execution snapshot and its history.
+ * @param preferences - Acceptance and movement rules.
+ * @param maxConfigurations - Maximum number of configurations in the next frontier.
+ * @returns The next session with its execution verdict, limit, or confirmed loop.
+ */
 export function stepInteractiveSession(
    machine: Machine,
    session: Session,
    preferences: Preferences = defaultPreferences,
    maxConfigurations = 2000
 ): Session {
+   if (session.status === 'loop') return session;
    const configurations: Configuration[] = [];
    let serial = session.nextId ?? session.history.reduce((total, layer) => total + layer.length, 0);
    let limited = false;
@@ -188,14 +203,17 @@ export function stepInteractiveSession(
          const assignment = read.indexOf('}');
          if (session.mode === 'deterministic' && assignment !== -1)
             variables[read.slice(assignment + 1)] = symbol;
-         const tape = { ...config.tape };
+         let tape = config.tape;
          const write = normalizeWrite(transition.write);
          const value =
             session.mode === 'deterministic' ? (variables[write] ?? write).charAt(0) : write;
          // In the deterministic simulator ~ means preserve; in the ND simulator it is literal.
          if (session.mode === 'nondeterministic' || write !== '~') {
-            if (value === BLANK) delete tape[config.head];
-            else tape[config.head] = value;
+            if (value !== readTape(config)) {
+               tape = { ...config.tape };
+               if (value === BLANK) delete tape[config.head];
+               else tape[config.head] = value;
+            }
          }
          configurations.push({
             id: `c${serial++}`,
@@ -227,7 +245,7 @@ export function stepInteractiveSession(
    const active = configurations.filter(
       (config) => !config.rejected && !frozen.includes(config.id)
    );
-   return {
+   const next: Session = {
       ...session,
       configurations,
       history: [...session.history, configurations],
@@ -245,18 +263,52 @@ export function stepInteractiveSession(
          ? `Se alcanzó el límite de ${maxConfigurations} configuraciones.`
          : undefined,
    };
+   return detectSessionLoop(session, next);
 }
 
+/** Runs a Turing machine until completion, an exact loop, or a bounded resource limit.
+ * @param machine - Machine to execute.
+ * @param input - Initial tape contents.
+ * @param preferences - Acceptance and movement preferences.
+ * @param maxSteps - Maximum iteration to analyze.
+ * @param maxConfigurations - Maximum width of a frontier.
+ * @returns The completed or bounded session, including navigable history.
+ */
 export function runMachine(
    machine: Machine,
    input: string,
    preferences: Preferences = defaultPreferences,
-   maxSteps = 1000,
+   maxSteps = DEFAULT_ITERATION_LIMIT,
    maxConfigurations = 2000
 ): Session {
    let session = createSession(machine, input, preferences);
-   while ((session.status === 'ready' || session.status === 'running') && session.steps < maxSteps)
+   const tapes = new WeakSet<Configuration['tape']>();
+   let storedCells = 0;
+   let storedConfigurations = 0;
+   while (
+      (session.status === 'ready' || session.status === 'running') &&
+      session.steps < maxSteps
+   ) {
+      for (const configuration of session.configurations) {
+         storedConfigurations++;
+         if (!tapes.has(configuration.tape)) {
+            tapes.add(configuration.tape);
+            storedCells += Object.keys(configuration.tape).length;
+         }
+      }
+      if (
+         storedCells > Math.max(1_000_000, maxConfigurations * 1000) ||
+         storedConfigurations > Math.max(10_000, maxConfigurations * 50)
+      ) {
+         return {
+            ...session,
+            status: 'limit',
+            message:
+               'Se alcanzó el límite del historial. Reduce la entrada o continúa con límites mayores.',
+         };
+      }
       session = stepSession(machine, session, preferences, maxConfigurations);
+   }
    if (session.status === 'ready' || session.status === 'running')
       return {
          ...session,

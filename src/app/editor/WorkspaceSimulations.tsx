@@ -10,6 +10,7 @@ import { SimulationHost } from '@/components/SimulationHost';
  * @param props.settings - Simulator preferences and empty-string symbol.
  * @param props.settings.simulationPosition - Current location of the simulator.
  * @param props.settings.setSimulationPosition - Receives the requested simulator location.
+ * @param props.settings.iterationLimit - Maximum iteration analyzed for Turing inputs.
  * @param props.simulation - Simulation visibility, requests, and activity callback.
  * @param props.notify - Receives simulator notifications.
  * @returns The rendered interface.
@@ -23,12 +24,17 @@ export function WorkspaceSimulations({
    workspace: Pick<Workspace, 'documents' | 'activeId'>;
    settings: Pick<
       AppSettings,
-      'preferences' | 'emptySymbol' | 'simulationPosition' | 'setSimulationPosition'
+      | 'preferences'
+      | 'emptySymbol'
+      | 'simulationPosition'
+      | 'setSimulationPosition'
+      | 'iterationLimit'
    >;
    simulation: SimulationController;
    notify: Notify;
 }) {
-   const { preferences, emptySymbol, simulationPosition, setSimulationPosition } = settings;
+   const { preferences, emptySymbol, simulationPosition, setSimulationPosition, iterationLimit } =
+      settings;
    const { open, setOpen, request, onActivity } = simulation;
    return (
       <div id="simulation-tools" className="simulation-stack" hidden={!open}>
@@ -39,6 +45,8 @@ export function WorkspaceSimulations({
                machine={doc.machine}
                documentTitle={doc.machine.name.replace(/\.(?:jff|xml)$/i, '')}
                preferences={preferences}
+               iterationLimit={iterationLimit}
+               analysisEnabled={open}
                position={simulationPosition}
                onPositionChange={setSimulationPosition}
                onClose={() => setOpen(false)}
