@@ -1,5 +1,4 @@
-/**
- * Splits labels, expands symbol lists, and preserves hyphenated ranges.
+/** Splits labels, expands symbol lists, and preserves hyphenated ranges.
  * @param input - Transition label text to parse.
  * @returns The distinct transition labels.
  */

@@ -1,6 +1,7 @@
 import type { DragEvent, KeyboardEvent, Ref } from 'react';
 import { useImperativeHandle, useRef, useState } from 'react';
 
+import { FiniteTransitionInput } from '@/components/graph/FiniteTransitionInput';
 import {
    FiArrowLeft,
    FiArrowRight,
@@ -31,7 +32,6 @@ type TransitionDraft = {
    write: string;
    move: Transition['move'];
 };
-
 /** Creates a stable draft for an existing or new rule.
  * @param transition - Optional existing rule.
  * @returns An editable rule with its original identifier retained.
@@ -406,13 +406,7 @@ export function TransitionProperties({
             <>
                <div className="transition-expression">
                   {finite ? (
-                     <input
-                        aria-label="Símbolos"
-                        autoFocus
-                        value={read}
-                        onChange={(e) => setFiniteRead(e.target.value)}
-                        spellCheck={false}
-                     />
+                     <FiniteTransitionInput value={read} onChange={setFiniteRead} />
                   ) : (
                      <>
                         <CharacterInput

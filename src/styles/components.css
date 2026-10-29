@@ -2164,6 +2164,28 @@
 .transition-expression input {
    @apply min-w-0 flex-1 w-transition-input py-1 px-2;
 }
+.transition-finite-field {
+   @apply relative flex-1 min-w-0;
+}
+.transition-finite-field > input {
+   @apply block w-full;
+}
+.transition-inline-suggestion {
+   @apply absolute inset-0 flex items-center overflow-hidden px-2 border border-solid border-transparent text-sm pointer-events-none;
+}
+.transition-inline-suggestion > span {
+   @apply whitespace-pre shrink-0;
+}
+.transition-suggestion-prefix {
+   visibility: hidden;
+}
+.transition-suggestion-text {
+   @apply inline-flex items-center gap-2 p-0 border-0 bg-transparent text-tertiary pointer-events-auto;
+   font: inherit;
+}
+.transition-suggestion-hint {
+   @apply text-xs font-sans;
+}
 .character-input {
    @apply py-1 px-2 font-mono text-center;
    width: var(--character-input-width);
