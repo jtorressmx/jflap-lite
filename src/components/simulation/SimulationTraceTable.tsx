@@ -15,7 +15,7 @@ type TraceRow = {
    read?: string;
    replacement?: string;
    direction?: Transition['move'];
-   to: string;
+   to?: string;
    selected?: boolean;
    onSelect?: () => void;
 };
@@ -32,7 +32,7 @@ const columns = [
 
 const directions = { L: 'Izquierda', R: 'Derecha', S: 'Permanecer' };
 
-/** Shows execution snapshots and the transition producing each snapshot.
+/** Shows execution snapshots and the outgoing transition from each snapshot.
  * @param props - Table options.
  * @param props.rows - Ordered snapshots and their optional selection actions.
  * @returns The scrollable execution trace table.
@@ -76,7 +76,7 @@ function TraceTable({ rows }: { rows: TraceRow[] }) {
                      <code>{row.replacement ?? '—'}</code>
                   </td>
                   <td>{row.direction ? directions[row.direction] : '—'}</td>
-                  <td>{row.to}</td>
+                  <td>{row.to ?? '—'}</td>
                </tr>
             ))}
          </DataTable>
@@ -84,12 +84,12 @@ function TraceTable({ rows }: { rows: TraceRow[] }) {
    );
 }
 
-/** Shows a Turing trace with the actual symbols read and written.
+/** Shows each Turing configuration with its current head symbol and outgoing transition.
  * @param props - Trace options.
  * @param props.machine - Machine defining state names and transition directions.
  * @param props.trace - Ordered configurations in one execution branch.
  * @param [props.selectedId] - Identifier of the currently highlighted snapshot.
- * @param [props.onSelect] - Receives the snapshot requested for graph highlighting.
+ * @param [props.onSelect] - Receives the snapshot and its optional outgoing transition identifier for graph highlighting.
  * @returns The Turing execution trace table.
  */
 export function TuringTraceTable({
@@ -101,7 +101,7 @@ export function TuringTraceTable({
    machine: Machine;
    trace: Configuration[];
    selectedId?: string;
-   onSelect?: (configuration: Configuration) => void;
+   onSelect?: (configuration: Configuration, transitionId?: string) => void;
 }) {
    const labels = new Map(machine.states.map((state) => [state.id, state.name]));
    const transitions = new Map(
@@ -110,29 +110,29 @@ export function TuringTraceTable({
    return (
       <TraceTable
          rows={trace.map((configuration, index) => {
-            const previous = trace[index - 1];
-            const transition = configuration.transitionId
-               ? transitions.get(configuration.transitionId)
-               : undefined;
+            const next = trace[index + 1];
+            const transition =
+               next && next.parentId === configuration.id && next.transitionId
+                  ? transitions.get(next.transitionId)
+                  : undefined;
             return {
                id: configuration.id,
                number: configuration.depth,
                tape: <Tape configuration={configuration} compact />,
-               from: previous ? (labels.get(previous.state) ?? previous.state) : undefined,
-               read: previous && transition ? readTape(previous) : undefined,
-               replacement:
-                  previous && transition ? readTape(configuration, previous.head) : undefined,
-               direction: previous ? transition?.move : undefined,
-               to: labels.get(configuration.state) ?? configuration.state,
+               from: labels.get(configuration.state) ?? configuration.state,
+               read: readTape(configuration),
+               replacement: next && transition ? readTape(next, configuration.head) : undefined,
+               direction: transition?.move,
+               to: next && transition ? (labels.get(next.state) ?? next.state) : undefined,
                selected: selectedId === configuration.id,
-               onSelect: onSelect ? () => onSelect(configuration) : undefined,
+               onSelect: onSelect ? () => onSelect(configuration, transition?.id) : undefined,
             };
          })}
       />
    );
 }
 
-/** Shows a finite automaton trace without implying tape writes or head movements.
+/** Shows each finite configuration and its outgoing input consumption without tape writes or head movements.
  * @param props - Trace options.
  * @param props.machine - Automaton defining state names and transition labels.
  * @param props.trace - Ordered configurations in one execution branch.
@@ -158,20 +158,21 @@ export function FiniteTraceTable({
    return (
       <TraceTable
          rows={trace.map((configuration, index) => {
-            const previous = trace[index - 1];
-            const transition = configuration.transitionId
-               ? transitions.get(configuration.transitionId)
-               : undefined;
+            const next = trace[index + 1];
+            const transition =
+               next && next.parentId === configuration.id && next.transitionId
+                  ? transitions.get(next.transitionId)
+                  : undefined;
             return {
                id: configuration.id,
                number: configuration.depth,
                tape: <code>{input.slice(configuration.offset) || emptySymbol}</code>,
-               from: previous ? (labels.get(previous.state) ?? previous.state) : undefined,
+               from: labels.get(configuration.state) ?? configuration.state,
                read:
-                  previous && transition
-                     ? input.slice(previous.offset, configuration.offset) || emptySymbol
-                     : undefined,
-               to: labels.get(configuration.state) ?? configuration.state,
+                  next && transition
+                     ? input.slice(configuration.offset, next.offset) || emptySymbol
+                     : input.charAt(configuration.offset) || emptySymbol,
+               to: next && transition ? (labels.get(next.state) ?? next.state) : undefined,
             };
          })}
       />

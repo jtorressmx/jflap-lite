@@ -1079,9 +1079,9 @@ export function SimulationPanel({
                         machine={machine}
                         trace={trace}
                         selectedId={traceFocusId}
-                        onSelect={(config) => {
+                        onSelect={(config, transitionId) => {
                            setTraceFocusId(config.id);
-                           onActivity([config.state], config.transitionId);
+                           onActivity([config.state], transitionId);
                         }}
                      />
                   </>

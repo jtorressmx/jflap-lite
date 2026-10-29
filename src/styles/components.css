@@ -772,15 +772,20 @@
 .simulation-trace-table th {
    @apply whitespace-nowrap;
 }
+.simulation-trace-table th:nth-child(2) {
+   @apply text-center;
+}
 .simulation-trace-table tr[data-selected] td {
    @apply bg-accent-soft;
 }
 .simulation-trace-table .trace-table-tape {
+   @apply text-center align-middle;
    width: var(--simulation-input-width);
    min-width: var(--simulation-input-width);
    max-width: var(--simulation-input-width);
 }
 .trace-table-tape .tape-display {
+   @apply max-w-full mx-auto;
    width: var(--simulation-input-width);
 }
 .trace-table-select {
