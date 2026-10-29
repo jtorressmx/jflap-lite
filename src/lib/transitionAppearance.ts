@@ -3,6 +3,16 @@ export const TRANSITION_APPEARANCE_RANGES = {
    spacing: { min: 0, max: 3, step: 0.25 },
 } as const;
 
+export type TransitionAlignment = 'centered' | 'line';
+
+/** Validates a stored transition label alignment.
+ * @param value - Stored alignment to validate.
+ * @returns Line alignment when selected, or the default horizontal alignment.
+ */
+export function normalizeTransitionAlignment(value: unknown): TransitionAlignment {
+   return value === 'line' ? 'line' : 'centered';
+}
+
 const interfaceMetrics = [
    'font-size-xs',
    'font-size-sm',
@@ -47,9 +57,14 @@ export function normalizeTransitionAppearance(
 /** Applies transition appearance and restores shared interface sizes.
  * @param textScale - Requested transition text multiplier.
  * @param spacing - Requested transition row gap multiplier.
+ * @param alignment - Requested transition label alignment.
  * @returns No value.
  */
-export function applyTransitionAppearance(textScale: number, spacing: number): void {
+export function applyTransitionAppearance(
+   textScale: number,
+   spacing: number,
+   alignment: TransitionAlignment
+): void {
    const root = document.documentElement;
    root.style.removeProperty('--ui-scale');
    for (const metric of interfaceMetrics) {
@@ -63,4 +78,29 @@ export function applyTransitionAppearance(textScale: number, spacing: number): v
       '--graph-transition-spacing',
       String(normalizeTransitionAppearance(spacing, 'spacing'))
    );
+   root.dataset.transitionAlignment = normalizeTransitionAlignment(alignment);
+}
+
+/** Reads resolved transition text metrics and alignment from the shared theme.
+ * Takes no input.
+ * @returns Transition appearance used by the editor and image exports.
+ */
+export function readTransitionAppearance() {
+   const root = document.documentElement;
+   const style = getComputedStyle(root);
+   const scale = Number.parseFloat(style.getPropertyValue('--graph-transition-text-scale'));
+   const fontSize = Number.parseFloat(style.getPropertyValue('--font-size-xs')) * scale;
+   const transitionLineHeight =
+      fontSize * Number.parseFloat(style.getPropertyValue('--leading-body'));
+   const rowGap =
+      Number.parseFloat(style.getPropertyValue('--graph-transition-row-gap')) *
+      Number.parseFloat(style.getPropertyValue('--graph-transition-spacing'));
+   return {
+      scale,
+      fontSize,
+      alignment: normalizeTransitionAlignment(root.dataset.transitionAlignment),
+      transitionLineHeight,
+      transitionRowHeight: transitionLineHeight + rowGap,
+      edgeGap: Number.parseFloat(style.getPropertyValue('--graph-transition-edge-gap')),
+   };
 }

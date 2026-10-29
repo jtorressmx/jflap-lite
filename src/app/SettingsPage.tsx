@@ -44,6 +44,8 @@ function getSettingsSectionAtPosition(
  * @param props.settings.setTransitionTextScale - Receives the requested transition text size multiplier.
  * @param props.settings.transitionSpacing - Current transition row gap multiplier.
  * @param props.settings.setTransitionSpacing - Receives the requested transition row gap multiplier.
+ * @param props.settings.transitionAlignment - Current transition label alignment.
+ * @param props.settings.setTransitionAlignment - Receives the requested transition label alignment.
  * @param props.settings.showLabels - Whether state labels are visible.
  * @param props.settings.setShowLabels - Receives the requested label visibility.
  * @param props.settings.highlightInitialFinalStates - Whether initial and final states use the palette accent outline.
@@ -109,6 +111,8 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
       setTransitionTextScale,
       transitionSpacing,
       setTransitionSpacing,
+      transitionAlignment,
+      setTransitionAlignment,
       showLabels,
       setShowLabels,
       highlightInitialFinalStates,
@@ -335,6 +339,18 @@ export function SettingsPage({ settings }: { settings: AppSettings }) {
                      </div>
                      <div className="settings-group">
                         <h3>Transiciones</h3>
+                        <FormField id="settings-transition-alignment" label="Alineación del texto">
+                           <SelectMenu
+                              id="settings-transition-alignment"
+                              label="Alineación del texto"
+                              value={transitionAlignment}
+                              options={[
+                                 { label: 'Centrado en el lienzo', value: 'centered' },
+                                 { label: 'Alineado a la línea', value: 'line' },
+                              ]}
+                              onChange={setTransitionAlignment}
+                           />
+                        </FormField>
                         <FormRow>
                            <RangeSlider
                               id="settings-transition-text-scale"

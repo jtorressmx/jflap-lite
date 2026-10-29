@@ -11,6 +11,7 @@ import {
 import type { SimulationPosition } from '@/lib/settings';
 import {
    applyTransitionAppearance,
+   normalizeTransitionAlignment,
    normalizeTransitionAppearance,
 } from '@/lib/transitionAppearance';
 
@@ -63,6 +64,9 @@ export function useAppSettings() {
    const [transitionSpacing, setTransitionSpacing] = useState(() =>
       normalizeTransitionAppearance(uiSettings.transitionSpacing, 'spacing')
    );
+   const [transitionAlignment, setTransitionAlignment] = useState(() =>
+      normalizeTransitionAlignment(uiSettings.transitionAlignment)
+   );
    const [simulationPosition, setSimulationPosition] = useState<SimulationPosition>(
       uiSettings.simulationPosition === 'left' || uiSettings.simulationPosition === 'right'
          ? uiSettings.simulationPosition
@@ -89,9 +93,9 @@ export function useAppSettings() {
       () => localStorage.getItem(CLEAR_WORKSPACE_ON_EXIT_KEY) === 'true'
    );
    useLayoutEffect(() => {
-      applyTransitionAppearance(transitionTextScale, transitionSpacing);
+      applyTransitionAppearance(transitionTextScale, transitionSpacing, transitionAlignment);
       settingsChanged();
-   }, [transitionTextScale, transitionSpacing]);
+   }, [transitionTextScale, transitionSpacing, transitionAlignment]);
    useEffect(() => {
       localStorage.setItem('jflap-lite.palette', palette);
       localStorage.setItem('jflap-lite.empty-symbol', emptySymbol);
@@ -126,6 +130,7 @@ export function useAppSettings() {
             grid,
             transitionTextScale,
             transitionSpacing,
+            transitionAlignment,
             createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
@@ -138,6 +143,7 @@ export function useAppSettings() {
       grid,
       transitionTextScale,
       transitionSpacing,
+      transitionAlignment,
       createStatesOnDoubleClick,
       stateScale,
       simulationPosition,
@@ -160,6 +166,8 @@ export function useAppSettings() {
       setTransitionTextScale,
       transitionSpacing,
       setTransitionSpacing,
+      transitionAlignment,
+      setTransitionAlignment,
       simulationPosition,
       setSimulationPosition,
       createStatesOnDoubleClick,

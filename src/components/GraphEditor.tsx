@@ -20,6 +20,8 @@ import {
    nextStateId,
 } from '@/domain/model';
 import { shortcutLabel } from '@/lib/shortcuts';
+import { readTransitionAppearance } from '@/lib/transitionAppearance';
+import { layoutTransitionLabels, transitionLabelWidth } from '@/lib/transitionLabelLayout';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
@@ -81,17 +83,8 @@ const symbol = (value: string) => (value === '' ? 'â–¡' : value);
  */
 function readGraphTextLayout() {
    const style = getComputedStyle(document.documentElement);
-   const scale = Number.parseFloat(style.getPropertyValue('--graph-transition-text-scale'));
-   const fontSize = Number.parseFloat(style.getPropertyValue('--font-size-xs')) * scale;
-   const transitionLineHeight =
-      fontSize * Number.parseFloat(style.getPropertyValue('--leading-body'));
-   const rowGap =
-      Number.parseFloat(style.getPropertyValue('--graph-transition-row-gap')) *
-      Number.parseFloat(style.getPropertyValue('--graph-transition-spacing'));
    return {
-      scale,
-      transitionLineHeight,
-      transitionRowHeight: transitionLineHeight + rowGap,
+      ...readTransitionAppearance(),
       note: {
          maxWidth: Number.parseFloat(style.getPropertyValue('--graph-note-max-width')),
          padding: Number.parseFloat(style.getPropertyValue('--graph-note-padding')),
@@ -159,6 +152,15 @@ function transitionText(transition: Transition, finite = false, emptySymbol = 'Î
       .join(' | ');
 }
 
+/** Computes the clipped path and text anchor for a transition group.
+ * @param from - Source state.
+ * @param to - Destination state.
+ * @param reverse - Whether a transition in the opposite direction exists.
+ * @param transition - Transition providing an optional curve control point.
+ * @param radius - Radius of the displayed states.
+ * @param labelScale - Diagram label geometry multiplier.
+ * @returns The edge path, control point, and label geometry.
+ */
 function edgeGeometry(
    from: State,
    to: State,
@@ -174,6 +176,7 @@ function edgeGeometry(
          path: `M ${from.x - radius * 0.707} ${from.y - radius * 0.707} C ${top.x - 48 * labelScale} ${top.y - 28 * labelScale}, ${top.x + 48 * labelScale} ${top.y - 28 * labelScale}, ${from.x + radius * 0.707} ${from.y - radius * 0.707}`,
          label: { x: top.x + 82 * labelScale, y: top.y + 24 * labelScale },
          control: top,
+         curve: null,
       };
    }
    const dx = to.x - from.x;
@@ -201,6 +204,7 @@ function edgeGeometry(
          y: (start.y + 2 * midpoint.y + end.y) / 4 - 12 * labelScale,
       },
       control: midpoint,
+      curve: { start, control: midpoint, end },
    };
 }
 
@@ -1131,6 +1135,32 @@ function GraphEditor({
                      labelScale
                   );
                   const isSelected = group.some((transition) => selected.includes(transition.id));
+                  const labels = group.map((transition) =>
+                     transitionText(transition, machineKind(machine) === 'fa', emptySymbol)
+                  );
+                  const labelWidths = labels.map((label) =>
+                     transitionLabelWidth(label, textLayout.scale)
+                  );
+                  const labelPositions = geometry.curve
+                     ? layoutTransitionLabels({
+                          center: geometry.label,
+                          curve: geometry.curve,
+                          alignment: textLayout.alignment,
+                          count: group.length,
+                          lineHeight: textLayout.transitionLineHeight * labelScale,
+                          rowHeight: textLayout.transitionRowHeight * labelScale,
+                          edgeGap: textLayout.edgeGap * labelScale,
+                          width: Math.max(...labelWidths) * labelScale,
+                       })
+                     : group.map((_, index) => ({
+                          x: geometry.label.x,
+                          y:
+                             geometry.label.y +
+                             (index - (group.length - 1) / 2) *
+                                textLayout.transitionRowHeight *
+                                labelScale,
+                          angle: 0,
+                       }));
                   const isActive = group.some((transition) => activeTransition === transition.id);
                   const isFollowed = group.some((transition) =>
                      followedTransitions.includes(transition.id)
@@ -1164,18 +1194,9 @@ function GraphEditor({
                            />
                         )}
                         {group.map((transition, index) => {
-                           const y =
-                              geometry.label.y +
-                              (from.id === to.id
-                                 ? index - (group.length - 1) / 2
-                                 : -(group.length - 1 - index)) *
-                                 textLayout.transitionRowHeight *
-                                 labelScale;
-                           const label = transitionText(
-                              transition,
-                              machineKind(machine) === 'fa',
-                              emptySymbol
-                           );
+                           const position = labelPositions[index];
+                           const label = labels[index];
+                           const labelWidth = labelWidths[index];
                            return (
                               <g
                                  key={transition.id}
@@ -1201,14 +1222,12 @@ function GraphEditor({
                                  }}
                               >
                                  <g
-                                    transform={`translate(${geometry.label.x} ${y}) scale(${labelScale})`}
+                                    transform={`translate(${position.x} ${position.y}) rotate(${position.angle}) scale(${labelScale})`}
                                  >
                                     <rect
-                                       x={-Math.max(42, label.length * 3.7 + 10) * textLayout.scale}
+                                       x={-labelWidth / 2}
                                        y={-textLayout.transitionLineHeight / 2}
-                                       width={
-                                          Math.max(84, label.length * 7.4 + 20) * textLayout.scale
-                                       }
+                                       width={labelWidth}
                                        height={textLayout.transitionLineHeight}
                                        rx={5}
                                     />

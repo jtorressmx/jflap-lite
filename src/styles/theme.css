@@ -156,6 +156,7 @@
       --graph-transition-spacing: 0;
       --graph-transition-text-size: calc(var(--font-size-xs) * var(--graph-transition-text-scale));
       --graph-transition-row-gap: var(--space-1);
+      --graph-transition-edge-gap: var(--space-1);
       --tape-cell-width: 42px;
       --tape-cell-height: 40px;
       --tape-cell-border-width: 1px;

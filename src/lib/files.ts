@@ -1,5 +1,7 @@
 import type { Machine } from '@/domain/model';
 import { machineKind } from '@/domain/model';
+import { readTransitionAppearance } from '@/lib/transitionAppearance';
+import { layoutTransitionLabels, transitionLabelWidth } from '@/lib/transitionLabelLayout';
 
 export async function download(
    content: BlobPart,
@@ -29,8 +31,12 @@ function escapeXml(s: string) {
          })[c]!
    );
 }
+/** Renders a machine as SVG using the current transition appearance.
+ * @param m - Machine to render.
+ * @returns A complete SVG document with bounds covering its labels.
+ */
 function machineSvg(m: Machine): string {
-   const all = [
+   const all: { x: number; y: number }[] = [
       ...m.states,
       ...m.notes,
       ...m.transitions.flatMap((t) => (t.control ? [t.control] : [])),
@@ -41,10 +47,7 @@ function machineSvg(m: Machine): string {
       groups.set(key, [...(groups.get(key) || []), t]);
    }
    const rows = Math.max(1, ...[...groups.values()].map((g) => g.length));
-   const minX = Math.min(0, ...all.map((s) => s.x - 110)),
-      minY = Math.min(0, ...all.map((s) => s.y - 110 - rows * 18));
-   const width = Math.max(600, ...all.map((s) => s.x + 200)) - minX,
-      height = Math.max(300, ...all.map((s) => s.y + 135)) - minY;
+   const appearance = readTransitionAppearance();
    const css = getComputedStyle(document.documentElement),
       color = (n: string) => css.getPropertyValue(n).trim();
    const text = color('--export-text'),
@@ -107,33 +110,73 @@ function machineSvg(m: Machine): string {
          '" fill="none" stroke="' +
          border +
          '" stroke-width="1.5" marker-end="url(#arrow)"/>';
-      group.forEach((item, index) => {
-         const y = ly - (group.length - 1 - index) * 19,
-            label =
-               machineKind(m) === 'fa'
-                  ? item.read ||
-                    (localStorage.getItem('jflap-lite.empty-symbol') === 'λ' ? 'λ' : 'ε')
-                  : (item.read || '□') + '; ' + (item.write || '□') + ', ' + item.move;
+      const labels = group.map((item) =>
+         machineKind(m) === 'fa'
+            ? item.read || (localStorage.getItem('jflap-lite.empty-symbol') === 'λ' ? 'λ' : 'ε')
+            : (item.read || '□') + '; ' + (item.write || '□') + ', ' + item.move
+      );
+      const labelWidths = labels.map((label) => transitionLabelWidth(label, appearance.scale));
+      const labelPositions =
+         a.id !== b.id
+            ? layoutTransitionLabels({
+                 center: { x: lx, y: ly },
+                 curve: {
+                    start: { x: sx, y: sy },
+                    control: { x: cx, y: cy },
+                    end: { x: ex, y: ey },
+                 },
+                 alignment: appearance.alignment,
+                 count: group.length,
+                 lineHeight: appearance.transitionLineHeight,
+                 rowHeight: appearance.transitionRowHeight,
+                 edgeGap: appearance.edgeGap,
+                 width: Math.max(...labelWidths),
+              })
+            : group.map((_, index) => ({
+                 x: lx,
+                 y: ly - (group.length - 1 - index) * appearance.transitionRowHeight,
+                 angle: 0,
+              }));
+      labels.forEach((label, index) => {
+         const position = labelPositions[index];
+         const labelWidth = labelWidths[index];
+         const radians = (position.angle * Math.PI) / 180;
+         const extentX =
+            (Math.abs(Math.cos(radians)) * labelWidth +
+               Math.abs(Math.sin(radians)) * appearance.transitionLineHeight) /
+            2;
+         const extentY =
+            (Math.abs(Math.sin(radians)) * labelWidth +
+               Math.abs(Math.cos(radians)) * appearance.transitionLineHeight) /
+            2;
+         all.push(
+            { x: position.x - extentX, y: position.y - extentY },
+            { x: position.x + extentX, y: position.y + extentY }
+         );
          content +=
-            '<rect x="' +
-            (lx - label.length * 3.5 - 5) +
+            '<g transform="translate(' +
+            position.x +
+            ' ' +
+            position.y +
+            ') rotate(' +
+            position.angle +
+            ')"><rect x="' +
+            -labelWidth / 2 +
             '" y="' +
-            (y - 12) +
+            -appearance.transitionLineHeight / 2 +
             '" width="' +
-            (label.length * 7 + 10) +
-            '" height="18" rx="3" fill="' +
+            labelWidth +
+            '" height="' +
+            appearance.transitionLineHeight +
+            '" rx="3" fill="' +
             color('--export-surface') +
-            '"/><text x="' +
-            lx +
-            '" y="' +
-            y +
-            '" text-anchor="middle" font-family="Consolas,monospace" font-size="' +
-            smallTextSize +
+            '"/><text x="0" y="0" dominant-baseline="central" text-anchor="middle" font-family="Consolas,monospace" font-size="' +
+            appearance.fontSize +
             '" fill="' +
             text +
             '">' +
             escapeXml(label) +
-            '</text>';
+            '</text></g>';
       });
    }
    for (const s of m.states) {
@@ -217,6 +260,10 @@ function machineSvg(m: Machine): string {
             )
             .join('') +
          '</text>';
+   const minX = Math.min(0, ...all.map((s) => s.x - 110)),
+      minY = Math.min(0, ...all.map((s) => s.y - 110 - rows * 18));
+   const width = Math.max(600, ...all.map((s) => s.x + 200)) - minX,
+      height = Math.max(300, ...all.map((s) => s.y + 135)) - minY;
    return (
       '<svg xmlns="http://www.w3.org/2000/svg" width="' +
       width +
