@@ -1,7 +1,9 @@
 export const AUTO_SAVE_ON_BLUR_KEY = 'jflap-lite.auto-save-on-blur';
+export const CLEAR_WORKSPACE_ON_EXIT_KEY = 'jflap-lite.clear-workspace-on-exit';
 export type SimulationPosition = 'left' | 'right' | 'bottom';
 const keys = [
    AUTO_SAVE_ON_BLUR_KEY,
+   CLEAR_WORKSPACE_ON_EXIT_KEY,
    'jflap-lite.preferences.v1',
    'jflap-lite.theme',
    'jflap-lite.accent',

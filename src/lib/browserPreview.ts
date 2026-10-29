@@ -176,6 +176,12 @@ export function createBrowserPreview(): DesktopBridge {
    return {
       isDesktop: false,
       platform: /Mac|iPhone|iPad/.test(navigator.platform) ? 'darwin' : 'browser',
+      getFolderWorkspaces: requireDesktop,
+      createFolderWorkspace: requireDesktop,
+      selectFolderWorkspace: requireDesktop,
+      removeFolderWorkspace: requireDesktop,
+      listFolderWorkspaceFiles: requireDesktop,
+      openFolderWorkspaceFile: requireDesktop,
       getRecentFiles: recentFiles,
       removeRecentFile: recentFiles,
       openRecentFile: requireDesktop,

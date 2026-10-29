@@ -20,6 +20,17 @@
    body {
       @apply font-sans text-md leading-body text-foreground bg-mica;
       -webkit-font-smoothing: antialiased;
+      user-select: none;
+      -webkit-user-select: none;
+   }
+   input,
+   textarea,
+   [contenteditable='true'],
+   output,
+   pre,
+   code {
+      user-select: text;
+      -webkit-user-select: text;
    }
    button,
    input,

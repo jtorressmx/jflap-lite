@@ -9,18 +9,19 @@ import {
    FiDownload,
    FiList,
    FiPause,
-   FiPauseCircle,
    FiPlay,
    FiRotateCcw,
-   FiTrash2,
    FiXCircle,
    FiZap,
 } from '@/components/icons';
 import { BatchActions } from '@/components/simulation/BatchActions';
 import { BatchInputEditor } from '@/components/simulation/BatchInputEditor';
 import { BatchResultsTable } from '@/components/simulation/BatchResultsTable';
-import { SelectableOutput } from '@/components/simulation/SelectableOutput';
+import { SimulationExportDialog } from '@/components/simulation/SimulationExportDialog';
+import { SimulationLoopNotice } from '@/components/simulation/SimulationLoopNotice';
+import { SimulationOutputSummary } from '@/components/simulation/SimulationOutputSummary';
 import { SimulationSpeed } from '@/components/simulation/SimulationSpeed';
+import { TuringTraceTable } from '@/components/simulation/SimulationTraceTable';
 import { SimulationTabs } from '@/components/simulation/SimulationTabs';
 import {
    SimulationWindowActions,
@@ -36,6 +37,7 @@ import { Modal } from '@/components/ui/Modal';
 import { ModalBody } from '@/components/ui/ModalBody';
 import type { Configuration, Machine, Preferences, Session } from '@/domain/model';
 import { BLANK } from '@/domain/model';
+import { DEFAULT_ITERATION_LIMIT } from '@/domain/simulationLimits';
 import {
    createSession,
    getOutput,
@@ -46,9 +48,11 @@ import {
    stepSession,
    traceSession,
 } from '@/domain/turing';
+import { useTuringAnalysis } from '@/hooks/useTuringAnalysis';
 import type { BatchInputItem, BatchTextFile } from '@/lib/batchInput';
 import { createBatchInputItem, manualBatchInputs } from '@/lib/batchInput';
 import { download } from '@/lib/files';
+import type { SimulationImage } from '@/lib/simulationImage';
 import { exportTablePng } from '@/lib/tableImage';
 
 type Request = {
@@ -58,11 +62,14 @@ type Request = {
 type Props = SimulationPlacementProps & {
    onClose?: () => void;
    machine: Machine;
+   documentTitle: string;
    preferences: Preferences;
    request?: Request;
    onActivity: (states: string[], transition?: string, guide?: SimulationGuide) => void;
    onMessage: (message: string) => void;
    emptySymbol?: 'ε' | 'λ';
+   iterationLimit?: number;
+   analysisEnabled?: boolean;
 };
 export type SimulationGuide = {
    state?: string;
@@ -83,16 +90,18 @@ const statusNames = {
    accepted: 'Aceptada',
    rejected: 'Rechazada',
    limit: 'Límite alcanzado',
+   loop: 'Bucle confirmado',
 };
 const tone = (status?: Session['status']) =>
    status === 'accepted'
       ? 'success'
       : status === 'rejected'
         ? 'danger'
-        : status === 'limit'
+        : status === 'limit' || status === 'loop'
           ? 'warning'
           : 'accent';
-const terminal = (session: Session) => ['accepted', 'rejected', 'limit'].includes(session.status);
+const terminal = (session: Session) =>
+   ['accepted', 'rejected', 'limit', 'loop'].includes(session.status);
 const MAX_DIRECT_SPEED = 2;
 const MIN_DIRECT_INTERVAL = 1000 / MAX_DIRECT_SPEED;
 const isRejected = (configuration: Configuration) =>
@@ -153,6 +162,7 @@ function traceText(machine: Machine, session: Session, id?: string, emptySymbol:
  * @param props - Component options.
  * @param [props.onClose] - Requests closing the component; receives no arguments.
  * @param props.machine - Machine used by the component.
+ * @param props.documentTitle - Title displayed for the document in the workspace.
  * @param props.preferences - Machine execution and acceptance preferences.
  * @param props.position - Current location of the simulator.
  * @param props.onPositionChange - Receives the requested simulator location.
@@ -162,11 +172,14 @@ function traceText(machine: Machine, session: Session, id?: string, emptySymbol:
  * @param props.onActivity - Receives active state identifiers, an optional transition, and an optional tracking guide.
  * @param props.onMessage - Receives the message to present in the application.
  * @param [props.emptySymbol=ε] - Symbol used to display the empty string.
+ * @param [props.iterationLimit=10000] - Highest iteration analyzed for the current input.
+ * @param [props.analysisEnabled=true] - Whether background analysis should run.
  * @returns The Turing machine simulation, tests, and traces.
  */
 export function SimulationPanel({
    onClose,
    machine,
+   documentTitle,
    preferences,
    position,
    onPositionChange,
@@ -174,16 +187,19 @@ export function SimulationPanel({
    onActivity,
    onMessage,
    emptySymbol = 'ε',
+   iterationLimit = DEFAULT_ITERATION_LIMIT,
+   analysisEnabled = true,
 }: Props) {
    const panelId = useId().replace(/:/g, '');
    const [tab, setTab] = useState<'simulation' | 'batch' | 'trace'>('simulation');
    const [input, setInput] = useState('');
    const [session, setSession] = useState<Session | null>(null);
+   const [savedHistory, setSavedHistory] = useState<Session | null>(null);
    const [iterationTarget, setIterationTarget] = useState<string | null>(null);
    const [playing, setPlaying] = useState(false);
    const [speed, setSpeed] = useState(650);
    const [directing, setDirecting] = useState(false);
-   const [stepLimit, setStepLimit] = useState(1000);
+   const [stepLimit, setStepLimit] = useState(iterationLimit);
    const [configurationLimit, setConfigurationLimit] = useState(2000);
    const [notice, setNotice] = useState('');
    const [batchItems, setBatchItems] = useState<BatchInputItem[]>(() => [createBatchInputItem()]);
@@ -193,12 +209,39 @@ export function SimulationPanel({
       machine: Machine;
       session: Session;
    } | null>(null);
-   const [traceId, setTraceId] = useState<string | undefined>();
+   const [exportSnapshot, setExportSnapshot] = useState<SimulationImage | null>(null);
    const [traceFocusId, setTraceFocusId] = useState<string | undefined>();
    const signature = JSON.stringify([machine.states, machine.transitions, preferences]);
    const oldSignature = useRef(signature);
+   const notifiedLoop = useRef('');
+   const analysis = useTuringAnalysis(
+      { machine, input, preferences, maxSteps: stepLimit, maxConfigurations: configurationLimit },
+      analysisEnabled
+   );
+   const analyzedSession = analysis.session ? focusAccepted(analysis.session) : undefined;
+   const navigationSession = [session, savedHistory, analyzedSession].reduce<Session | null>(
+      (furthest, candidate) =>
+         candidate && (!furthest || candidate.steps >= furthest.steps) ? candidate : furthest,
+      null
+   );
+   const loopSession = [analysis.session, session, savedHistory].find(
+      (candidate) => candidate?.loop
+   );
+   const confirmedLoop = loopSession?.loop;
+   const loopMessage = loopSession?.message ?? '';
    const latest = useRef({ session, machine, preferences, onMessage });
    latest.current = { session, machine, preferences, onMessage };
+
+   useEffect(() => {
+      setStepLimit(iterationLimit);
+   }, [iterationLimit]);
+   useEffect(() => {
+      if (!loopMessage || !analysisEnabled || oldSignature.current !== signature) return;
+      const notificationKey = JSON.stringify([analysis.executionKey, loopMessage]);
+      if (notifiedLoop.current === notificationKey) return;
+      notifiedLoop.current = notificationKey;
+      onMessage('Bucle confirmado en la simulación.');
+   }, [loopMessage, analysisEnabled, signature, analysis.executionKey, onMessage]);
 
    function saveText(name: string, text: string) {
       void download(text, name).catch((error) => onMessage((error as Error).message));
@@ -209,9 +252,10 @@ export function SimulationPanel({
       oldSignature.current = signature;
       if (latest.current.session) setNotice('La máquina cambió. Inicia una nueva simulación.');
       setSession(null);
+      setSavedHistory(null);
+      setTab((current) => (current === 'trace' ? 'simulation' : current));
       setPlaying(false);
       setDirecting(false);
-      setTraceId(undefined);
       setResults([]);
       setResultModal(null);
    }, [signature]);
@@ -252,11 +296,11 @@ export function SimulationPanel({
       try {
          const next = createSession(machine, input, preferences);
          setSession(next);
+         setSavedHistory(null);
          setIterationTarget(null);
          setPlaying(false);
          setDirecting(false);
          setNotice('');
-         setTraceId(undefined);
          setTab('simulation');
          return next;
       } catch (error) {
@@ -265,21 +309,19 @@ export function SimulationPanel({
       }
    }
    /**
-    * Closes the simulator and clears its temporary results.
+    * Closes the simulator and clears execution results while preserving batch inputs.
     * @returns No value.
     */
    function closeSimulation() {
       setSession(null);
+      setSavedHistory(null);
       setIterationTarget(null);
       setPlaying(false);
       setDirecting(false);
       setNotice('');
       setTab('simulation');
-      setTraceId(undefined);
       setTraceFocusId(undefined);
       setResults([]);
-      setBatchItems([createBatchInputItem()]);
-      setBatchFile(null);
       setResultModal(null);
       onActivity([], undefined);
       onClose?.();
@@ -290,42 +332,47 @@ export function SimulationPanel({
     * @returns No value.
     */
    function restoreIteration(iteration: number, preferredId?: string): void {
-      if (!session || iteration < 0 || iteration >= session.history.length) return;
+      if (!navigationSession || iteration < 0 || iteration >= navigationSession.history.length)
+         return;
       setPlaying(false);
       setDirecting(false);
-      const history = session.history.slice(0, iteration + 1);
+      setSavedHistory(navigationSession);
+      const history = navigationSession.history.slice(0, iteration + 1);
       const configurations = history.at(-1) ?? [];
       const selected = preferredId
          ? configurations.find((config) => config.id === preferredId)
-         : [...traceSession(session, chosen(session)?.id)]
+         : [...traceSession(navigationSession, chosen(navigationSession)?.id)]
               .reverse()
               .find((candidate) => configurations.some((config) => config.id === candidate.id));
       const active = configurations.some((config) => !isRejected(config));
       const isAccepted = configurations.some((config) =>
          isConfigurationAccepted(machine, config, preferences)
       );
-      const status = isAccepted
-         ? 'accepted'
-         : active
-           ? history.length === 1
-              ? 'ready'
-              : 'running'
-           : 'rejected';
+      const atEnd = iteration === navigationSession.steps;
+      const status = atEnd
+         ? navigationSession.status
+         : isAccepted
+           ? 'accepted'
+           : active
+             ? history.length === 1
+                ? 'ready'
+                : 'running'
+             : 'rejected';
       setSession({
-         ...session,
+         ...navigationSession,
          configurations,
          history,
          steps: iteration,
          status,
          selectedId: selected?.id ?? configurations[0]?.id,
-         frozenIds: session.frozenIds?.filter((id) =>
+         frozenIds: navigationSession.frozenIds?.filter((id) =>
             configurations.some((config) => config.id === id)
          ),
-         message: undefined,
+         loop: atEnd ? navigationSession.loop : undefined,
+         message: atEnd ? navigationSession.message : undefined,
       });
       setIterationTarget(null);
       setNotice('');
-      setTraceId(undefined);
    }
    /** Restores the previous Turing machine iteration.
     * @returns No value.
@@ -340,8 +387,8 @@ export function SimulationPanel({
     */
    function goToIteration(event: FormEvent<HTMLFormElement>): void {
       event.preventDefault();
-      if (!session || !canGoToIteration) return;
-      if (iterationIndex === session.steps) {
+      if (!canGoToIteration) return;
+      if (iterationIndex === session?.steps) {
          setPlaying(false);
          setDirecting(false);
          setIterationTarget(null);
@@ -369,13 +416,23 @@ export function SimulationPanel({
          const next = focusAccepted(stepped);
          setSession(next);
          setNotice(next.message ?? '');
-         setTraceId(undefined);
          setTab('simulation');
       } catch (error) {
          onMessage((error as Error).message);
       }
    }
-   /** Runs the simulation to completion and displays its result in the panel.
+   /** Runs the simulation to completion with the current execution limits.
+    * @param simulationInput - Input captured for the simulation.
+    * @returns The completed or limit-reached session.
+    */
+   function simulateToCompletion(simulationInput: string): Session {
+      return focusAccepted(
+         simulationInput === input && analysis.session
+            ? analysis.session
+            : runMachine(machine, simulationInput, preferences, stepLimit, configurationLimit)
+      );
+   }
+   /** Runs the current input to completion and displays its result in the panel.
     * Takes no input.
     * @returns No value.
     */
@@ -384,13 +441,10 @@ export function SimulationPanel({
       setIterationTarget(null);
       try {
          setDirecting(false);
-         const next = focusAccepted(
-            runMachine(machine, input, preferences, stepLimit, configurationLimit)
-         );
+         const next = simulateToCompletion(input);
          setSession(next);
          setPlaying(false);
          setNotice(next.message ?? '');
-         setTraceId(undefined);
          setTab('simulation');
       } catch (error) {
          onMessage((error as Error).message);
@@ -491,7 +545,7 @@ export function SimulationPanel({
             setTab('batch');
             break;
          case 'trace':
-            setTab('trace');
+            if (session) setTab('trace');
             break;
       }
    });
@@ -516,43 +570,54 @@ export function SimulationPanel({
       [machine.states, input]
    );
    const visible = session ? (chosen(session) ?? preview) : preview;
-   const configurations = session ? session.configurations : [];
-   const trace = session ? traceSession(session, traceId ?? visible.id) : [];
+   const trace = session ? traceSession(session, visible.id) : [];
    const iterationValue = iterationTarget ?? String(session?.steps ?? 0);
    const iterationIndex = Number(iterationValue);
+   const maximumIteration = navigationSession?.steps ?? 0;
+   const maximumIsFinal =
+      navigationSession?.status === 'accepted' || navigationSession?.status === 'rejected';
+   const analysisNotice =
+      loopMessage ||
+      (navigationSession?.status === 'limit'
+         ? `${navigationSession.message} No se confirmó un bucle.`
+         : analysis.status === 'error'
+           ? 'No se pudo analizar la entrada. Puedes iniciar la simulación o revisar la máquina.'
+           : '');
    const canGoToIteration =
-      !!session &&
+      !!navigationSession &&
       iterationValue.length > 0 &&
       Number.isInteger(iterationIndex) &&
       iterationIndex >= 0 &&
-      iterationIndex < session.history.length;
-   const output = session ? getOutput(visible) : '';
+      iterationIndex <= maximumIteration;
+   /** Completes the current input and opens its export preview.
+    * @returns No value.
+    */
+   function openExport(): void {
+      setPlaying(false);
+      setDirecting(false);
+      const simulationInput = session?.input ?? input;
+      try {
+         const completed = simulateToCompletion(simulationInput);
+         const configuration = chosen(completed);
+         if (!configuration) throw new Error('No hay un resultado final para exportar.');
+         setIterationTarget(null);
+         setNotice(completed.message ?? '');
+         setSession(completed);
+         setTab('simulation');
+         setExportSnapshot({
+            kind: 'turing',
+            name: machine.name,
+            title: documentTitle,
+            machine: structuredClone(machine),
+            input: simulationInput,
+            configuration: structuredClone(configuration),
+            status: completed.status,
+         });
+      } catch (error) {
+         onMessage((error as Error).message);
+      }
+   }
 
-   function freeze(id: string) {
-      if (!session) return;
-      const frozen = session.frozenIds ?? [];
-      const frozenIds = frozen.includes(id)
-         ? frozen.filter((item) => item !== id)
-         : [...frozen, id];
-      if (
-         session.configurations.every(
-            (config) => frozenIds.includes(config.id) || config.halted || isRejected(config)
-         )
-      )
-         setPlaying(false);
-      setSession({ ...session, frozenIds });
-   }
-   function removeConfiguration(id: string) {
-      if (!session) return;
-      const remaining = session.configurations.filter((config) => config.id !== id);
-      setSession({
-         ...session,
-         configurations: remaining,
-         frozenIds: session.frozenIds?.filter((item) => item !== id),
-         selectedId: remaining[0]?.id,
-         status: remaining.length ? session.status : 'rejected',
-      });
-   }
    function runBatch() {
       setPlaying(false);
       setDirecting(false);
@@ -615,7 +680,9 @@ export function SimulationPanel({
                           ? 'Reject'
                           : row.session?.status === 'limit'
                             ? 'Limit'
-                            : row.error || '';
+                            : row.session?.status === 'loop'
+                              ? 'Loop'
+                              : row.error || '';
                   return `Input: ${row.input} Output: ${output} Result: ${result} `;
                })
                .join('\r\n') + '\r\n';
@@ -717,13 +784,23 @@ export function SimulationPanel({
             >
                <SimulationTabs
                   selected={tab}
+                  traceEnabled={!!session}
                   onSelect={setTab}
                   tabId={(id) => `${panelId}-tab-${id}`}
                   panelId={(id) => `${panelId}-simulation-${id}`}
                />
             </div>
             <div className="simulation-tab-status">
-               {session?.status === 'limit' && (
+               <Button
+                  variant="subtle"
+                  className="simulation-export-trigger"
+                  aria-label="Exportar simulación"
+                  title="Exportar simulación"
+                  onClick={openExport}
+               >
+                  <FiDownload /> <span>Exportar simulación</span>
+               </Button>
+               {session && (session.status === 'limit' || session.status === 'loop') && (
                   <Badge tone="warning">{statusNames[session.status]}</Badge>
                )}
             </div>
@@ -749,6 +826,8 @@ export function SimulationPanel({
                      onChange={(event) => {
                         setInput(event.target.value);
                         setSession(null);
+                        setSavedHistory(null);
+                        setIterationTarget(null);
                         setPlaying(false);
                         setDirecting(false);
                         setNotice('');
@@ -798,7 +877,7 @@ export function SimulationPanel({
                      <IconButton label="Ejecución rápida" tooltip onClick={() => fast()}>
                         <FiZap />
                      </IconButton>
-                     {session && session.history.length > 1 && (
+                     {(navigationSession || analysis.status === 'running') && (
                         <form
                            className="simulation-iteration-control"
                            aria-label="Ir a una iteración"
@@ -808,17 +887,22 @@ export function SimulationPanel({
                               label="Iteración"
                               type="number"
                               min="0"
-                              max={session.steps}
+                              max={maximumIteration}
                               step="1"
                               required
                               value={iterationValue}
-                              title={`Iteraciones disponibles: 0 a ${session.steps}`}
+                              title={`Iteraciones disponibles: 0 a ${maximumIteration}`}
                               className="simulation-iteration-field"
                               onChange={handleIterationChange}
                            />
                            <Button type="submit" disabled={!canGoToIteration}>
                               Ir
                            </Button>
+                           <output className="simulation-iteration-maximum" aria-live="polite">
+                              {analysis.status === 'running'
+                                 ? 'Analizando…'
+                                 : `${maximumIsFinal ? 'Máxima' : 'Máxima analizada'}: ${maximumIteration.toLocaleString('es-MX')}`}
+                           </output>
                         </form>
                      )}
                   </div>
@@ -846,79 +930,24 @@ export function SimulationPanel({
                      />
                   </div>
                </div>
-               <SelectableOutput value={output} />
-               {notice && (
+               {session && (session.status === 'accepted' || session.status === 'rejected') && (
+                  <SimulationOutputSummary input={session.input} output={getOutput(visible)} />
+               )}
+               {!confirmedLoop && (analysisNotice || notice) && (
                   <p className="simulation-notice" role="status">
-                     {notice}
+                     {analysisNotice || notice}
                   </p>
+               )}
+               {confirmedLoop && (
+                  <SimulationLoopNotice
+                     loop={confirmedLoop}
+                     onGoToStart={() => restoreIteration(confirmedLoop.firstIteration)}
+                  />
                )}
                {session?.status === 'limit' && (
                   <Button onClick={() => continueExecution(machine, session)}>
                      <FiPlay /> Continuar con límites mayores
                   </Button>
-               )}
-               {session && configurations.length > 1 && (
-                  <div
-                     className="configuration-list"
-                     role="group"
-                     aria-label="Configuraciones de la simulación"
-                  >
-                     {configurations.map((config) => (
-                        <div
-                           key={config.id}
-                           className={`configuration-card${visible.id === config.id ? ' is-selected' : ''}`}
-                        >
-                           <button
-                              className="configuration-select"
-                              onClick={() => setSession({ ...session, selectedId: config.id })}
-                           >
-                              <span>
-                                 {machine.states.find((state) => state.id === config.state)?.name ??
-                                    config.state}
-                              </span>
-                              {isRejected(config) ? (
-                                 <span className="configuration-rejected">Rechazada</span>
-                              ) : config.halted ? (
-                                 <span>Detenida</span>
-                              ) : machine.states.some(
-                                   (state) => state.id === config.state && state.final
-                                ) ? (
-                                 <span className="configuration-accepted">Final</span>
-                              ) : null}
-                           </button>
-                           <IconButton
-                              label={
-                                 session.frozenIds?.includes(config.id)
-                                    ? 'Descongelar configuración'
-                                    : 'Congelar configuración'
-                              }
-                              tooltip
-                              active={session.frozenIds?.includes(config.id)}
-                              onClick={() => freeze(config.id)}
-                              disabled={terminal(session) || config.halted || isRejected(config)}
-                           >
-                              <FiPauseCircle />
-                           </IconButton>
-                           <IconButton
-                              label="Ver traza de esta configuración"
-                              tooltip
-                              onClick={() => {
-                                 setTraceId(config.id);
-                                 setTab('trace');
-                              }}
-                           >
-                              <FiList />
-                           </IconButton>
-                           <IconButton
-                              label="Eliminar configuración"
-                              tooltip
-                              onClick={() => removeConfiguration(config.id)}
-                           >
-                              <FiTrash2 />
-                           </IconButton>
-                        </div>
-                     ))}
-                  </div>
                )}
             </div>
          )}
@@ -1039,35 +1068,32 @@ export function SimulationPanel({
                            onClick={() =>
                               saveText(
                                  'traza.txt',
-                                 traceText(machine, session, traceId ?? visible.id, emptySymbol)
+                                 traceText(machine, session, visible.id, emptySymbol)
                               )
                            }
                         >
                            <FiDownload /> Exportar traza
                         </Button>
                      </div>
-                     <div className="trace-timeline">
-                        {trace.map((config) => (
-                           <button
-                              key={config.id}
-                              className={`trace-step${traceFocusId === config.id ? ' is-selected' : ''}`}
-                              onClick={() => {
-                                 setTraceFocusId(config.id);
-                                 onActivity([config.state], config.transitionId);
-                              }}
-                           >
-                              <span className="trace-step-number">{config.depth}</span>
-                              <span className="trace-step-state">
-                                 {machine.states.find((state) => state.id === config.state)?.name ??
-                                    config.state}
-                              </span>
-                              <Tape configuration={config} compact />
-                           </button>
-                        ))}
-                     </div>
+                     <TuringTraceTable
+                        machine={machine}
+                        trace={trace}
+                        selectedId={traceFocusId}
+                        onSelect={(config, transitionId) => {
+                           setTraceFocusId(config.id);
+                           onActivity([config.state], transitionId);
+                        }}
+                     />
                   </>
                )}
             </div>
+         )}
+         {exportSnapshot && (
+            <SimulationExportDialog
+               simulation={exportSnapshot}
+               onClose={() => setExportSnapshot(null)}
+               onMessage={onMessage}
+            />
          )}
          {resultModal && (
             <Modal
@@ -1081,9 +1107,11 @@ export function SimulationPanel({
                      <span>{resultModal.session.steps} pasos</span>
                      <code>Entrada: {resultModal.session.input || emptySymbol}</code>
                   </div>
-                  {resultModal.session.message && (
+                  {resultModal.session.loop ? (
+                     <SimulationLoopNotice loop={resultModal.session.loop} />
+                  ) : resultModal.session.message ? (
                      <p className="simulation-notice">{resultModal.session.message}</p>
-                  )}
+                  ) : null}
                   {resultModal.session.status === 'limit' && (
                      <Button
                         onClick={() =>
@@ -1134,14 +1162,10 @@ export function SimulationPanel({
                               Ver {traceSession(resultModal.session, config.id).length} pasos de
                               esta rama
                            </summary>
-                           <pre>
-                              {traceText(
-                                 resultModal.machine,
-                                 resultModal.session,
-                                 config.id,
-                                 emptySymbol
-                              )}
-                           </pre>
+                           <TuringTraceTable
+                              machine={resultModal.machine}
+                              trace={traceSession(resultModal.session, config.id)}
+                           />
                         </details>
                      </div>
                   ))}

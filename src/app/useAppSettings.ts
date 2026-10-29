@@ -1,9 +1,20 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 
 import type { Preferences } from '@/domain/model';
 import { defaultPreferences } from '@/domain/model';
-import { AUTO_SAVE_ON_BLUR_KEY, readUiSettings, settingsChanged } from '@/lib/settings';
+import { normalizeIterationLimit } from '@/domain/simulationLimits';
+import {
+   AUTO_SAVE_ON_BLUR_KEY,
+   CLEAR_WORKSPACE_ON_EXIT_KEY,
+   readUiSettings,
+   settingsChanged,
+} from '@/lib/settings';
 import type { SimulationPosition } from '@/lib/settings';
+import {
+   applyTransitionAppearance,
+   normalizeTransitionAlignment,
+   normalizeTransitionAppearance,
+} from '@/lib/transitionAppearance';
 
 /**
  * Reads validated simulation preferences from local storage.
@@ -41,6 +52,9 @@ function readPreferences(): Preferences {
 export function useAppSettings() {
    const [uiSettings] = useState(readUiSettings);
    const [preferences, setPreferences] = useState<Preferences>(readPreferences);
+   const [iterationLimit, setIterationLimit] = useState(() =>
+      normalizeIterationLimit(uiSettings.iterationLimit)
+   );
    const [theme, setTheme] = useState(() => localStorage.getItem('jflap-lite.theme') || 'light');
    const [accent, setAccent] = useState(() => localStorage.getItem('jflap-lite.accent') || 'blue');
    const [showLabels, setShowLabels] = useState(uiSettings.showLabels !== false);
@@ -48,12 +62,20 @@ export function useAppSettings() {
       uiSettings.highlightInitialFinalStates !== false
    );
    const [grid, setGrid] = useState(uiSettings.grid !== false);
+   const [transitionTextScale, setTransitionTextScale] = useState(() =>
+      normalizeTransitionAppearance(uiSettings.transitionTextScale, 'text')
+   );
+   const [transitionSpacing, setTransitionSpacing] = useState(() =>
+      normalizeTransitionAppearance(uiSettings.transitionSpacing, 'spacing')
+   );
+   const [transitionAlignment, setTransitionAlignment] = useState(() =>
+      normalizeTransitionAlignment(uiSettings.transitionAlignment)
+   );
    const [simulationPosition, setSimulationPosition] = useState<SimulationPosition>(
       uiSettings.simulationPosition === 'left' || uiSettings.simulationPosition === 'right'
          ? uiSettings.simulationPosition
          : 'bottom'
    );
-   const [autoZoom, setAutoZoom] = useState(uiSettings.autoZoom === true);
    const [createStatesOnDoubleClick, setCreateStatesOnDoubleClick] = useState(
       uiSettings.createStatesOnDoubleClick !== false
    );
@@ -71,6 +93,13 @@ export function useAppSettings() {
    const [autoSaveOnBlur, setAutoSaveOnBlur] = useState(
       () => localStorage.getItem(AUTO_SAVE_ON_BLUR_KEY) === 'true'
    );
+   const [clearWorkspaceOnExit, setClearWorkspaceOnExit] = useState(
+      () => localStorage.getItem(CLEAR_WORKSPACE_ON_EXIT_KEY) === 'true'
+   );
+   useLayoutEffect(() => {
+      applyTransitionAppearance(transitionTextScale, transitionSpacing, transitionAlignment);
+      settingsChanged();
+   }, [transitionTextScale, transitionSpacing, transitionAlignment]);
    useEffect(() => {
       localStorage.setItem('jflap-lite.palette', palette);
       localStorage.setItem('jflap-lite.empty-symbol', emptySymbol);
@@ -86,6 +115,10 @@ export function useAppSettings() {
       settingsChanged();
    }, [autoSaveOnBlur]);
    useEffect(() => {
+      localStorage.setItem(CLEAR_WORKSPACE_ON_EXIT_KEY, String(clearWorkspaceOnExit));
+      settingsChanged();
+   }, [clearWorkspaceOnExit]);
+   useEffect(() => {
       localStorage.setItem('jflap-lite.theme', theme);
       localStorage.setItem('jflap-lite.accent', accent);
       document.documentElement.dataset.theme = theme;
@@ -99,10 +132,13 @@ export function useAppSettings() {
             showLabels,
             highlightInitialFinalStates,
             grid,
-            autoZoom,
+            transitionTextScale,
+            transitionSpacing,
+            transitionAlignment,
             createStatesOnDoubleClick,
             stateScale,
             simulationPosition,
+            iterationLimit,
          })
       );
       settingsChanged();
@@ -110,15 +146,20 @@ export function useAppSettings() {
       showLabels,
       highlightInitialFinalStates,
       grid,
-      autoZoom,
+      transitionTextScale,
+      transitionSpacing,
+      transitionAlignment,
       createStatesOnDoubleClick,
       stateScale,
       simulationPosition,
+      iterationLimit,
    ]);
 
    return {
       preferences,
       setPreferences,
+      iterationLimit,
+      setIterationLimit,
       theme,
       setTheme,
       accent,
@@ -129,10 +170,14 @@ export function useAppSettings() {
       setHighlightInitialFinalStates,
       grid,
       setGrid,
+      transitionTextScale,
+      setTransitionTextScale,
+      transitionSpacing,
+      setTransitionSpacing,
+      transitionAlignment,
+      setTransitionAlignment,
       simulationPosition,
       setSimulationPosition,
-      autoZoom,
-      setAutoZoom,
       createStatesOnDoubleClick,
       setCreateStatesOnDoubleClick,
       stateScale,
@@ -143,6 +188,8 @@ export function useAppSettings() {
       setPalette,
       autoSaveOnBlur,
       setAutoSaveOnBlur,
+      clearWorkspaceOnExit,
+      setClearWorkspaceOnExit,
    };
 }
 export type AppSettings = ReturnType<typeof useAppSettings>;

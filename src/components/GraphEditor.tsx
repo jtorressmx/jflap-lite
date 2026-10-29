@@ -20,6 +20,8 @@ import {
    nextStateId,
 } from '@/domain/model';
 import { shortcutLabel } from '@/lib/shortcuts';
+import { readTransitionAppearance } from '@/lib/transitionAppearance';
+import { layoutTransitionLabels, transitionLabelWidth } from '@/lib/transitionLabelLayout';
 
 type Point = { x: number; y: number };
 type Tool = 'select' | 'state' | 'transition' | 'delete' | 'note';
@@ -53,6 +55,10 @@ type Props = {
    highlightInitialFinalStates?: boolean;
    createStatesOnDoubleClick?: boolean;
    zoom: number;
+   fitPadding?: number;
+   fitScale?: number;
+   minimumZoom?: number;
+   panOnly?: boolean;
    onZoom: (zoom: number) => void;
    fitKey: number;
    stateScale?: number;
@@ -71,6 +77,23 @@ type Drag = {
 };
 
 const symbol = (value: string) => (value === '' ? '□' : value);
+/** Reads resolved graph text sizes and row spacing from the shared theme.
+ * Takes no input.
+ * @returns Current transition metrics and note layout dimensions.
+ */
+function readGraphTextLayout() {
+   const style = getComputedStyle(document.documentElement);
+   return {
+      ...readTransitionAppearance(),
+      note: {
+         maxWidth: Number.parseFloat(style.getPropertyValue('--graph-note-max-width')),
+         padding: Number.parseFloat(style.getPropertyValue('--graph-note-padding')),
+         lineHeight: Number.parseFloat(style.getPropertyValue('--graph-note-line-height')),
+         fontSize: Number.parseFloat(style.getPropertyValue('--font-size-sm')),
+         radius: Number.parseFloat(style.getPropertyValue('--radius-md')),
+      },
+   };
+}
 /** Replaces an edited finite transition or an ordered Turing rule group.
  * @param machine - Current machine snapshot.
  * @param updates - Ordered rules to save; an empty list leaves transitions unchanged.
@@ -129,6 +152,15 @@ function transitionText(transition: Transition, finite = false, emptySymbol = '�
       .join(' | ');
 }
 
+/** Computes the clipped path and text anchor for a transition group.
+ * @param from - Source state.
+ * @param to - Destination state.
+ * @param reverse - Whether a transition in the opposite direction exists.
+ * @param transition - Transition providing an optional curve control point.
+ * @param radius - Radius of the displayed states.
+ * @param labelScale - Diagram label geometry multiplier.
+ * @returns The edge path, control point, and label geometry.
+ */
 function edgeGeometry(
    from: State,
    to: State,
@@ -144,6 +176,7 @@ function edgeGeometry(
          path: `M ${from.x - radius * 0.707} ${from.y - radius * 0.707} C ${top.x - 48 * labelScale} ${top.y - 28 * labelScale}, ${top.x + 48 * labelScale} ${top.y - 28 * labelScale}, ${from.x + radius * 0.707} ${from.y - radius * 0.707}`,
          label: { x: top.x + 82 * labelScale, y: top.y + 24 * labelScale },
          control: top,
+         curve: null,
       };
    }
    const dx = to.x - from.x;
@@ -171,6 +204,7 @@ function edgeGeometry(
          y: (start.y + 2 * midpoint.y + end.y) / 4 - 12 * labelScale,
       },
       control: midpoint,
+      curve: { start, control: midpoint, end },
    };
 }
 
@@ -232,9 +266,13 @@ function connectionPreviewPath(
  * @param [props.followedTransitions] - Identifiers of transitions to follow; none by default.
  * @param [props.highlightStates] - Identifiers of highlighted states; none by default.
  * @param props.showLabels - Whether state labels are displayed.
- * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use distinct colors.
+ * @param [props.highlightInitialFinalStates=false] - Whether initial and final states use the palette accent outline.
  * @param [props.createStatesOnDoubleClick=true] - Whether a background double-click creates a state.
  * @param props.zoom - Current diagram zoom factor.
+ * @param [props.fitPadding] - Optional margin around the diagram when fitting it to the viewport.
+ * @param [props.fitScale=1] - Scale multiplier applied after fitting the diagram.
+ * @param [props.minimumZoom] - Optional lower zoom bound for fitting and wheel interactions.
+ * @param [props.panOnly=false] - Restricts pointer interactions to moving and zooming the view.
  * @param [props.simulationOpen=false] - Keeps simulation framing at a readable scale.
  * @param props.onZoom - Receives the requested zoom factor.
  * @param props.fitKey - Changing this value requests fitting the diagram to the available area.
@@ -263,6 +301,10 @@ function GraphEditor({
    highlightInitialFinalStates = false,
    createStatesOnDoubleClick = true,
    zoom,
+   fitPadding,
+   fitScale = 1,
+   minimumZoom,
+   panOnly = false,
    simulationOpen = false,
    onZoom,
    fitKey,
@@ -364,16 +406,19 @@ function GraphEditor({
       []
    );
    const stateRadius = radius * stateScale;
-   const noteLayout = useMemo(() => {
-      const style = getComputedStyle(document.documentElement);
-      return {
-         maxWidth: parseFloat(style.getPropertyValue('--graph-note-max-width')),
-         padding: parseFloat(style.getPropertyValue('--graph-note-padding')),
-         lineHeight: parseFloat(style.getPropertyValue('--graph-note-line-height')),
-         fontSize: parseFloat(style.getPropertyValue('--font-size-sm')),
-         radius: parseFloat(style.getPropertyValue('--radius-md')),
-      };
+   const [textLayout, setTextLayout] = useState(readGraphTextLayout);
+   useEffect(() => {
+      /** Refreshes graph text metrics after appearance changes without inputs.
+       * @returns No value.
+       */
+      function refreshTextLayout(): void {
+         setTextLayout(readGraphTextLayout());
+      }
+      refreshTextLayout();
+      window.addEventListener('jflap-settings-changed', refreshTextLayout);
+      return () => window.removeEventListener('jflap-settings-changed', refreshTextLayout);
    }, []);
+   const noteLayout = textLayout.note;
    const live = useRef({
       machine,
       selected,
@@ -382,8 +427,22 @@ function GraphEditor({
       zoom,
       onZoom,
       pan,
+      fitPadding,
+      fitScale,
+      minimumZoom,
    });
-   live.current = { machine, selected, onSelect, onChange, zoom, onZoom, pan };
+   live.current = {
+      machine,
+      selected,
+      onSelect,
+      onChange,
+      zoom,
+      onZoom,
+      pan,
+      fitPadding,
+      fitScale,
+      minimumZoom,
+   };
 
    /**
     * Opens the requested editor using the current diagram coordinates.
@@ -423,13 +482,21 @@ function GraphEditor({
    const fitDiagram = useEffectEvent(() => {
       if (size.width <= 0 || size.height <= 0) return;
       const all = [...machine.states, ...machine.notes];
-      const minX = all.length ? Math.min(...all.map((item) => item.x)) - 100 : 0;
-      const maxX = all.length ? Math.max(...all.map((item) => item.x)) + 100 : 800;
-      const minY = all.length ? Math.min(...all.map((item) => item.y)) - 90 : 0;
-      const maxY = all.length ? Math.max(...all.map((item) => item.y)) + 65 : 500;
+      const horizontalPadding = live.current.fitPadding ?? 100;
+      const topPadding = live.current.fitPadding ?? 90;
+      const bottomPadding = live.current.fitPadding ?? 65;
+      const minX = all.length ? Math.min(...all.map((item) => item.x)) - horizontalPadding : 0;
+      const maxX = all.length ? Math.max(...all.map((item) => item.x)) + horizontalPadding : 800;
+      const minY = all.length ? Math.min(...all.map((item) => item.y)) - topPadding : 0;
+      const maxY = all.length ? Math.max(...all.map((item) => item.y)) + bottomPadding : 500;
       const fittedZoom = Math.min(
          1.35,
-         Math.max(0.25, Math.min(size.width / (maxX - minX), size.height / (maxY - minY)) * 0.88)
+         Math.max(
+            live.current.minimumZoom ?? 0.25,
+            Math.min(size.width / (maxX - minX), size.height / (maxY - minY)) *
+               0.88 *
+               live.current.fitScale
+         )
       );
       const nextZoom =
          simulationOpen && !didFit.current ? Math.max(0.75, Math.min(1, fittedZoom)) : fittedZoom;
@@ -515,7 +582,10 @@ function GraphEditor({
             };
             const delta = event.deltaY * factor;
             const zoomDelta = delta / (1 + Math.abs(delta) / 24);
-            const next = Math.max(0.2, Math.min(3, current.zoom * Math.exp(-zoomDelta * 0.01)));
+            const next = Math.max(
+               current.minimumZoom ?? 0.2,
+               Math.min(3, current.zoom * Math.exp(-zoomDelta * 0.01))
+            );
             const ratio = next / current.zoom;
             previousZoom.current = next;
             const nextPan = {
@@ -656,12 +726,23 @@ function GraphEditor({
       };
       if (mode === 'pan') setPanning(true);
    }
+   /**
+    * Starts an interaction with a graph object.
+    * @param event - Pointer event from the graph object.
+    * @param id - Identifier of the graph object.
+    * @param kind - Kind of graph object receiving the event.
+    * @returns No value.
+    */
    function objectDown(
       event: ReactPointerEvent<SVGElement>,
       id: string,
       kind: 'state' | 'transition' | 'note'
    ) {
       event.stopPropagation();
+      if (panOnly && event.button === 0) {
+         startDrag(event, 'pan', []);
+         return;
+      }
       if (event.button === 2) {
          suppressContext.current = false;
          startDrag(event, 'pan', [id]);
@@ -971,7 +1052,9 @@ function GraphEditor({
             aria-label={
                readOnly
                   ? shortcutLabel(
-                       `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
+                       panOnly
+                          ? 'Vista del diagrama. Arrastra para desplazar; usa Ctrl y rueda para cambiar el zoom.'
+                          : `Vista de ${machineTitle(machine).toLowerCase()}. Selecciona estados con Ctrl o Mayús; arrastra el fondo para desplazar.`
                     )
                   : `Editor de ${machineTitle(machine).toLowerCase()}. Arrastra el fondo para desplazar; Mayús y arrastrar para seleccionar. Pulsa Intro sobre un elemento para editarlo.`
             }
@@ -1052,6 +1135,32 @@ function GraphEditor({
                      labelScale
                   );
                   const isSelected = group.some((transition) => selected.includes(transition.id));
+                  const labels = group.map((transition) =>
+                     transitionText(transition, machineKind(machine) === 'fa', emptySymbol)
+                  );
+                  const labelWidths = labels.map((label) =>
+                     transitionLabelWidth(label, textLayout.scale)
+                  );
+                  const labelPositions = geometry.curve
+                     ? layoutTransitionLabels({
+                          center: geometry.label,
+                          curve: geometry.curve,
+                          alignment: textLayout.alignment,
+                          count: group.length,
+                          lineHeight: textLayout.transitionLineHeight * labelScale,
+                          rowHeight: textLayout.transitionRowHeight * labelScale,
+                          edgeGap: textLayout.edgeGap * labelScale,
+                          width: Math.max(...labelWidths) * labelScale,
+                       })
+                     : group.map((_, index) => ({
+                          x: geometry.label.x,
+                          y:
+                             geometry.label.y +
+                             (index - (group.length - 1) / 2) *
+                                textLayout.transitionRowHeight *
+                                labelScale,
+                          angle: 0,
+                       }));
                   const isActive = group.some((transition) => activeTransition === transition.id);
                   const isFollowed = group.some((transition) =>
                      followedTransitions.includes(transition.id)
@@ -1085,18 +1194,9 @@ function GraphEditor({
                            />
                         )}
                         {group.map((transition, index) => {
-                           const y =
-                              geometry.label.y +
-                              (from.id === to.id
-                                 ? index - (group.length - 1) / 2
-                                 : -(group.length - 1 - index)) *
-                                 23 *
-                                 labelScale;
-                           const label = transitionText(
-                              transition,
-                              machineKind(machine) === 'fa',
-                              emptySymbol
-                           );
+                           const position = labelPositions[index];
+                           const label = labels[index];
+                           const labelWidth = labelWidths[index];
                            return (
                               <g
                                  key={transition.id}
@@ -1122,24 +1222,29 @@ function GraphEditor({
                                  }}
                               >
                                  <g
-                                    transform={`translate(${geometry.label.x} ${y}) scale(${labelScale})`}
+                                    transform={`translate(${position.x} ${position.y}) rotate(${position.angle}) scale(${labelScale})`}
                                  >
                                     <rect
-                                       x={-Math.max(42, label.length * 3.7 + 10)}
-                                       y={-14}
-                                       width={Math.max(84, label.length * 7.4 + 20)}
-                                       height={22}
+                                       x={-labelWidth / 2}
+                                       y={-textLayout.transitionLineHeight / 2}
+                                       width={labelWidth}
+                                       height={textLayout.transitionLineHeight}
                                        rx={5}
                                     />
-                                    <text x={0} y={1} textAnchor="middle">
+                                    <text
+                                       x={0}
+                                       y={0}
+                                       textAnchor="middle"
+                                       dominantBaseline="central"
+                                    >
                                        {label}
                                     </text>
                                     <line
                                        className="edge-label-underline"
-                                       x1={-label.length * 3.7}
-                                       x2={label.length * 3.7}
-                                       y1={7}
-                                       y2={7}
+                                       x1={-label.length * 3.7 * textLayout.scale}
+                                       x2={label.length * 3.7 * textLayout.scale}
+                                       y1={7 * textLayout.scale}
+                                       y2={7 * textLayout.scale}
                                     />
                                  </g>
                               </g>

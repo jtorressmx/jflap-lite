@@ -52,6 +52,7 @@ export default function App() {
    const machine = active.machine;
    const [view, setView] = useState<AppView>('home');
    const [settingsOpen, setSettingsOpen] = useState(false);
+   const [documentEntryPhase, setDocumentEntryPhase] = useState(false);
    const home = view === 'home';
    const [dialog, setDialog] = useState<Dialog | null>(null);
    const [fileDropActive, setFileDropActive] = useState(false);
@@ -106,6 +107,7 @@ export default function App() {
       setHome,
       notify,
       autoSaveOnBlur: settings.autoSaveOnBlur,
+      clearWorkspaceOnExit: settings.clearWorkspaceOnExit,
       onCreate: () => simulation.setOpen(false),
       onImportCombine: (machine) => {
          tools.setImportedCombine(machine);
@@ -164,6 +166,7 @@ export default function App() {
     * @returns No value.
     */
    function setHome(nextHome: boolean): void {
+      if (!nextHome) setDocumentEntryPhase((phase) => !phase);
       setView((current) =>
          nextHome && current === 'settings' ? current : nextHome ? 'home' : 'document'
       );
@@ -256,6 +259,7 @@ export default function App() {
       dirtyCount: workspace.documents.filter((doc) => JSON.stringify(doc.machine) !== doc.saved)
          .length,
       autoSaveOnBlur: settings.autoSaveOnBlur,
+      clearWorkspaceOnExit: settings.clearWorkspaceOnExit,
       notify,
       commands: {
          new: () => documents.createDocument(machineKind(machine)),
@@ -263,6 +267,7 @@ export default function App() {
          save: () => (view === 'document' ? documents.save() : undefined),
          'save-as': () => (view === 'document' ? documents.save(true) : undefined),
          'save-all': documents.saveAll,
+         'clear-workspace': documents.clearWorkspaceForExit,
          close: () => (view === 'settings' ? closeSettings() : documents.closeDocument(active.id)),
          print,
          start: () => simulation.simulate('start'),
@@ -300,18 +305,15 @@ export default function App() {
             simulate={simulation.simulate}
             notify={notify}
          />
-         {view === 'settings' && (
-            <SettingsPage
-               settings={settings}
-               historyLimit={workspace.historyLimit}
-               setHistoryLimit={workspace.setHistoryLimit}
-            />
-         )}
+         {view === 'settings' && <SettingsPage settings={settings} />}
          {home && (
             <HomePage
                onCreate={documents.createDocument}
                onOpen={() => void documents.openDialog()}
-               hasOpenDocuments={workspace.documents.length > 0}
+               onWorkspaceFile={(id, path) => void documents.openFolderFile(id, path)}
+               openDocuments={workspace.documents}
+               onResumeDocument={documents.resumeDocument}
+               onCloseDocument={(id) => void documents.closeDocument(id)}
                onRecent={(file) => void documents.openRecentFile(file)}
                onRemoveRecent={(file) => void documents.removeRecentFile(file)}
                recentFiles={documents.homeRecentFiles}
@@ -324,7 +326,11 @@ export default function App() {
             </div>
          )}
          {workspace.active && (
-            <div className="app-body" hidden={view !== 'document'}>
+            <div
+               className="app-body"
+               data-entry-phase={documentEntryPhase ? 'first' : 'second'}
+               hidden={view !== 'document'}
+            >
                <main className="main-workspace">
                   <EditorCommandBar
                      active={active}
@@ -385,6 +391,7 @@ export default function App() {
             }}
             onOpenConverted={(machine) => {
                workspace.open(machine);
+               setHome(false);
                tools.setFiniteTool(null);
                simulation.setOpen(false);
             }}

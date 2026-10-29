@@ -11,29 +11,36 @@ export type SelectMenuOption<Value extends string> = {
 
 type SelectMenuProps<Value extends string> = {
    label: string;
+   id?: string;
    value: Value;
    options: readonly SelectMenuOption<Value>[];
    onChange: (value: Value) => void;
+   disabled?: boolean;
 };
 
 /**
  * Shows a keyboard-accessible custom selector.
  * @param props - Component options.
  * @param props.label - Accessible name for the selector.
+ * @param [props.id] - Identifier used by an associated visible label.
  * @param props.value - Currently selected option value.
  * @param props.options - Available choices.
  * @param props.options[].label - Visible choice text.
  * @param props.options[].value - Value emitted when the choice is selected.
  * @param props.onChange - Receives the value selected by the user.
+ * @param [props.disabled=false] - Prevents changing the selection.
  * @returns The custom selector and its option list.
  */
 export function SelectMenu<Value extends string>({
    label,
+   id: suppliedId,
    value,
    options,
    onChange,
+   disabled = false,
 }: SelectMenuProps<Value>) {
-   const id = useId();
+   const generatedId = useId();
+   const id = suppliedId ?? generatedId;
    const rootRef = useRef<HTMLDivElement>(null);
    const triggerRef = useRef<HTMLButtonElement>(null);
    const listboxRef = useRef<HTMLDivElement>(null);
@@ -160,6 +167,8 @@ export function SelectMenu<Value extends string>({
       <div className="select-menu" ref={rootRef}>
          <button
             ref={triggerRef}
+            disabled={disabled}
+            id={id}
             type="button"
             className="select-menu-trigger"
             aria-label={label}

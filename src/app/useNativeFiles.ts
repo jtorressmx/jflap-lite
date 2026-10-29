@@ -69,6 +69,26 @@ export function useNativeFiles({
       }
    }
    /**
+    * Opens a folder entry or resumes its existing document.
+    * @param workspaceId - Registered folder identifier.
+    * @param path - File requested from the folder listing.
+    * @returns A promise resolved after opening or reporting failure.
+    */
+   async function openFolderFile(workspaceId: string, path: string): Promise<void> {
+      const document = workspace.documents.find(
+         (doc) => doc.path && sameFilePath(doc.path, path, window.desktop.platform)
+      );
+      if (document) {
+         resumeDocument(document.id);
+         return;
+      }
+      try {
+         receiveNativeFiles(await window.desktop.openFolderWorkspaceFile(workspaceId, path));
+      } catch {
+         notify('No se pudo abrir el archivo. Comprueba que siga en la carpeta.');
+      }
+   }
+   /**
     * Removes a file from the recent-files list.
     * @param file - Recent file entry to remove.
     * @returns A promise resolved after updating the list or reporting failure.
@@ -177,6 +197,7 @@ export function useNativeFiles({
       recentFiles,
       refreshRecentFiles,
       openRecentFile,
+      openFolderFile,
       removeRecentFile,
       openDialog,
       openDroppedFiles,

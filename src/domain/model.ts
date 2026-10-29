@@ -68,7 +68,13 @@ export interface Configuration {
    depth: number;
 }
 
-type SessionStatus = 'ready' | 'running' | 'accepted' | 'rejected' | 'limit';
+export type SimulationLoop = {
+   firstIteration: number;
+   repeatedIteration: number;
+   period: number;
+};
+
+type SessionStatus = 'ready' | 'running' | 'accepted' | 'rejected' | 'limit' | 'loop';
 export interface Session {
    input: string;
    configurations: Configuration[];
@@ -81,6 +87,7 @@ export interface Session {
    /** Frozen branches remain visible, but do not advance. */
    frozenIds?: string[];
    message?: string;
+   loop?: SimulationLoop;
 }
 
 export function emptyMachine(name = 'Máquina sin título'): Machine {
