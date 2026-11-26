@@ -15,9 +15,10 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe"><strong>Windows x64</strong></a>
-  · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-arm64.dmg"><strong>macOS Apple Silicon</strong></a>
-  · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-x64.dmg"><strong>macOS Intel</strong></a>
+  <strong>Windows x64</strong> · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-Setup-x64.exe">Instalador</a>
+  · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-Windows-x64.exe">Portable</a><br />
+  <strong>macOS</strong> · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-arm64.dmg">Apple Silicon</a>
+  · <a href="https://github.com/jtorressmx/jflap-lite/releases/latest/download/JFLAP-Lite-macOS-x64.dmg">Intel</a>
 </p>
 
 ![Pantalla de inicio con accesos a los editores y espacios de trabajo](assets/home.png)
