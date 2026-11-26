@@ -64,6 +64,12 @@
       "win": {
          "target": [
             {
+               "target": "nsis",
+               "arch": [
+                  "x64"
+               ]
+            },
+            {
                "target": "portable",
                "arch": [
                   "x64"
@@ -73,6 +79,12 @@
          "artifactName": "JFLAP-Lite-Windows-${arch}.${ext}",
          "icon": "build/icon.ico",
          "signExecutable": false
+      },
+      "nsis": {
+         "artifactName": "JFLAP-Lite-Windows-Setup-${arch}.${ext}",
+         "perMachine": false,
+         "createStartMenuShortcut": true,
+         "createDesktopShortcut": false
       },
       "mac": {
          "target": "dmg",
